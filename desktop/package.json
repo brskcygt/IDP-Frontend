@@ -1,0 +1,27 @@
+{
+  "name": "idp-desktop",
+  "version": "0.1.5",
+  "description": "IDP masaüstü kabuğu (Electron) — T-91: IPC-native aşama (Express yerine ipcMain.handle).",
+  "private": true,
+  "main": "main/index.js",
+  "type": "commonjs",
+  "scripts": {
+    "dev": "cross-env IDP_DESKTOP_ENV=development electron .",
+    "start": "cross-env IDP_DESKTOP_ENV=production electron .",
+    "build": "electron-builder",
+    "release:mac": "npm run build && node scripts/create-release.js",
+    "check:syntax": "for f in main/index.js main/backendPaths.js main/security.js main/updater.js main/updateInstaller.js main/ipc/*.js preload/index.js build/afterPack.js build/notarize.js scripts/create-release.js electron-builder.js; do node --check \"$f\" || exit 1; done"
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@electron/notarize": "^3.1.1",
+    "cross-env": "^7.0.3",
+    "electron": "^43.0.0",
+    "electron-builder": "^26.0.0"
+  },
+  "dependencies": {
+    "adm-zip": "^0.5.18",
+    "electron-updater": "^6.8.9"
+  }
+}

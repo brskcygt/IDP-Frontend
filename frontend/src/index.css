@@ -1,0 +1,130 @@
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/**
+ * Control Room design tokens.
+ *
+ * Dark is the designed theme; light is a disciplined counterpart built from the
+ * same scale so the theme toggle keeps working. Every surface, rule and status
+ * colour is a token — components must never hardcode a hex value.
+ */
+@layer base {
+  :root {
+    /* shadcn contract */
+    --background: 40 12% 97%;
+    --foreground: 220 15% 12%;
+    --card: 0 0% 100%;
+    --card-foreground: 220 15% 12%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 15% 12%;
+    --primary: 36 72% 45%;
+    --primary-foreground: 40 20% 98%;
+    --secondary: 40 10% 93%;
+    --secondary-foreground: 220 15% 12%;
+    --muted: 40 10% 93%;
+    --muted-foreground: 220 8% 42%;
+    --accent: 40 10% 90%;
+    --accent-foreground: 220 15% 12%;
+    --destructive: 5 68% 48%;
+    --destructive-foreground: 40 20% 98%;
+    --border: 40 8% 87%;
+    --input: 40 8% 82%;
+    --ring: 36 72% 45%;
+    --radius: 0.25rem;
+
+    /* control room additions */
+    --surface: 0 0% 100%;
+    --surface-raised: 40 14% 98%;
+    --surface-sunken: 40 10% 95%;
+    --bar: 0 0% 100%;
+    --line: 40 8% 87%;
+    --line-strong: 40 8% 80%;
+    --text-dim: 220 8% 42%;
+    --text-faint: 220 6% 60%;
+    --row-active: 40 30% 95%;
+
+    --status-ok: 146 52% 32%;
+    --status-fail: 5 68% 48%;
+    --status-run: 209 62% 45%;
+    --status-warn: 36 72% 42%;
+
+    --provider-jenkins: 27 68% 45%;
+    --provider-ssh: 146 52% 32%;
+    --provider-winrm: 209 62% 45%;
+    --provider-pmp: 265 50% 50%;
+  }
+
+  .dark {
+    --background: 220 11% 5%;
+    --foreground: 216 13% 92%;
+    --card: 216 12% 8%;
+    --card-foreground: 216 13% 92%;
+    --popover: 216 14% 7%;
+    --popover-foreground: 216 13% 92%;
+    --primary: 36 77% 56%;
+    --primary-foreground: 220 11% 5%;
+    --secondary: 214 12% 11%;
+    --secondary-foreground: 216 13% 92%;
+    --muted: 217 13% 13%;
+    --muted-foreground: 215 8% 56%;
+    --accent: 210 15% 13%;
+    --accent-foreground: 216 13% 92%;
+    --destructive: 5 72% 63%;
+    --destructive-foreground: 220 11% 5%;
+    --border: 217 13% 13%;
+    --input: 216 12% 16%;
+    --ring: 36 77% 56%;
+
+    --surface: 216 12% 8%;
+    --surface-raised: 214 12% 11%;
+    --surface-sunken: 209 14% 3%;
+    --bar: 220 13% 5%;
+    --line: 217 13% 13%;
+    --line-strong: 216 12% 16%;
+    --text-dim: 216 6% 46%;
+    --text-faint: 217 8% 32%;
+    --row-active: 210 18% 9%;
+
+    --status-ok: 146 45% 45%;
+    --status-fail: 5 72% 63%;
+    --status-run: 209 62% 60%;
+    --status-warn: 36 77% 56%;
+
+    --provider-jenkins: 27 65% 57%;
+    --provider-ssh: 146 45% 45%;
+    --provider-winrm: 209 62% 60%;
+    --provider-pmp: 265 55% 68%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: 'IBM Plex Sans', system-ui, -apple-system, sans-serif;
+  }
+  /* Data — timestamps, ids, counts, log output — is always monospaced. */
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--line-strong));
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--text-faint));
+}

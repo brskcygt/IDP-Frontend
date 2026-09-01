@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Hardened Runtime entitlements (T-95).
+
+  Only used when `desktop/electron-builder.config.js` sets
+  `mac.hardenedRuntime: true` with a real signing identity (i.e. CSC_LINK is
+  set) — an unsigned/local `dir` build never applies Hardened Runtime at
+  all, so this file is inert until a cert is actually configured. See
+  docs/06-DAGITIM.md.
+
+  Entitlements included, and why:
+
+    - com.apple.security.cs.allow-jit /
+      com.apple.security.cs.allow-unsigned-executable-memory
+        Electron/V8 need JIT and executable memory pages that Hardened
+        Runtime blocks by default — every Electron app that enables
+        Hardened Runtime needs these two (see Electron's own packaging
+        docs), otherwise the app crashes on launch.
+
+    - com.apple.security.cs.disable-library-validation
+        `node-ssh`'s underlying `ssh2` package ships a native crypto addon
+        (`sshcrypto.node`, see `desktop/README.md`'s "Native modül notu")
+        that is not (re)signed with this app's identity. Hardened Runtime's
+        library validation would refuse to load it, silently breaking SSH
+        key auth. `ssh2` itself already tolerates the load failing (falls
+        back to pure-JS crypto — verified in T-91), but keeping SSH working
+        at full native-crypto speed under a signed build needs this.
+
+    - com.apple.security.network.client
+        The app is a deployment/VPN operations tool by definition — it
+        opens outbound connections for SSH/WinRM deploy targets, PMP vault
+        lookups, SAML, and VPN session establishment. Hardened Runtime
+        sandboxes network access separately from the (unrelated) App
+        Sandbox; without this the app cannot make ANY outbound connection
+        once Hardened Runtime is on.
+
+  Deliberately NOT included: `com.apple.security.app-sandbox` (this is a
+  `"dir"`-target, non-Mac-App-Store internal tool, not sandboxed — adding
+  App Sandbox here would additionally require file/network entitlements far
+  beyond what Hardened Runtime alone needs, for no benefit on an
+  MDM-distributed internal build) and any Network Extension / VPN-provider
+  entitlement (`com.apple.developer.networking.vpn.api`) — this app drives
+  VPN connections via an external client, it does not implement a
+  NEVPNManager provider itself, so that Apple-approval-gated entitlement
+  does not apply here.
+-->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>com.apple.security.cs.allow-jit</key>
+  <true/>
+  <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
+  <true/>
+  <key>com.apple.security.cs.disable-library-validation</key>
+  <true/>
+  <key>com.apple.security.network.client</key>
+  <true/>
+</dict>
+</plist>
