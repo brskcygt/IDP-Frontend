@@ -15,17 +15,12 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.net.http.HttpTimeoutException;
 import java.nio.charset.StandardCharsets;
-import java.security.SecureRandom;
-import java.security.cert.X509Certificate;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLException;
-import javax.net.ssl.TrustManager;
-import javax.net.ssl.X509TrustManager;
 
 public class LanguageUploadManager {
 
@@ -89,53 +84,25 @@ public class LanguageUploadManager {
   }
 
   /**
-   * Sertifika doğrulamasını kabul eden bir HttpClient üretir. Hedef, agent'ın kendi
-   * makinesinde loopback üzerinden erişilen uygulamadır; müşteri kurulumları genellikle
-   * kendinden imzalı (self-signed) sertifika kullanır, bu yüzden sertifika doğrulaması
-   * burada kasıtlı olarak devre dışı bırakılıyor (bkz. AppManager.getCurrentVersion()'daki
-   * benzer yaklaşım).
+   * Varsayılan SSLContext ve hostname doğrulamasıyla HttpClient üretir.
    *
-   * Hostname doğrulaması da kapatılıyor. Sertifika zincirini yok saymak tek başına
-   * yetmiyor: sunucular sık sık base-url'deki düz HTTP adresini HTTPS'e yönlendiriyor
-   * ve varılan sertifikanın SAN listesinde "localhost" gibi bir ad bulunmuyor. Kardemir
-   * test kurulumunda ölçüldü (2026-08-06):
+   * Eskiden burada her sertifikaya güvenen bir TrustManager kuruluyor ve
+   * "jdk.internal.httpclient.disableHostnameVerification" sistem özelliği set ediliyordu.
+   * O özellik JVM geneline etki ettiği için güncelleme indirmeleri (DownloadManager) dahil
+   * tüm HttpClient'larda hostname doğrulamasını kapatıyordu; kaldırıldı.
    *
-   *   base-url: http://localhost:80  ->  302  ->  https://localhost
-   *   "No subject alternative DNS name matching localhost found"
-   *
-   * Sürüm kontrolü aynı yönlendirmeden geçtiği halde çalışıyordu, çünkü AppManager bu
-   * sistem özelliğini zaten set ediyor. Onu burada da set etmek davranışı sürüm
-   * kontrolüyle eşitliyor ve sıralamaya bağımlılığı ortadan kaldırıyor: özellik JDK'nın
-   * HTTP/SSL iç yapısı ilk kez yüklendiğinde okunuyor, dolayısıyla hangi çağrının önce
-   * geldiğine güvenmek yerine kendi istemcimizi kurmadan önce garantiye alıyoruz.
+   * Bilinen etki: base-url düz HTTP'den HTTPS'e yönlendiriliyor ve varılan sertifika o adı
+   * içermiyorsa (Kardemir test kurulumu, 2026-08-06: http://localhost:80 -> 302 ->
+   * https://localhost, "No subject alternative DNS name matching localhost found") yükleme
+   * artık TLS hatasıyla (SSLException dalı) raporlanır. Çözüm: application.base-url'i
+   * sertifikadaki adla yazmak ya da kendinden imzalı sertifikayı JDK truststore'una eklemek.
    */
   private static HttpClient buildHttpClient() {
-    try {
-      System.setProperty("jdk.internal.httpclient.disableHostnameVerification", "true");
-
-      TrustManager[] trustAllCerts = new TrustManager[]{
-        new X509TrustManager() {
-          public X509Certificate[] getAcceptedIssuers() { return null; }
-          public void checkClientTrusted(X509Certificate[] certs, String authType) {}
-          public void checkServerTrusted(X509Certificate[] certs, String authType) {}
-        }
-      };
-      SSLContext sc = SSLContext.getInstance("SSL");
-      sc.init(null, trustAllCerts, new SecureRandom());
-
-      return HttpClient.newBuilder()
-        .version(HttpClient.Version.HTTP_1_1)
-        .connectTimeout(Duration.ofSeconds(10))
-        .followRedirects(HttpClient.Redirect.NORMAL)
-        .sslContext(sc)
-        .build();
-    } catch (Exception ex) {
-      return HttpClient.newBuilder()
-        .version(HttpClient.Version.HTTP_1_1)
-        .connectTimeout(Duration.ofSeconds(10))
-        .followRedirects(HttpClient.Redirect.NORMAL)
-        .build();
-    }
+    return HttpClient.newBuilder()
+      .version(HttpClient.Version.HTTP_1_1)
+      .connectTimeout(Duration.ofSeconds(10))
+      .followRedirects(HttpClient.Redirect.NORMAL)
+      .build();
   }
 
   /**

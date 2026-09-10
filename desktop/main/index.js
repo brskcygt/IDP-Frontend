@@ -414,7 +414,10 @@ async function mainRemote() {
     lockdownNavigation(contents, [`${APP_ORIGIN}/`]);
   });
 
-  registerRemoteIpcHandlers({ getRemoteUser: () => remoteBackend.getCurrentUser() });
+  registerRemoteIpcHandlers({
+    getRemoteUser: () => remoteBackend.getCurrentUser(),
+    issueAgentCredentials: (agentId) => remoteBackend.issueAgentCredentials(agentId),
+  });
 
   await createWindow();
 

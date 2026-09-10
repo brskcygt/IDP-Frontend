@@ -12,7 +12,8 @@ public class UpdateMessageHandler implements MessageHandler {
   public void handle(Message message) {
     log.info("Güncelleme komutu alındı; işlem başlatılıyor");
     try {
-      AppUpdateManagerImpl.getInstance().handleUpdateProcessAsync();
+      // Payload beklenen SHA-256 özetlerini taşır (sha256.backend / sha256.frontend); yoksa reddedilir.
+      AppUpdateManagerImpl.getInstance().handleUpdateProcessAsync(message.getPayload());
     } catch (Exception ex) {
       log.error("Güncellenirken bir hata meydana geldi: " + ex.getMessage());
     }

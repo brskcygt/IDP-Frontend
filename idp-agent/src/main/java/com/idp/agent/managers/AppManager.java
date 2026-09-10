@@ -19,12 +19,7 @@ import com.idp.agent.executor.abstracts.CommandExecutor;
 import com.idp.agent.executor.factory.ExecutorFactory;
 import com.idp.agent.logging.AdvancedLogger;
 
-import javax.net.ssl.SSLContext;
 import java.net.ConnectException;
-import javax.net.ssl.TrustManager;
-import javax.net.ssl.X509TrustManager;
-import java.security.SecureRandom;
-import java.security.cert.X509Certificate;
 
 public class AppManager {
   private static AppManager instance;
@@ -51,29 +46,12 @@ public class AppManager {
     String appUrl = config.getAppUrl();
     String healthUrl = appUrl + "/health";
 
-    HttpClient httpClient;
-    try {
-      TrustManager[] trustAllCerts = new TrustManager[]{
-          new X509TrustManager() {
-            public X509Certificate[] getAcceptedIssuers() { return null; }
-            public void checkClientTrusted(X509Certificate[] certs, String authType) {}
-            public void checkServerTrusted(X509Certificate[] certs, String authType) {}
-          }
-      };
-      SSLContext sc = SSLContext.getInstance("SSL");
-      sc.init(null, trustAllCerts, new SecureRandom());
-      
-      System.setProperty("jdk.internal.httpclient.disableHostnameVerification", "true");
-
-      httpClient = HttpClient.newBuilder()
-        .version(HttpClient.Version.HTTP_1_1)
-        .sslContext(sc)
-        .build();
-    } catch (Exception e) {
-        httpClient = HttpClient.newBuilder()
-          .version(HttpClient.Version.HTTP_1_1)
-          .build();
-    }
+    // Varsayılan SSLContext + hostname doğrulaması. Eskiden burada her sertifikaya güvenen bir
+    // TrustManager ve JVM genelinde hostname doğrulamasını kapatan bir sistem özelliği vardı;
+    // o özellik güncelleme indirmeleri dahil tüm HttpClient'ları etkiliyordu.
+    HttpClient httpClient = HttpClient.newBuilder()
+      .version(HttpClient.Version.HTTP_1_1)
+      .build();
 
     HttpRequest request = HttpRequest.newBuilder(URI.create(healthUrl))
       .GET()

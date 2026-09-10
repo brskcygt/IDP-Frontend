@@ -7,14 +7,11 @@ import java.util.List;
 import java.util.Map;
 
 import com.idp.agent.ConfigLoader;
-import com.idp.agent.dto.CurrentVersionResponse;
-import com.idp.agent.executor.abstracts.CommandExecutor;
-import com.idp.agent.executor.factory.ExecutorFactory;
 import com.idp.agent.logging.AdvancedLogger;
+import com.idp.agent.managers.UpdateManagers.AppUpdateManagerImpl;
 
 public class UpdaterManager {
 	private static UpdaterManager instance;
-	private final CommandExecutor executor;
 	private final AdvancedLogger log;
 	private final ConfigLoader config;
 	private final WebSocketManager webSocket;
@@ -22,8 +19,6 @@ public class UpdaterManager {
 
 	// Private Constructor (Singleton)
 	private UpdaterManager() {
-		// Factory kullanarak doğru executor'ı seçiyoruz (Loose Coupling)
-		this.executor = ExecutorFactory.getExecutor();
 		this.log = AdvancedLogger.getInstance();
 		this.config = ConfigLoader.getInstance();
 		this.webSocket = WebSocketManager.getInstance();
@@ -37,104 +32,15 @@ public class UpdaterManager {
 		return instance;
 	}
 
-	// Bu metod WebSocket thread'inden çağrılacak, o yüzden hemen return etmeli.
-	// Asıl işi arka planda yapmalı.
-	public void handleUpdateProcessAsync() {
-		log.info("Güncelleme isteği alındı, arka plan işlemi başlatılıyor...");
-
-		Thread worker = new Thread(() -> {
-			this.handleUpdateProcess();
-
-			try {
-				Map<String, Object>  versionControlPayload = new HashMap<>();
-				versionControlPayload.put("success", true);
-				versionControlPayload.put("output", "Versiyon bilgisi 15sn sonra gelecektir.");
-				versionControlPayload.put("command", "curl /api/health");
-				webSocket.sendMessage("update_version", versionControlPayload);
-				
-				Thread.sleep(15000);
-				
-				CurrentVersionResponse currentVersion = appManager.getCurrentVersion();
-				Map<String, Object> payload = new HashMap<>();
-				payload.put("success", true);
-				payload.put("version", currentVersion.getVersion());
-				payload.put("command", "current_version");
-				webSocket.sendMessage("current_version", payload);
-
-			} catch (Exception ex) {
-				this.prepareSendMessage(false, "Uygulama versiyonu alınırken hata oluştu.", ex.getMessage());
-			}
-
-		}, "idp-app-update");
-		worker.setDaemon(true);
-		worker.start();
+	// Uygulama güncellemesi AppUpdateManagerImpl'e devredilir: tek bir (SHA-256 doğrulamalı,
+	// fail-closed) kurulum yolu kalsın. Bu sınıftaki eski kopya doğrulamasız indirip kuruyordu.
+	public void handleUpdateProcessAsync(Object payload) {
+		AppUpdateManagerImpl.getInstance().handleUpdateProcessAsync(payload);
 	}
 
 	// Gelen güncelleme mesajını işle
-	public void handleUpdateProcess() {
-		log.info("Güncelleme süreci başlatıldı");
-
-		String appPath = config.getAppPath();
-		boolean appPathIsExist = Files.exists(Path.of(appPath));
-		if(!appPathIsExist){
-			this.prepareSendMessage(false, "Uygulama dizini bulunamadı", appPath);
-			return;
-		}
-		
-		String workingDir = System.getProperty("user.dir");
-		executor.clearDir(workingDir + "/packages");
-		executor.mkDir("packages", workingDir);
-
-		String downloadPath = workingDir + "/packages";
-
-		DownloadManager downloadManager = DownloadManager.getInstance();
-		String backendTarFilePath = downloadManager.downloadBackend(downloadPath);
-		String frontendTarFilePath = downloadManager.downloadFrontend(downloadPath);
-
-		if(backendTarFilePath == null || frontendTarFilePath == null){return;}
-
-		// TODO backend ve frontend paketlerinde SHA256 ile dogrulama yap
-
-		String backendTarFileOutputPath = downloadPath + "/output";
-		String frontendTarFileOutputPath = downloadPath + "/views";
-
-		executor.unzipTar(backendTarFilePath, backendTarFileOutputPath);
-		executor.unzipTar(frontendTarFilePath, frontendTarFileOutputPath);
-
-		String appName = config.getAppName();
-
-		try{
-			appManager.removeBackupFiles();
-		}catch(Exception ex){
-			this.prepareSendMessage(false, "Uygulama yedekleme dosyaları silinirken hata oluştu.", ex.getMessage());
-			return;
-		}
-
-		try{
-			appManager.backupCurrentVersion();
-		}
-		catch(Exception ex){
-			this.prepareSendMessage(false, "Uygulama versiyonu yedeklerken hata oluştu.", ex.getMessage());
-			return;
-		}
-		
-		String newBackendApp = backendTarFileOutputPath + "/" + appName;
-		String currentBackendAppPath = appPath + "/" + appName;
-		executor.mv(newBackendApp, currentBackendAppPath);
-
-		String currentFrontendPath = appPath + "/views";
-		executor.mv(frontendTarFileOutputPath, currentFrontendPath);
-
-		try{
-			appManager.restartApplication();
-		}
-		catch(Exception ex){
-			log.error("Uygulama yeniden başlatılırken bir hata meydana geldi:  " + ex.getMessage());
-			this.prepareSendMessage(false, "Uygulama yeniden başlatılırken bir hata meydana geldi.", ex.getMessage());
-		}
-
-		// executor.cd(downloadPath);
-		// executor.ls("/Users/hakandincturk/Desktop/updateFolder/app");
+	public boolean handleUpdateProcess(Object payload) {
+		return AppUpdateManagerImpl.getInstance().handleUpdateProcess(payload);
 	}
 
 	public void handleUpdateConfigProcessAsync(List<String> configLines) {

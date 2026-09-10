@@ -1,5 +1,7 @@
 package com.idp.agent;
 
+import com.idp.agent.connection.AgentConnectionConfig;
+import com.idp.agent.connection.InvalidConfigException;
 import com.idp.agent.enums.OperatingSystem;
 import com.idp.agent.logging.AdvancedLogger;
 import com.idp.agent.managers.WebSocketManager;
@@ -20,9 +22,18 @@ public class Starter {
 		
 		ConfigLoader config = ConfigLoader.getInstance(configPath);
 
-		String serverUrl = config.getServerUrl();
-		String serverToken = config.getServerToken();
-		String agentId = config.getAgentId();
+		AgentConnectionConfig connection;
+		try {
+			connection = config.getConnectionConfig();
+		} catch (InvalidConfigException e) {
+			// Mesaj sır içermez; kurulum/log için anlaşılır tek satır bırakıp çık.
+			AdvancedLogger.getInstance().error(e.getMessage());
+			System.exit(InvalidConfigException.EXIT_CODE);
+			return;
+		}
+
+		String serverUrl = connection.getServerUrl();
+		String agentId = connection.getAgentId();
 
 		String logLevel = config.getLogLevel();
 		String effectiveLog = (logLevel != null ? logLevel : "INFO");
@@ -42,10 +53,21 @@ public class Starter {
 		advancedLogger.debug("Log seviyesi: " + effectiveLog);
 		advancedLogger.info("Sunucu URL: " + serverUrl);
 		advancedLogger.info("Agent ID: " + agentId);
+		// Sır değerleri (agent-secret, CF Access secret) hiçbir seviyede loglanmaz.
+		if (connection.hasCfAccess()) {
+			advancedLogger.info("Cloudflare Access servis token'i: yapilandirildi");
+		}
+		if (connection.hasProxy()) {
+			advancedLogger.info("Proxy: " + connection.getProxyHost() + ":" + connection.getProxyPort());
+		}
+		if (!connection.isSecure()) {
+			advancedLogger.warn("Sunucu adresi ws:// (sifresiz); internet uzerinden wss:// kullanin.");
+		}
+		if (connection.isLegacyTokenIgnored()) {
+			advancedLogger.warn("server.token artik kullanilmiyor; yok sayildi (server.agent-secret kullaniliyor).");
+		}
 
-		
-		
-		WebSocketManager wsManager = WebSocketManager.getInstance(serverUrl, serverToken, agentId);
+		WebSocketManager wsManager = WebSocketManager.getInstance(connection);
 		wsManager.connect();
 		
 		try {

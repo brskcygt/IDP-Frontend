@@ -292,6 +292,23 @@ function describeFetchFailure(err, timedOut, timeoutMs) {
   return code && !message.includes(code) ? `${code} (${message})` : message;
 }
 
+/** `message`/`error` of a JSON error body, cut to 300 chars; '' for anything else (HTML, empty). */
+async function readServerMessage(response) {
+  let text = '';
+  try {
+    text = await response.text();
+  } catch {
+    return '';
+  }
+  try {
+    const body = JSON.parse(text);
+    const message = body && (body.message || body.error);
+    return typeof message === 'string' ? message.trim().slice(0, 300) : '';
+  } catch {
+    return '';
+  }
+}
+
 function isInside(root, candidate) {
   const relative = path.relative(root, candidate);
   return relative === '' || (relative.split(path.sep)[0] !== '..' && !path.isAbsolute(relative));
@@ -601,6 +618,46 @@ function createRemoteBackend({ serverOrigin, frontendRoot, contentSecurityPolicy
   }
 
   /**
+   * `POST /api/agents/:id/credentials` with the jar's session. For an ID that
+   * already has credentials this ROTATES them: the installation using the old
+   * secret disconnects. The response (agent secret, optional CF Access
+   * credentials) goes back to the main-process caller only — agentBuilder
+   * writes it into the ZIP — and is never logged or handed to the renderer.
+   * Error messages are built from the status + the server's `message`/`error`
+   * field; error responses carry no secret.
+   * @param {string} agentId - already validated by agentBuilder.
+   * @returns {Promise<unknown>} parsed JSON body; shape checked by the caller.
+   */
+  async function issueAgentCredentials(agentId) {
+    const response = await forward(`/api/agents/${encodeURIComponent(agentId)}/credentials`, {
+      method: 'POST',
+      headers: new Headers({ accept: 'application/json' }),
+      timeoutMs: 30_000,
+    });
+    if (response.ok) {
+      try {
+        return await response.json();
+      } catch {
+        throw new Error('IDP sunucusunun agent kimliği yanıtı okunamadı.');
+      }
+    }
+    const detail = await readServerMessage(response);
+    const suffix = detail ? `: ${detail}` : '.';
+    switch (response.status) {
+      case 401:
+        throw new Error('IDP oturumu bulunamadı veya süresi doldu; tekrar giriş yapıp deneyin.');
+      case 403:
+        throw new Error(`Agent kimliği üretme yetkiniz yok${suffix}`);
+      case 400:
+        throw new Error(`IDP sunucusu agent ID'sini reddetti${suffix}`);
+      case 503:
+        throw new Error(`IDP sunucusu agent kimliği üretemiyor${detail ? `: ${detail}` : ' (IDP_AGENT_PUBLIC_URL tanımlı değil).'}`);
+      default:
+        throw new Error(`Agent kimliği üretilemedi (HTTP ${response.status})${suffix}`);
+    }
+  }
+
+  /**
    * Reachability probe (no cookies). Prefers `GET /api/health`; a server
    * without it still counts as up when `GET /api/auth/me` answers 200/401.
    * @returns {Promise<{ ok: boolean, detail: string }>}
@@ -636,6 +693,7 @@ function createRemoteBackend({ serverOrigin, frontendRoot, contentSecurityPolicy
     handleAppRequest,
     trackRendererCancellation,
     getCurrentUser,
+    issueAgentCredentials,
     checkConnection,
     serverOrigin,
     frontendRoot: root,

@@ -7,9 +7,13 @@ import java.util.Map;
 
 import org.yaml.snakeyaml.Yaml;
 
+import com.idp.agent.connection.AgentConnectionConfig;
+import com.idp.agent.connection.InvalidConfigException;
+
 public class ConfigLoader {
 	private final Map<String, Object> config;
 	private static ConfigLoader instance;
+	private AgentConnectionConfig connectionConfig;
 
 	private ConfigLoader(String yamlPath) {
 		InputStream in = null;
@@ -61,9 +65,17 @@ public class ConfigLoader {
 		return (String) ((Map<?, ?>) config.get("server")).get("url");
 	}
 
-	public String getServerToken() {
-		Object token = ((Map<?, ?>) config.get("server")).get("token");
-		return token == null ? "" : token.toString();
+	/**
+	 * Gateway bağlantı ayarlarını (url, agent-secret, CF Access, proxy, agent.id) doğrulanmış olarak
+	 * döner. Eski paylaşımlı {@code server.token} artık desteklenmez.
+	 *
+	 * @throws InvalidConfigException ayarlar eksik/hatalıysa (mesaj sır içermez)
+	 */
+	public synchronized AgentConnectionConfig getConnectionConfig() {
+		if (connectionConfig == null) {
+			connectionConfig = AgentConnectionConfig.fromYaml(config);
+		}
+		return connectionConfig;
 	}
 
 	public String getAgentId() {

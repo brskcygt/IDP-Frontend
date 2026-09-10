@@ -15,6 +15,7 @@ import com.idp.agent.managers.AppManager;
 import com.idp.agent.managers.DownloadManager;
 import com.idp.agent.managers.WebSocketManager;
 import com.idp.agent.managers.UpdateManagers.abstracts.UpdateManager;
+import com.idp.agent.security.Sha256Verifier;
 
 public class AppUpdateManagerImpl implements UpdateManager {
   private static AppUpdateManagerImpl instance;
@@ -45,11 +46,13 @@ public class AppUpdateManagerImpl implements UpdateManager {
 
   // Bu metod WebSocket thread'inden çağrılacak, o yüzden hemen return etmeli.
 	// Asıl işi arka planda yapmalı.
-	public void handleUpdateProcessAsync() {
+	public void handleUpdateProcessAsync(Object messagePayload) {
 		log.info("Güncelleme isteği alındı, arka plan işlemi başlatılıyor...");
 
 		Thread worker = new Thread(() -> {
-			this.handleUpdateProcess();
+			if (!this.handleUpdateProcess(messagePayload)) {
+				return;
+			}
 
 			try {
 				Map<String, Object>  versionControlPayload = new HashMap<>();
@@ -77,16 +80,24 @@ public class AppUpdateManagerImpl implements UpdateManager {
 	}
 
 	// Gelen güncelleme mesajını işle
-	public void handleUpdateProcess() {
+	public boolean handleUpdateProcess(Object payload) {
 		log.info("Güncelleme süreci başlatıldı");
+
+		// Fail-closed: beklenen özetler yoksa hiçbir şey indirmeden/silmeden reddet.
+		String backendSha = Sha256Verifier.expectedChecksum(payload, Sha256Verifier.KEY_BACKEND);
+		String frontendSha = Sha256Verifier.expectedChecksum(payload, Sha256Verifier.KEY_FRONTEND);
+		if (!requireChecksum(Sha256Verifier.KEY_BACKEND, backendSha)
+				|| !requireChecksum(Sha256Verifier.KEY_FRONTEND, frontendSha)) {
+			return false;
+		}
 
 		String appPath = config.getAppPath();
 		boolean appPathIsExist = Files.exists(Path.of(appPath));
 		if(!appPathIsExist){
 			this.prepareSendMessage(false, "Uygulama dizini bulunamadı", appPath);
-			return;
+			return false;
 		}
-		
+
 		String workingDir = System.getProperty("user.dir");
 		executor.clearDir(workingDir + "/packages");
 		executor.mkDir("packages", workingDir);
@@ -96,9 +107,16 @@ public class AppUpdateManagerImpl implements UpdateManager {
 		String backendTarFilePath = downloadManager.downloadBackend(downloadPath);
 		String frontendTarFilePath = downloadManager.downloadFrontend(downloadPath);
 
-		if(backendTarFilePath == null || frontendTarFilePath == null){return;}
+		if(backendTarFilePath == null || frontendTarFilePath == null){return false;}
 
-		// TODO backend ve frontend paketlerinde SHA256 ile dogrulama yap
+		// İkisi de denetlenir (kısa devre yok); biri tutmazsa diğeri de kurulmadan silinir.
+		boolean backendOk = verifyDownloaded(backendTarFilePath, Sha256Verifier.KEY_BACKEND, backendSha);
+		boolean frontendOk = verifyDownloaded(frontendTarFilePath, Sha256Verifier.KEY_FRONTEND, frontendSha);
+		if (!backendOk || !frontendOk) {
+			deleteQuietly(backendTarFilePath);
+			deleteQuietly(frontendTarFilePath);
+			return false;
+		}
 
 		String backendTarFileOutputPath = downloadPath + "/output";
 		String frontendTarFileOutputPath = downloadPath + "/views";
@@ -112,7 +130,7 @@ public class AppUpdateManagerImpl implements UpdateManager {
 			appManager.removeBackupFiles();
 		}catch(Exception ex){
 			this.prepareSendMessage(false, "Uygulama yedekleme dosyaları silinirken hata oluştu.", ex.getMessage());
-			return;
+			return false;
 		}
 
 		try{
@@ -120,9 +138,9 @@ public class AppUpdateManagerImpl implements UpdateManager {
 		}
 		catch(Exception ex){
 			this.prepareSendMessage(false, "Uygulama versiyonu yedeklerken hata oluştu.", ex.getMessage());
-			return;
+			return false;
 		}
-		
+
 		String newBackendApp = backendTarFileOutputPath + "/" + appName;
 		String currentBackendAppPath = appPath + "/" + appName;
 		executor.mv(newBackendApp, currentBackendAppPath);
@@ -138,6 +156,35 @@ public class AppUpdateManagerImpl implements UpdateManager {
 			this.prepareSendMessage(false, "Uygulama yeniden başlatılırken bir hata meydana geldi.", ex.getMessage());
 		}
 
+		return true;
+	}
+
+	private boolean requireChecksum(String key, String expected) {
+		Sha256Verifier.Result result = Sha256Verifier.checkPresent(key, expected);
+		if (!result.ok()) {
+			log.error(result.message());
+			this.prepareSendMessage(false, result.message(), "update");
+		}
+		return result.ok();
+	}
+
+	private boolean verifyDownloaded(String filePath, String key, String expected) {
+		Sha256Verifier.Result result = Sha256Verifier.verifyFile(Path.of(filePath), key, expected);
+		if (result.ok()) {
+			log.info(result.message());
+		} else {
+			log.error(result.message());
+			this.prepareSendMessage(false, result.message(), "update");
+		}
+		return result.ok();
+	}
+
+	private static void deleteQuietly(String filePath) {
+		try {
+			Files.deleteIfExists(Path.of(filePath));
+		} catch (Exception ignored) {
+			// packages/ bir sonraki güncellemede zaten temizleniyor.
+		}
 	}
 
 	public void handleUpdateConfigProcessAsync(List<String> configLines) {

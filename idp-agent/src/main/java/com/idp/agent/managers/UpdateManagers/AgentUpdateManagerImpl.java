@@ -1,5 +1,6 @@
 package com.idp.agent.managers.UpdateManagers;
 
+import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -11,6 +12,7 @@ import com.idp.agent.managers.AgentManager;
 import com.idp.agent.managers.DownloadManager;
 import com.idp.agent.managers.WebSocketManager;
 import com.idp.agent.managers.UpdateManagers.abstracts.UpdateManager;
+import com.idp.agent.security.Sha256Verifier;
 
 public class AgentUpdateManagerImpl implements UpdateManager {
 
@@ -40,21 +42,30 @@ public class AgentUpdateManagerImpl implements UpdateManager {
 
 
   @Override
-  public void handleUpdateProcessAsync() {
+  public void handleUpdateProcessAsync(Object payload) {
 		logger.info("Agent güncelleme isteği alındı, arka plan işlemi başlatılıyor...");
-    
+
 		Thread worker = new Thread(() -> {
-			this.handleUpdateProcess();
+			this.handleUpdateProcess(payload);
 
     }, "idp-agent-update");
 		worker.setDaemon(true);
 		worker.start();
-    
+
   }
 
   @Override
-  public void handleUpdateProcess() {
+  public boolean handleUpdateProcess(Object payload) {
     logger.info("Agent güncelleme süreci başlatıldı");
+
+    // Fail-closed: SYSTEM olarak koşacak JAR, beklenen özet olmadan indirilmez/kurulmaz.
+    String expectedSha = Sha256Verifier.expectedChecksum(payload, Sha256Verifier.KEY_AGENT);
+    Sha256Verifier.Result present = Sha256Verifier.checkPresent(Sha256Verifier.KEY_AGENT, expectedSha);
+    if (!present.ok()) {
+      logger.error(present.message());
+      this.prepareSendMessage(false, present.message(), "update_agent");
+      return false;
+    }
 
     String workingDir = System.getProperty("user.dir");
 
@@ -62,7 +73,16 @@ public class AgentUpdateManagerImpl implements UpdateManager {
 
 		String downloadPath = workingDir + "/packages";
 		String agentJarFilePath = downloadManager.downloadAgent(downloadPath);
-		if(agentJarFilePath == null){return;}
+		if(agentJarFilePath == null){return false;}
+
+		Sha256Verifier.Result verified = Sha256Verifier.verifyFile(
+			Path.of(agentJarFilePath), Sha256Verifier.KEY_AGENT, expectedSha);
+		if (!verified.ok()) {
+			logger.error(verified.message());
+			this.prepareSendMessage(false, verified.message(), "update_agent");
+			return false;
+		}
+		logger.info(verified.message());
 
 
 		// try{
@@ -80,9 +100,10 @@ public class AgentUpdateManagerImpl implements UpdateManager {
 		// 	return;
 		// }
 
-		String newApp = downloadPath + "/" + "idp-agent.jar";
+		// Doğrulanan dosyanın kendisi taşınır (eskiden sabit "idp-agent.jar" adı taşınıyordu;
+		// paket adı farklıysa doğrulanmamış/yanlış dosya taşınabilirdi).
 		String currentAppPath = workingDir + "/" + "idp-agent.next.jar";
-		executor.mv(newApp, currentAppPath);
+		executor.mv(agentJarFilePath, currentAppPath);
 
 		try{
 			agentManager.signalRestartApplication();
@@ -92,6 +113,7 @@ public class AgentUpdateManagerImpl implements UpdateManager {
 			this.prepareSendMessage(false, "Uygulama yeniden başlatılırken bir hata meydana geldi.", ex.getMessage());
 		}
 
+		return true;
   }
 
   @Override

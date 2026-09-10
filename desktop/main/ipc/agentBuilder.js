@@ -3,12 +3,28 @@
 const { ipcMain } = require('electron');
 const { buildAgentJar } = require('../agentBuilder');
 
+/**
+ * Agent packages carry a per-agent secret issued by the IDP backend
+ * (`POST /api/agents/:id/credentials`). The local (embedded backend) mode is
+ * IPC-native — no Express server, so no local HTTP route to call — and its
+ * backend modules expose no credential-issuing service. Talking to the gateway's
+ * control API directly from here would bypass the backend's authorization,
+ * audit and ID bookkeeping, so the local mode refuses with a clear message.
+ */
+const LOCAL_MODE_UNSUPPORTED =
+  'Agent kurulum paketi yerel (gömülü backend) modda üretilemiyor: agent kimliği IDP sunucusunda üretilir. ' +
+  'Uygulamayı uzak modda (IDP_SERVER_URL) açıp tekrar deneyin.';
+
 /** Local mode: authorization comes from the in-process session (see ./helpers.js). */
 function registerAgentBuilderHandlers() {
   // Required here rather than at module load: helpers.js pulls in
   // backend/src/core/*, which only the local (embedded backend) mode has.
   const { ipcHandler } = require('./helpers');
-  ipcMain.handle('idp:agentBuilder:build', ipcHandler('project:write', async (_event, input) => buildAgentJar(input)));
+  // Permission first (same gate as before), then the refusal — before any
+  // save dialog or Maven run.
+  ipcMain.handle('idp:agentBuilder:build', ipcHandler('project:write', async () => {
+    throw new Error(LOCAL_MODE_UNSUPPORTED);
+  }));
 }
 
 /**
@@ -34,10 +50,16 @@ function ipcError(kind, message) {
 /**
  * Remote mode (IDP_SERVER_URL): there is no local session — the user is
  * whoever the remote server says owns the main-process cookie jar
- * (`GET /api/auth/me`). The JAR itself is still built and saved on THIS machine.
- * @param {{ getRemoteUser: () => Promise<{ username: string, role: string } | null> }} deps
+ * (`GET /api/auth/me`). The JAR itself is still built and saved on THIS
+ * machine; its secret comes from the server with the same session. The
+ * backend re-checks authorization on the credentials call.
+ * @param {{
+ *   getRemoteUser: () => Promise<{ username: string, role: string } | null>,
+ *   issueAgentCredentials: (agentId: string) => Promise<unknown>,
+ *   builderDeps?: object,
+ * }} deps - `builderDeps`: test seam passed through to buildAgentJar.
  */
-function registerRemoteAgentBuilderHandlers({ getRemoteUser }) {
+function registerRemoteAgentBuilderHandlers({ getRemoteUser, issueAgentCredentials, builderDeps = {} }) {
   // Required lazily, like helpers.js above: the local mode never needs it.
   const { APP_ORIGIN } = require('../remoteBackend');
 
@@ -64,11 +86,17 @@ function registerRemoteAgentBuilderHandlers({ getRemoteUser }) {
       );
     }
     try {
-      return await buildAgentJar(input);
+      // The result is secret-free by contract (see buildAgentJar).
+      return await buildAgentJar(input, { ...builderDeps, issueCredentials: issueAgentCredentials });
     } catch (err) {
       throw ipcError('Error', err && err.message ? err.message : String(err));
     }
   });
 }
 
-module.exports = { registerAgentBuilderHandlers, registerRemoteAgentBuilderHandlers, canWriteProjects };
+module.exports = {
+  registerAgentBuilderHandlers,
+  registerRemoteAgentBuilderHandlers,
+  canWriteProjects,
+  LOCAL_MODE_UNSUPPORTED,
+};

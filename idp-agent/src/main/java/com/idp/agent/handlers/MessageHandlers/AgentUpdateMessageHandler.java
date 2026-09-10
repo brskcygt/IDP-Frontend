@@ -12,7 +12,8 @@ public class AgentUpdateMessageHandler implements MessageHandler {
   public void handle(Message message) {
     log.info("Güncelleme komutu alındı; işlem başlatılıyor");
     try {
-      AgentUpdateManagerImpl.getInstance().handleUpdateProcessAsync();
+      // Payload beklenen SHA-256 özetini taşır (sha256.agent); yoksa reddedilir.
+      AgentUpdateManagerImpl.getInstance().handleUpdateProcessAsync(message.getPayload());
     } catch (Exception ex) {
       log.error("Güncellenirken bir hata meydana geldi: " + ex.getMessage());
     }

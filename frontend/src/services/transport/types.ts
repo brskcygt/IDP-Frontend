@@ -215,15 +215,30 @@ export interface IdpAgent {
   details: { version: string; agent_version?: string; os_info: string };
 }
 
+/**
+ * Agent package request. There is no gateway address or token here: the
+ * desktop main process gets a per-agent secret + the gateway URL from the IDP
+ * backend (`POST /api/agents/:id/credentials`). Building for an ID that
+ * already has credentials rotates them (the old installation disconnects).
+ */
 export interface AgentBuildInput {
   agentId: string;
-  serverUrl: string;
-  gatewayToken: string;
   workingDirectory: string;
+  /** Outbound HTTP proxy of the target machine, `host:port`; empty = direct. */
+  proxy?: string;
   logLevel: 'TRACE' | 'DEBUG' | 'INFO' | 'WARN' | 'ERROR';
 }
 
-export interface AgentBuildResult { canceled: boolean; filePath?: string; sha256?: string; }
+/** The agent secret is written into the ZIP only — never part of this result. */
+export interface AgentBuildResult {
+  canceled: boolean;
+  filePath?: string;
+  sha256?: string;
+  /** Gateway the agent connects to (from the backend), for display. */
+  gatewayUrl?: string;
+  /** Whether Cloudflare Access service credentials were embedded. */
+  cfAccess?: boolean;
+}
 export interface FileTransferInput { localPath: string; host: string; port: number; username: string; password: string; remotePath: string; }
 export interface SelectedTransferFile { canceled: boolean; filePath?: string; name?: string; size?: number; }
 export interface FileTransferResult { ok: true; remotePath: string; bytes: number; }

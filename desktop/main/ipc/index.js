@@ -58,14 +58,17 @@ function registerIpcHandlers(win) {
  * so none of the backend-backed channels above are registered. What remains
  * is desktop-only: the updater and the agent JAR builder (authorized against
  * the remote session — see ipc/agentBuilder.js).
- * @param {{ getRemoteUser: () => Promise<{ username: string, role: string } | null> }} deps
+ * @param {{
+ *   getRemoteUser: () => Promise<{ username: string, role: string } | null>,
+ *   issueAgentCredentials: (agentId: string) => Promise<unknown>,
+ * }} deps
  */
-function registerRemoteIpcHandlers({ getRemoteUser }) {
+function registerRemoteIpcHandlers({ getRemoteUser, issueAgentCredentials }) {
   const { registerUpdateHandlers } = require('./update');
   const { registerRemoteAgentBuilderHandlers } = require('./agentBuilder');
 
   registerUpdateHandlers();
-  registerRemoteAgentBuilderHandlers({ getRemoteUser });
+  registerRemoteAgentBuilderHandlers({ getRemoteUser, issueAgentCredentials });
 }
 
 module.exports = { registerIpcHandlers, registerRemoteIpcHandlers };

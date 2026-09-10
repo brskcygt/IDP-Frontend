@@ -10,7 +10,8 @@
     "start": "cross-env IDP_DESKTOP_ENV=production electron .",
     "build": "electron-builder",
     "release:mac": "npm run build && node scripts/create-release.js",
-    "check:syntax": "for f in main/index.js main/backendPaths.js main/security.js main/updater.js main/updateInstaller.js main/remoteBackend.js main/appMenu.js main/ipc/*.js preload/index.js build/afterPack.js build/notarize.js scripts/create-release.js electron-builder.js; do node --check \"$f\" || exit 1; done"
+    "test": "node --test --test-concurrency=1 main/",
+    "check:syntax": "for f in main/index.js main/agentBuilder.js main/backendPaths.js main/security.js main/updater.js main/updateInstaller.js main/remoteBackend.js main/appMenu.js main/ipc/*.js preload/index.js build/afterPack.js build/notarize.js scripts/create-release.js electron-builder.js; do node --check \"$f\" || exit 1; done"
   },
   "author": "",
   "license": "ISC",
