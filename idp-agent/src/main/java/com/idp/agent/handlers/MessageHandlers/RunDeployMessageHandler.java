@@ -9,6 +9,7 @@ import java.io.File;
 import java.io.Reader;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -17,6 +18,17 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 public class RunDeployMessageHandler implements MessageHandler {
+  // Agent başladıktan sonra kurulan araçlar (node, npm...) yeniden başlatma gerekmeden bulunsun.
+  private static final String WINDOWS_PATH_REFRESH =
+    "$env:Path = [Environment]::GetEnvironmentVariable('Path','Machine') + ';' + [Environment]::GetEnvironmentVariable('Path','User')\n";
+
+  // -Command yerine -EncodedCommand: ProcessBuilder argümandaki çift tırnakları kaçırmadığı için
+  // PowerShell'e tırnaksız ulaşıyordu. Base64 gövdede tırnak ya da boşluk yok.
+  static List<String> windowsShell(String command) {
+    String encoded = Base64.getEncoder().encodeToString((WINDOWS_PATH_REFRESH + command).getBytes(StandardCharsets.UTF_16LE));
+    return List.of("powershell.exe", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-EncodedCommand", encoded);
+  }
+
   @Override
   public void handle(Message message) {
     Object rawPayload = message.getPayload();
@@ -34,7 +46,7 @@ public class RunDeployMessageHandler implements MessageHandler {
     try {
       boolean windows = System.getProperty("os.name", "").toLowerCase().contains("win");
       List<String> shell = windows
-        ? List.of("powershell.exe", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", command)
+        ? windowsShell(command)
         : List.of("/bin/sh", "-lc", command);
       ProcessBuilder builder = new ProcessBuilder(shell);
       builder.directory(new File(ConfigLoader.getInstance().getAppPath()));

@@ -132,7 +132,9 @@ async function buildAgentJar(input) {
   const buildRoot = path.join(os.tmpdir(), `idp-agent-build-${crypto.randomUUID()}`);
   try {
     await fs.cp(templateRoot(), buildRoot, { recursive: true });
-    await fs.writeFile(path.join(buildRoot, 'src', 'main', 'resources', 'application.yml'), createConfig(value), { encoding: 'utf8', mode: 0o600 });
+    const resourcesDir = path.join(buildRoot, 'src', 'main', 'resources');
+    await fs.mkdir(resourcesDir, { recursive: true });
+    await fs.writeFile(path.join(resourcesDir, 'application.yml'), createConfig(value), { encoding: 'utf8', mode: 0o600 });
     await runMaven(buildRoot);
     const jarPath = path.join(buildRoot, 'target', 'idp-agent-1.0.0.jar');
     const jarFileName = `idp-agent-${value.agentId}.jar`;
