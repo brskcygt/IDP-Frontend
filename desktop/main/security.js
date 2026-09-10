@@ -12,6 +12,13 @@
  * `preload/index.js`), which isn't a `fetch`/`EventSource` call CSP's
  * `connect-src` governs at all. The only network surface `connect-src`
  * still needs to allow is the Vite dev server in dev mode.
+ *
+ * Remote mode (`IDP_SERVER_URL`): the renderer is served from `app://idp`
+ * (a standard + secure privileged scheme, see `main/remoteBackend.js`), and
+ * its `/api/*` fetch/EventSource calls go to that SAME origin — so the
+ * production policy's `connect-src 'self'` already covers them. The remote
+ * server's own address is never contacted from the renderer and therefore
+ * never appears in the CSP. Navigation is locked to `app://idp/`.
  */
 
 const { shell } = require('electron');

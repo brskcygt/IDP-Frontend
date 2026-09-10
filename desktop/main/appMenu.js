@@ -16,10 +16,28 @@ const { app, Menu, dialog, shell, clipboard } = require('electron');
  * @param {object} deps
  * @param {() => {port: number, urls: string[]} | null} deps.getWebhookInfo
  * @param {() => import('electron').BrowserWindow | null} deps.getMainWindow
+ * @param {{ serverUrl: string, checkConnection: () => Promise<{ ok: boolean, detail: string }> } | null} [deps.remote]
+ *   Set in remote mode (IDP_SERVER_URL). The OTP webhook listener never runs
+ *   there, so its items are replaced by the server address + a connection test.
  */
-function buildAppMenu({ getWebhookInfo, getMainWindow }) {
+function buildAppMenu({ getWebhookInfo, getMainWindow, remote = null }) {
   const dataDir = app.getPath('userData');
   const configPath = path.join(dataDir, 'idp.env');
+
+  const showRemoteConnection = async () => {
+    const result = await remote.checkConnection();
+    const parent = getMainWindow();
+    dialog.showMessageBoxSync(parent || undefined, {
+      type: result.ok ? 'info' : 'warning',
+      title: 'IDP sunucu bağlantısı',
+      message: result.ok ? 'Sunucu erişilebilir' : 'Sunucuya ulaşılamıyor',
+      detail:
+        `Sunucu: ${remote.serverUrl}\n\n${result.detail}\n\n` +
+        `Adres ayar dosyasındaki IDP_SERVER_URL satırından gelir:\n${configPath}`,
+      buttons: ['Kapat'],
+      noLink: true,
+    });
+  };
 
   const showWebhookAddress = () => {
     const info = getWebhookInfo();
@@ -122,8 +140,15 @@ function buildAppMenu({ getWebhookInfo, getMainWindow }) {
     {
       label: 'Araçlar',
       submenu: [
-        { label: 'OTP yönlendirme adresi…', click: showWebhookAddress },
-        { label: 'Son OTP istekleri…', click: showRecentAttempts },
+        ...(remote
+          ? [
+              { label: `Uzak sunucu: ${remote.serverUrl}`, enabled: false },
+              { label: 'Sunucu bağlantısını test et…', click: () => { showRemoteConnection(); } },
+            ]
+          : [
+              { label: 'OTP yönlendirme adresi…', click: showWebhookAddress },
+              { label: 'Son OTP istekleri…', click: showRecentAttempts },
+            ]),
         { type: 'separator' },
         { label: 'Ayar dosyasını aç', click: () => shell.openPath(configPath) },
         { label: 'Veri klasörünü göster', click: () => shell.openPath(dataDir) },

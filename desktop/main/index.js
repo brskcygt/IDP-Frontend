@@ -34,16 +34,24 @@
  */
 
 const path = require('path');
-const { app, BrowserWindow, session } = require('electron');
+const { app, BrowserWindow, session, protocol, dialog } = require('electron');
 
 const { resolveBackendRoot } = require('./backendPaths');
 
 /** Filled in when the OTP webhook listener starts; null when it is disabled. */
 let webhookInfo = null;
 const { loadBackendModules } = require('./ipc/backendModules');
-const { registerIpcHandlers } = require('./ipc');
-const { applyCsp, lockdownNavigation } = require('./security');
+const { registerIpcHandlers, registerRemoteIpcHandlers } = require('./ipc');
+const { applyCsp, buildCsp, lockdownNavigation } = require('./security');
 const { createSamlWindowProvider } = require('./saml/samlWindow');
+const {
+  APP_SCHEME,
+  APP_ORIGIN,
+  APP_INDEX_URL,
+  APP_SCHEME_PRIVILEGES,
+  parseServerUrl,
+  createRemoteBackend,
+} = require('./remoteBackend');
 
 const DEV_SERVER_URL = 'http://localhost:5173';
 
@@ -53,6 +61,24 @@ const DEV_SERVER_URL = 'http://localhost:5173';
 // whatever the backend module tree reads NODE_ENV for (e.g. secure-cookie
 // flags that are irrelevant here but still read at require time).
 const isDev = !app.isPackaged && process.env.IDP_DESKTOP_ENV !== 'production';
+
+/** Read by preload/index.js (literal duplicate there) to expose the remote-mode bridge. */
+const REMOTE_MODE_ARG = '--idp-remote-mode';
+
+/**
+ * Remote mode switch: `IDP_SERVER_URL` from the environment or `idp.env`.
+ * Decided HERE, before app 'ready', because the `app://` scheme's privileges
+ * can only be registered before 'ready'. Unset → `null` → local mode, and
+ * nothing below changes for it.
+ * @type {{ serverOrigin: string | null, error: string | null } | null}
+ */
+const remoteSetting = resolveRemoteSetting();
+if (remoteSetting && remoteSetting.serverOrigin) {
+  protocol.registerSchemesAsPrivileged([{ scheme: APP_SCHEME, privileges: APP_SCHEME_PRIVILEGES }]);
+}
+
+/** Set in remote mode once the `app://` handler is installed (see mainRemote). */
+let remoteBackend = null;
 
 // T-94: tracked so the SAML sign-in window (registered below via
 // setSamlWindowProvider) can open modal-to-parent instead of as a stray
@@ -131,14 +157,87 @@ function showFirstRunPasswordIfAny(backendRoot) {
  *
  * A commented template is written on first run so the file is discoverable.
  */
+function getUserConfigPath() {
+  return path.join(app.getPath('userData'), 'idp.env');
+}
+
+/**
+ * `KEY=value` lines of an idp.env file, in file order. Blank lines, comments,
+ * lines without `=` and empty values are skipped; surrounding quotes are
+ * stripped. Shared by loadUserConfig() and resolveRemoteSetting() so both
+ * read the file identically.
+ * @param {string} text
+ * @returns {Array<[string, string]>}
+ */
+function parseUserConfigText(text) {
+  const entries = [];
+  for (const rawLine of text.split('\n')) {
+    const line = rawLine.trim();
+    if (!line || line.startsWith('#')) continue;
+
+    const eq = line.indexOf('=');
+    if (eq === -1) continue;
+
+    // Shell-style `export KEY=value` (pasted from a .env or a profile) means
+    // KEY. Without this, `export IDP_SERVER_URL=...` would be stored under the
+    // key "export IDP_SERVER_URL" and the app would silently stay in local mode.
+    const key = line.slice(0, eq).trim().replace(/^export\s+/, '');
+    const value = line.slice(eq + 1).trim().replace(/^["']|["']$/g, '');
+    if (!key || value === '') continue;
+    entries.push([key, value]);
+  }
+  return entries;
+}
+
+/**
+ * Remote mode setting — same precedence as loadUserConfig() (a non-empty
+ * environment value wins over the file). Read-only: runs before app 'ready'
+ * and must not create the template or touch process.env.
+ * @returns {{ serverOrigin: string | null, error: string | null } | null}
+ *   `null` → local mode; `error` set → IDP_SERVER_URL present but invalid.
+ */
+function resolveRemoteSetting() {
+  let raw = process.env.IDP_SERVER_URL;
+  if (raw === undefined || raw.trim() === '') {
+    raw = undefined;
+    try {
+      const fs = require('fs');
+      const configPath = getUserConfigPath();
+      if (fs.existsSync(configPath)) {
+        // FIRST occurrence wins — the same line loadUserConfig() applies to
+        // process.env (it sets the first value, then skips later duplicates
+        // because the variable is no longer empty). Mode decision and env
+        // can therefore never disagree.
+        const entry = parseUserConfigText(fs.readFileSync(configPath, 'utf8'))
+          .find(([key]) => key === 'IDP_SERVER_URL');
+        if (entry) raw = entry[1];
+      }
+    } catch (err) {
+      console.warn(`[config] Could not read IDP_SERVER_URL from idp.env: ${err.message}`);
+    }
+  }
+  if (raw === undefined || raw.trim() === '') return null;
+
+  try {
+    return { serverOrigin: parseServerUrl(raw), error: null };
+  } catch (err) {
+    return { serverOrigin: null, error: err.message };
+  }
+}
+
 function loadUserConfig() {
   const fs = require('fs');
-  const configPath = path.join(app.getPath('userData'), 'idp.env');
+  const configPath = getUserConfigPath();
 
   if (!fs.existsSync(configPath)) {
     const template = [
       '# IDP desktop settings. Restart the app after editing.',
       '#',
+      '# Remote mode: use an IDP server on the internal network instead of the',
+      '# backend embedded in this app. Scheme + host + port only. Leave unset',
+      '# for the local (embedded) mode.',
+      '# IDP_SERVER_URL=http://10.0.0.5:3001',
+      '',
       '# Automatic OTP capture: set a long random key, then point your phone\'s',
       '# SMS-forwarding app at the URL the app prints on startup. Leave this',
       '# unset and no port is opened at all.',
@@ -152,6 +251,10 @@ function loadUserConfig() {
       '# IDP_ADMIN_PASSWORD=',
       '',
       '# Trust an internal CA (path to a PEM bundle).',
+      '# NOTE: Node reads this only when the process starts, and this file is',
+      '# loaded after that — so here it has NO effect on Node/undici (e.g. an',
+      '# https:// IDP_SERVER_URL signed by an internal CA). For that, launch the',
+      '# app with NODE_EXTRA_CA_CERTS set in its environment instead.',
       '# NODE_EXTRA_CA_CERTS=',
       '',
       '# Cloudflare Windows Runner (Admin API key stays in Electron main only).',
@@ -168,17 +271,7 @@ function loadUserConfig() {
 
   let applied = 0;
   try {
-    for (const rawLine of fs.readFileSync(configPath, 'utf8').split('\n')) {
-      const line = rawLine.trim();
-      if (!line || line.startsWith('#')) continue;
-
-      const eq = line.indexOf('=');
-      if (eq === -1) continue;
-
-      const key = line.slice(0, eq).trim();
-      const value = line.slice(eq + 1).trim().replace(/^["']|["']$/g, '');
-      if (!key || value === '') continue;
-
+    for (const [key, value] of parseUserConfigText(fs.readFileSync(configPath, 'utf8'))) {
       // The ambient environment wins — running from a terminal to debug should
       // not be silently overridden by the file.
       if (process.env[key] === undefined || process.env[key] === '') {
@@ -222,47 +315,146 @@ function redirectBackendDataToUserDir() {
 
 async function createWindow() {
   const preloadPath = path.join(__dirname, '..', 'preload', 'index.js');
+  const remote = remoteBackend !== null;
 
   // CSP + navigation lockdown apply to the default session, which is what
   // a BrowserWindow uses unless a custom `partition` is passed — we don't
   // pass one at this stage, so this covers the one window we open.
-  applyCsp(session.defaultSession, {
-    isDev,
-    devServerOrigin: isDev ? DEV_SERVER_URL : null,
-  });
+  // Remote mode always loads the BUILT bundle from app://idp (never the Vite
+  // dev server), so it always gets the production policy.
+  applyCsp(
+    session.defaultSession,
+    remote
+      ? { isDev: false, devServerOrigin: null }
+      : { isDev, devServerOrigin: isDev ? DEV_SERVER_URL : null }
+  );
+
+  const webPreferences = {
+    contextIsolation: true,
+    nodeIntegration: false,
+    sandbox: true,
+    webSecurity: true,
+    preload: preloadPath,
+  };
+  if (remote) webPreferences.additionalArguments = [REMOTE_MODE_ARG];
 
   const win = new BrowserWindow({
     width: 1280,
     height: 800,
-    webPreferences: {
-      contextIsolation: true,
-      nodeIntegration: false,
-      sandbox: true,
-      webSecurity: true,
-      preload: preloadPath,
-    },
+    webPreferences,
   });
 
-  const allowedOrigins = isDev
-    ? [DEV_SERVER_URL, 'file://']
-    : ['file://'];
+  let allowedOrigins;
+  if (remote) {
+    allowedOrigins = [`${APP_ORIGIN}/`];
+  } else {
+    allowedOrigins = isDev
+      ? [DEV_SERVER_URL, 'file://']
+      : ['file://'];
+  }
   lockdownNavigation(win.webContents, allowedOrigins);
 
-  registerIpcHandlers(win);
-
-  if (isDev) {
-    await win.loadURL(DEV_SERVER_URL);
-    win.webContents.openDevTools({ mode: 'detach' });
+  if (remote) {
+    // IPC channels were registered once in mainRemote().
+    await win.loadURL(APP_INDEX_URL);
+    if (isDev) win.webContents.openDevTools({ mode: 'detach' });
   } else {
-    await win.loadFile(resolveFrontendIndexHtml());
+    registerIpcHandlers(win);
+
+    if (isDev) {
+      await win.loadURL(DEV_SERVER_URL);
+      win.webContents.openDevTools({ mode: 'detach' });
+    } else {
+      await win.loadFile(resolveFrontendIndexHtml());
+    }
   }
 
   mainWindow = win;
   return win;
 }
 
+/**
+ * Remote mode startup (IDP_SERVER_URL). Everything tied to the embedded
+ * backend is skipped: backend module loading, bootstrapCore, redirecting its
+ * data files, the SAML window / elevation providers, the OTP webhook
+ * listener, the first-run password dialog and every backend-backed IPC
+ * channel. What stays: window + security, menu, updater, agentBuilder.
+ */
+async function mainRemote() {
+  const fs = require('fs');
+  const userConfigPath = loadUserConfig();
+
+  if (remoteSetting.error) {
+    dialog.showErrorBox(
+      'IDP — IDP_SERVER_URL geçersiz',
+      `${remoteSetting.error}\n\nAyar dosyası: ${userConfigPath}\n\n` +
+      'Gömülü backend ile (yerel modda) açmak için IDP_SERVER_URL satırını silin.'
+    );
+    app.quit();
+    return;
+  }
+
+  const frontendRoot = path.dirname(resolveFrontendIndexHtml());
+  if (!fs.existsSync(path.join(frontendRoot, 'index.html'))) {
+    console.error(`[remote] Arayüz dosyaları bulunamadı: ${frontendRoot} (geliştirmede: cd frontend && npm run build)`);
+  }
+
+  remoteBackend = createRemoteBackend({
+    serverOrigin: remoteSetting.serverOrigin,
+    frontendRoot,
+    contentSecurityPolicy: buildCsp({ isDev: false, devServerOrigin: null }),
+  });
+  protocol.handle(APP_SCHEME, (request) => remoteBackend.handleAppRequest(request));
+  // Electron does not fire request.signal on a renderer cancel; webRequest does
+  // (net::ERR_ABORTED) — lets a cancelled /api request abort upstream too.
+  remoteBackend.trackRendererCancellation(session.defaultSession.webRequest);
+  console.log(`[remote] Uzak mod — API: ${remoteBackend.serverOrigin}, arayüz: ${frontendRoot}`);
+
+  app.on('web-contents-created', (_event, contents) => {
+    lockdownNavigation(contents, [`${APP_ORIGIN}/`]);
+  });
+
+  registerRemoteIpcHandlers({ getRemoteUser: () => remoteBackend.getCurrentUser() });
+
+  await createWindow();
+
+  require('./appMenu').buildAppMenu({
+    getWebhookInfo: () => null,
+    getMainWindow: () => (mainWindow && !mainWindow.isDestroyed() ? mainWindow : null),
+    remote: {
+      serverUrl: remoteBackend.serverOrigin,
+      checkConnection: () => remoteBackend.checkConnection(),
+    },
+  });
+
+  try {
+    require('./updater').initAutoUpdater(mainWindow);
+  } catch (err) {
+    console.warn('[updater] disabled:', err.message);
+  }
+
+  // Log-only: an unreachable server already surfaces in the UI (login shows
+  // the proxy's "IDP sunucusuna ulaşılamadı: ..." message).
+  remoteBackend.checkConnection().then((result) => {
+    console.log(
+      `[remote] Sunucu ${result.ok ? 'erişilebilir' : 'ERİŞİLEMİYOR'} (${remoteBackend.serverOrigin}): ${result.detail}`
+    );
+  });
+
+  app.on('activate', () => {
+    if (BrowserWindow.getAllWindows().length === 0) {
+      createWindow();
+    }
+  });
+}
+
 async function main() {
   await app.whenReady();
+
+  if (remoteSetting) {
+    await mainRemote();
+    return;
+  }
 
   // Point every backend data file at the per-user data directory BEFORE any
   // backend module is required — each of them resolves its own path at import

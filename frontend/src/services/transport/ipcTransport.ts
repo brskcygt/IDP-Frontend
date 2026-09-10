@@ -111,12 +111,19 @@ async function call<T>(promise: Promise<T>): Promise<T> {
   }
 }
 
+/** Same as `call()`, for the desktop-only IPC calls `remoteTransport.ts` still makes in remote mode. */
+export { call as callIpc };
+
 /** @returns the `window.idp` bridge, throwing a clear error if this file is somehow used outside Electron. */
 function bridge() {
-  if (typeof window === 'undefined' || !window.idp) {
+  const idp = typeof window === 'undefined' ? undefined : window.idp;
+  if (!idp) {
     throw new Error('ipcTransport used outside the Electron renderer (window.idp is unavailable).');
   }
-  return window.idp;
+  if (idp.mode === 'remote') {
+    throw new Error('ipcTransport used in remote mode — business calls go over HTTP there (see remoteTransport.ts).');
+  }
+  return idp;
 }
 
 export const ipcTransport: Transport = {

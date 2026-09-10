@@ -9,9 +9,15 @@
  * gone; there is no backend origin to point `httpTransport` at anymore. In
  * a plain browser tab (`window.idp` undefined), behavior is unchanged:
  * relative `fetch`, proxied by Vite in dev.
+ *
+ * Remote mode (`window.idp.mode === 'remote'`, desktop app with
+ * `IDP_SERVER_URL`): business calls are same-origin HTTP against `app://idp`,
+ * which the main process forwards to the remote server — see
+ * `./remoteTransport.ts`.
  */
 import { httpTransport } from './httpTransport';
 import { ipcTransport } from './ipcTransport';
+import { createRemoteTransport } from './remoteTransport';
 import type { Transport } from './types';
 // `window.idp` is declared globally by `../../types/desktop.d.ts`; it needs
 // no explicit import here — tsconfig.app.json's `"include": ["src"]` picks
@@ -27,7 +33,14 @@ let resolved: Transport | null = null;
 export function getTransport(): Transport {
   if (resolved) return resolved;
 
-  resolved = typeof window !== 'undefined' && window.idp ? ipcTransport : httpTransport;
+  const idp = typeof window !== 'undefined' ? window.idp : undefined;
+  if (!idp) {
+    resolved = httpTransport;
+  } else if (idp.mode === 'remote') {
+    resolved = createRemoteTransport();
+  } else {
+    resolved = ipcTransport;
+  }
 
   return resolved;
 }

@@ -57,6 +57,8 @@ export type IdpUpdateState =
   | { status: 'error'; version: string; message: string };
 
 export interface IdpDesktopBridge {
+  /** Local (embedded backend) mode. Optional so an older preload without the field still reads as local. */
+  mode?: 'local';
   auth: {
     login(username: string, password: string): Promise<SessionUser>;
     logout(): Promise<void>;
@@ -135,9 +137,21 @@ export interface IdpDesktopBridge {
   };
 }
 
+/**
+ * Remote mode (`IDP_SERVER_URL` set for the desktop app — see
+ * `desktop/main/remoteBackend.js`): the renderer is served from `app://idp`
+ * and reaches the remote server over same-origin HTTP (`/api/*`, forwarded
+ * by the main process), so the bridge carries only desktop-only features.
+ */
+export interface IdpRemoteDesktopBridge {
+  mode: 'remote';
+  agentBuilder: IdpDesktopBridge['agentBuilder'];
+  update: IdpDesktopBridge['update'];
+}
+
 declare global {
   interface Window {
-    /** Present only inside the Electron renderer; absent in the browser. */
-    idp?: IdpDesktopBridge;
+    /** Present only inside the Electron renderer; absent in the browser. `mode` tells the two desktop bridges apart. */
+    idp?: IdpDesktopBridge | IdpRemoteDesktopBridge;
   }
 }
