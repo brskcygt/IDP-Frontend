@@ -76,6 +76,7 @@ export default {
           ssh: "hsl(var(--provider-ssh))",
           winrm: "hsl(var(--provider-winrm))",
           pmp: "hsl(var(--provider-pmp))",
+          pipeline: "hsl(var(--provider-pipeline))",
         },
       },
       borderRadius: {

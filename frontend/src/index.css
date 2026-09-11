@@ -55,6 +55,7 @@
     --provider-ssh: 146 52% 32%;
     --provider-winrm: 209 62% 45%;
     --provider-pmp: 265 50% 50%;
+    --provider-pipeline: 330 58% 46%;
   }
 
   .dark {
@@ -97,6 +98,7 @@
     --provider-ssh: 146 45% 45%;
     --provider-winrm: 209 62% 60%;
     --provider-pmp: 265 55% 68%;
+    --provider-pipeline: 330 62% 66%;
   }
 }
 

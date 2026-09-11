@@ -8,6 +8,7 @@ import { Save } from "lucide-react";
 import { JenkinsSettings } from "@/components/project/settings/JenkinsSettings";
 import { ServerSettings } from "@/components/project/settings/ServerSettings";
 import { PmpSettings } from "@/components/project/settings/PmpSettings";
+import { PipelineSettings } from "@/components/project/settings/PipelineSettings";
 import { ConnectionTestPanel } from "@/components/project/settings/ConnectionTestPanel";
 import { VpnSettings } from "@/components/project/settings/VpnSettings";
 import { DangerZone } from "@/components/project/settings/DangerZone";
@@ -142,6 +143,10 @@ export const ProjectSettingsModal = ({ project, isOpen, onOpenChange }: ProjectS
             <>
               {project.provider === 'Jenkins' && (
                 <JenkinsSettings config={config} onChange={setConfig} />
+              )}
+
+              {project.provider === 'Pipeline' && (
+                <PipelineSettings config={config} onChange={setConfig} />
               )}
 
               {['Server', 'SSH', 'WinRM'].includes(project.provider) && (

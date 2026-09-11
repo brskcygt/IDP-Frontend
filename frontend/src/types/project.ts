@@ -17,9 +17,58 @@ export type TargetOS = 'windows' | 'linux';
  * source of provider display metadata and `normalizeProvider` for mapping
  * legacy raw values onto this type.
  */
-export type ProviderType = 'Jenkins' | 'PMP' | 'Server';
+export type ProviderType = 'Jenkins' | 'PMP' | 'Pipeline' | 'Server';
 
 export type AuthType = 'manual' | 'pmp';
+
+/** CI platform a `Pipeline` project triggers (see `CiConfig`). */
+export type CiPlatform = 'bitbucket' | 'github';
+
+/** Bitbucket only — GitHub's `ref` accepts a branch or tag name directly. */
+export type CiRefType = 'branch' | 'tag';
+
+/**
+ * Bitbucket only: `bearer` = Repository/Project/Workspace Access Token,
+ * `basic` = Atlassian account email (`ProjectConfig.username`) + API token.
+ * GitHub always uses a bearer token.
+ */
+export type CiAuthType = 'bearer' | 'basic';
+
+/**
+ * `Pipeline` provider config (`project.config.ciConfig`): instead of
+ * connecting to the target, IDP triggers a Bitbucket Pipelines custom
+ * pipeline or a GitHub Actions workflow_dispatch run, streams its status and
+ * logs, and cancels it on abort. Every field is optional here because
+ * projects start with an empty config — the backend adapter
+ * (backend/src/adapters/CiPipelineAdapter.js) rejects a deploy with a missing
+ * platform/owner/repo/ref/pipeline/apiToken (or `username` for Bitbucket
+ * basic auth). The token itself is the shared `ProjectConfig.apiToken` secret.
+ */
+export interface CiConfig {
+  platform?: CiPlatform;
+  /** API base. Defaults: https://api.bitbucket.org/2.0 | https://api.github.com. GHES: https://HOST/api/v3 */
+  baseUrl?: string;
+  /** Bitbucket workspace slug | GitHub owner/org. */
+  owner?: string;
+  /** Repository slug / name. */
+  repo?: string;
+  /** Bitbucket only, defaults to `'branch'`. */
+  refType?: CiRefType;
+  /** Branch or tag to run on, e.g. `master` or `v2.5.0`. */
+  ref?: string;
+  /** Bitbucket: custom pipeline name | GitHub: workflow file name (`deploy.yml`) or numeric id. */
+  pipeline?: string;
+  /** Non-secret run variables. Keys /^[A-Za-z_][A-Za-z0-9_]*$/, values ≤2000 chars, max 25 entries. */
+  variables?: Record<string, string>;
+  /** Bitbucket only, defaults to `'bearer'`. */
+  authType?: CiAuthType;
+  /** Default 10, min 3, max 60. */
+  pollIntervalSeconds?: number;
+  /** Default 60, min 1, max 720. On timeout IDP stops watching but does not cancel the run. */
+  timeoutMinutes?: number;
+  /** GitHub only: workflow input that receives IDP's correlation id (fallback when dispatch returns no run id). */
+  correlationInput?: string;
+}
 
 export type MfaType = 'none' | 'push' | 'totp';
 
@@ -224,6 +273,10 @@ export interface ProjectConfig {
   script?: string;
   /** Whitelisted, JSON-only automation steps run by StepRunner. Replaces `scriptContent`. */
   steps?: PmpStep[];
+
+  // CI Pipeline provider — also reuses `username` (Atlassian email, Bitbucket
+  // basic auth) and `apiToken`/`hasApiToken` (the CI token) from above.
+  ciConfig?: CiConfig;
 
   // VPN & Gateway
   vpnEnabled?: boolean;

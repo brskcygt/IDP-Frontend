@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Server, Globe, Terminal, Monitor } from 'lucide-react';
+import { Server, Globe, Terminal, Monitor, Workflow } from 'lucide-react';
 import type { ProviderType, TargetOS } from '@/types/project';
 
 /**
@@ -37,6 +37,13 @@ export const providers: readonly ProviderMeta[] = [
     settingsTitle: 'PMP Portal Configuration',
   },
   {
+    value: 'Pipeline',
+    label: 'CI Pipeline',
+    icon: <Workflow className="h-3.5 w-3.5 text-pink-400" />,
+    colorClasses: 'from-pink-500/20 to-fuchsia-500/20 border-pink-500/20 text-pink-400',
+    settingsTitle: 'CI Pipeline Settings',
+  },
+  {
     value: 'Server',
     label: 'Server',
     icon: <Terminal className="h-3.5 w-3.5 text-emerald-400" />,
@@ -59,7 +66,8 @@ const SERVER_OS_META: Readonly<Record<TargetOS, Pick<ProviderMeta, 'label' | 'ic
   },
 };
 
-const DEFAULT_PROVIDER_META = providers[providers.length - 1];
+/** `Server` is the fallback (see `normalizeProvider`) — found by value, so list order doesn't matter. */
+const DEFAULT_PROVIDER_META: ProviderMeta = providers.find((p) => p.value === 'Server') ?? providers[0];
 
 function findProviderMeta(value: ProviderType): ProviderMeta {
   return providers.find((p) => p.value === value) ?? DEFAULT_PROVIDER_META;
@@ -73,7 +81,7 @@ function findProviderMeta(value: ProviderType): ProviderMeta {
  * value there fails soft (a server config UI) rather than throwing.
  */
 export function normalizeProvider(raw: string): ProviderType {
-  if (raw === 'Jenkins' || raw === 'PMP') return raw;
+  if (raw === 'Jenkins' || raw === 'PMP' || raw === 'Pipeline') return raw;
   return 'Server';
 }
 

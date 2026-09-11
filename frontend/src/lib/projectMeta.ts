@@ -15,6 +15,7 @@ const PROVIDER_CLASS: Readonly<Record<string, string>> = {
   Server: 'text-provider-ssh',
   WinRM: 'text-provider-winrm',
   PMP: 'text-provider-pmp',
+  Pipeline: 'text-provider-pipeline',
 };
 
 export const providerClass = (provider: string): string =>
