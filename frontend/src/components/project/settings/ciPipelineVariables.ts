@@ -1,14 +1,16 @@
 /**
  * Pure helpers for the CI Pipeline variables editor. Limits mirror the
  * backend's ciConfig validation (backend/src/validation/projectSchemas.js):
- * key pattern, values of at most 2000 characters, at most 25 entries.
+ * key pattern, keys of at most 100 characters, reserved names, values of at
+ * most 2000 characters, at most 25 entries.
  */
 export const MAX_CI_VARIABLES = 25;
+export const MAX_CI_VARIABLE_KEY_LENGTH = 100;
 export const MAX_CI_VARIABLE_VALUE_LENGTH = 2000;
 export const CI_VARIABLE_KEY_PATTERN = /^[A-Za-z_][A-Za-z0-9_]*$/;
 
-/** Matches the pattern but can't round-trip as a plain object key. */
-const RESERVED_KEYS: ReadonlySet<string> = new Set(['__proto__']);
+/** Match the pattern but can't round-trip as plain object keys (the backend rejects them too). */
+const RESERVED_KEYS: ReadonlySet<string> = new Set(['__proto__', 'constructor', 'prototype']);
 
 export interface CiVariableRow {
   id: string;
@@ -35,7 +37,9 @@ export const getVariableRowIssues = (rows: readonly CiVariableRow[]): CiVariable
   const seen = new Set<string>();
   return rows.map(({ key }) => {
     if (key === '') return null;
-    if (!CI_VARIABLE_KEY_PATTERN.test(key) || RESERVED_KEYS.has(key)) return 'invalid';
+    if (key.length > MAX_CI_VARIABLE_KEY_LENGTH || !CI_VARIABLE_KEY_PATTERN.test(key) || RESERVED_KEYS.has(key)) {
+      return 'invalid';
+    }
     if (seen.has(key)) return 'duplicate';
     seen.add(key);
     return null;

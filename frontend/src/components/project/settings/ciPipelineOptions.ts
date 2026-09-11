@@ -1,4 +1,4 @@
-import type { CiAuthType, CiPlatform, CiRefType } from '@/types/project';
+import type { CiAuthType, CiConfig, CiPlatform, CiRefType } from '@/types/project';
 
 /**
  * Option lists, defaults and platform-specific copy for the CI Pipeline
@@ -70,6 +70,19 @@ const UNSET_PLATFORM_COPY: CiPlatformCopy = {
 
 export const getCiPlatformCopy = (platform: CiPlatform | undefined): CiPlatformCopy =>
   platform ? PLATFORM_COPY[platform] : UNSET_PLATFORM_COPY;
+
+/**
+ * ciConfig patch for a platform switch. It also clears the platform-specific
+ * fields in the same update, so a GitHub Enterprise base URL can't carry over
+ * to Bitbucket and a Bitbucket ref type / auth mode can't carry over to GitHub.
+ */
+export const getPlatformChangePatch = (
+  current: CiPlatform | undefined,
+  next: CiPlatform | undefined,
+): Partial<CiConfig> =>
+  next === current
+    ? {}
+    : { platform: next, baseUrl: undefined, refType: undefined, authType: undefined, correlationInput: undefined };
 
 /** One-line reminder of the token scopes the CI adapter needs. */
 export const getCiTokenScopeHint = (platform: CiPlatform | undefined, authType: CiAuthType): string => {

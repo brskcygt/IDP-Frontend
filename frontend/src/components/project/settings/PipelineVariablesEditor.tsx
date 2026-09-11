@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
   MAX_CI_VARIABLES,
+  MAX_CI_VARIABLE_KEY_LENGTH,
   MAX_CI_VARIABLE_VALUE_LENGTH,
   createVariableRow,
   getVariableRowIssues,
@@ -22,7 +23,9 @@ interface PipelineVariablesEditorProps {
 const INPUT_CLASS = "h-8 text-xs bg-accent/50 border-border/50";
 
 const ISSUE_MESSAGE = {
-  invalid: "Invalid key: letters, digits and _ only, not starting with a digit. This row will not be saved.",
+  invalid:
+    `Invalid key: letters, digits and _ only, not starting with a digit, at most ${MAX_CI_VARIABLE_KEY_LENGTH} ` +
+    "characters; __proto__, constructor and prototype are reserved. This row will not be saved.",
   duplicate: "Duplicate key: only the first row with this key is saved.",
 } as const;
 

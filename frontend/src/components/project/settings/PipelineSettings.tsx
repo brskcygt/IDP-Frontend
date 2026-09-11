@@ -11,6 +11,7 @@ import {
   CI_REF_TYPE_OPTIONS,
   CI_TIMEOUT_MINUTES,
   getCiPlatformCopy,
+  getPlatformChangePatch,
   parseOptionalNumber,
   pickOption,
 } from "@/components/project/settings/ciPipelineOptions";
@@ -45,7 +46,10 @@ export const PipelineSettings = ({ config, onChange }: PipelineSettingsProps) =>
   return (
     <>
       <SettingsField icon={<Workflow className={ICON_CLASS} />} label="CI Platform">
-        <Select value={platform} onValueChange={(value) => updateCi({ platform: pickOption(CI_PLATFORM_OPTIONS, value) })}>
+        <Select
+          value={platform}
+          onValueChange={(value) => updateCi(getPlatformChangePatch(platform, pickOption(CI_PLATFORM_OPTIONS, value)))}
+        >
           <SelectTrigger className={INPUT_CLASS}>
             <SelectValue placeholder="Select a CI platform" />
           </SelectTrigger>
@@ -123,7 +127,7 @@ export const PipelineSettings = ({ config, onChange }: PipelineSettingsProps) =>
           placeholder={CI_DEFAULT_BASE_URL[platform ?? "bitbucket"]}
           className={INPUT_CLASS}
         />
-        <p className={HINT_CLASS}>Leave empty for the default. GitHub Enterprise: https://HOST/api/v3</p>
+        <p className={HINT_CLASS}>Leave empty for the default. https:// only. GitHub Enterprise: https://HOST/api/v3</p>
       </SettingsField>
 
       <div className="grid gap-4 sm:grid-cols-2">
