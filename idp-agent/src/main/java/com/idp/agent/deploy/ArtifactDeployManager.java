@@ -37,6 +37,8 @@ import java.util.function.Supplier;
 import com.idp.agent.ConfigLoader;
 import com.idp.agent.connection.AgentConnectionConfig;
 import com.idp.agent.deploy.DeployPayloads.ComponentSpec;
+import com.idp.agent.deploy.DeployPayloads.ConfigApplyRequest;
+import com.idp.agent.deploy.DeployPayloads.ConfigComponent;
 import com.idp.agent.deploy.DeployPayloads.DeployRequest;
 import com.idp.agent.deploy.DeployPayloads.HealthSpec;
 import com.idp.agent.deploy.DeployPayloads.HookSpec;
@@ -51,7 +53,8 @@ import com.idp.agent.managers.WebSocketManager;
 import com.idp.agent.security.Sha256Verifier;
 
 /**
- * {@code artifact_deploy} / {@code artifact_rollback} / {@code artifact_cancel} / {@code artifact_status}
+ * {@code artifact_deploy} / {@code artifact_config_apply} / {@code artifact_rollback} /
+ * {@code artifact_cancel} / {@code artifact_status}
  * işleyicisi.
  *
  * <p>Kilit: tek iş parçacıklı yürütücü + {@link #current}; bir işlem sürerken gelen ikinci istek
@@ -65,6 +68,8 @@ import com.idp.agent.security.Sha256Verifier;
  */
 public final class ArtifactDeployManager {
 	static final String STATUS_RESULT = "artifact_status_result";
+	static final String CONFIG_EVENT = "artifact_config_event";
+	static final String CONFIG_RESULT = "artifact_config_result";
 	static final int RECENT_IDS = 200;
 	static final int MAX_HOOK_LINES = 200;
 	static final int MAX_HOOK_LINE_LENGTH = 500;
@@ -90,7 +95,7 @@ public final class ArtifactDeployManager {
 		Clock clock = Clock.systemUTC();
 	}
 
-	private enum Kind { DEPLOY, ROLLBACK }
+	private enum Kind { DEPLOY, ROLLBACK, CONFIG_APPLY }
 
 	private static final class Run {
 		final String id;
@@ -177,6 +182,33 @@ public final class ArtifactDeployManager {
 		}
 	}
 
+	private static final class ConfigTarget {
+		final String name;
+		final String version;
+		final Path live;
+		final RuntimeSpec runtime;
+		final HealthSpec health;
+		final DeployPayloads.RuntimeConfigSpec config;
+		RuntimeConfigWriter.Snapshot snapshot;
+		boolean runtimeTouched;
+		Stage stage;
+		String error;
+		String rollbackError;
+
+		ConfigTarget(String name, String version, Path live, RuntimeSpec runtime, HealthSpec health,
+				DeployPayloads.RuntimeConfigSpec config) {
+			this.name = name;
+			this.version = version;
+			this.live = live;
+			this.runtime = runtime;
+			this.health = health;
+			this.config = config;
+		}
+	}
+
+	private record ConfigOperation(String deployId, int timeoutSec, List<ConfigTarget> targets,
+			List<String> warnings) {}
+
 	private static ArtifactDeployManager instance;
 
 	private final Deps deps;
@@ -238,6 +270,10 @@ public final class ArtifactDeployManager {
 		submit(payload, Kind.ROLLBACK);
 	}
 
+	public void handleConfigApply(Object payload) {
+		submit(payload, Kind.CONFIG_APPLY);
+	}
+
 	public void handleCancel(Object payload) {
 		String deployId = DeployPayloads.rawId(payload, "deployId");
 		Run run = current.get();
@@ -273,7 +309,7 @@ public final class ArtifactDeployManager {
 		String deployId = DeployPayloads.rawId(payload, "deployId");
 		if (!DeployPayloads.isValidDeployId(deployId)) {
 			log.warn("[artifact-deploy] reddedildi: deployId gecersiz");
-			sendTerminal(deployId, rejection(deployId, DeployPayloads.versionHint(payload),
+			sendTerminal(kind, deployId, rejection(deployId, DeployPayloads.versionHint(payload),
 				"invalid_payload: deployId gecersiz", System.nanoTime()));
 			return;
 		}
@@ -294,19 +330,25 @@ public final class ArtifactDeployManager {
 			Run busy = current.get();
 			log.warn("[artifact-deploy " + deployId + "] reddedildi: baska bir islem suruyor ("
 				+ (busy == null ? "?" : busy.id) + ")");
-			sendTerminal(deployId, rejection(deployId, DeployPayloads.versionHint(payload), "busy", System.nanoTime()));
+			sendTerminal(kind, deployId, rejection(deployId, DeployPayloads.versionHint(payload), "busy", System.nanoTime()));
 			return;
 		}
 		try {
 			worker.execute(() -> execute(run, payload));
 		} catch (RejectedExecutionException ex) {
 			current.compareAndSet(run, null);
-			sendTerminal(deployId, rejection(deployId, DeployPayloads.versionHint(payload), "agent_shutting_down", System.nanoTime()));
+			sendTerminal(kind, deployId, rejection(deployId, DeployPayloads.versionHint(payload), "agent_shutting_down", System.nanoTime()));
 		}
 	}
 
-	private void sendTerminal(String deployId, Map<String, Object> result) {
-		new DeployReporter(deps.sink, log, new Redactor(), deployId, 0).result(result);
+	private void sendTerminal(Kind kind, String deployId, Map<String, Object> result) {
+		newReporter(kind, new Redactor(), deployId).result(result);
+	}
+
+	private DeployReporter newReporter(Kind kind, Redactor redactor, String deployId) {
+		return kind == Kind.CONFIG_APPLY
+			? new DeployReporter(deps.sink, log, redactor, deployId, deps.progressIntervalMillis, CONFIG_EVENT, CONFIG_RESULT)
+			: new DeployReporter(deps.sink, log, redactor, deployId, deps.progressIntervalMillis);
 	}
 
 	// ================================================================== yürütme
@@ -314,10 +356,27 @@ public final class ArtifactDeployManager {
 	private void execute(Run run, Object payload) {
 		long startedNanos = System.nanoTime();
 		Redactor redactor = new Redactor();
-		DeployReporter reporter = new DeployReporter(deps.sink, log, redactor, run.id, deps.progressIntervalMillis);
+		DeployReporter reporter = newReporter(run.kind, redactor, run.id);
 		Map<String, Object> result = null;
 		ScheduledFuture<?> watchdog = null;
 		try {
+			if (run.kind == Kind.CONFIG_APPLY) {
+				ConfigOperation op;
+				try {
+					op = prepareConfigApply(payload, redactor);
+				} catch (DeployException ex) {
+					log.warn("[artifact-deploy " + run.id + "] config reddedildi: " + reporter.clean(ex.getMessage()));
+					result = rejection(run.id, null, ex.getMessage(), startedNanos);
+					return;
+				}
+				watchdog = timer.schedule(() -> {
+					if (run.cancel.cancel(CancelToken.Reason.TIMEOUT)) {
+						log.warn("[artifact-deploy " + run.id + "] config zaman asimi (" + op.timeoutSec() + " sn)");
+					}
+				}, op.timeoutSec(), TimeUnit.SECONDS);
+				result = runConfigApply(op, run, reporter, startedNanos);
+				return;
+			}
 			Operation op;
 			try {
 				op = run.kind == Kind.DEPLOY ? prepareDeploy(run, payload, redactor) : prepareRollback(payload);
@@ -478,6 +537,195 @@ public final class ArtifactDeployManager {
 			targets, config.keepReleases(), warnings);
 	}
 
+	private ConfigOperation prepareConfigApply(Object payload, Redactor redactor) throws DeployException {
+		DeployConfig config = configured();
+		ConfigApplyRequest request = DeployPayloads.parseConfigApply(payload);
+		for (ConfigComponent component : request.components()) {
+			component.runtimeConfig().values().values().forEach(redactor::add);
+		}
+		DeployLayout layout = DeployLayout.open(config);
+		List<String> warnings = new ArrayList<>();
+		DeployState state = new StateStore(layout.stateFile()).load(true, warnings::add);
+		List<ConfigTarget> targets = new ArrayList<>();
+		for (ConfigComponent component : request.components()) {
+			ComponentState existing = state.components.get(component.name());
+			if (existing == null) {
+				throw new DeployException("unknown_component:" + component.name());
+			}
+			RuntimeType type = RuntimeType.fromWire(existing.runtimeType);
+			if (type == null || existing.subdir == null) {
+				throw new DeployException("invalid_state:" + component.name());
+			}
+			RuntimeSpec runtime = new RuntimeSpec(type, existing.serviceName, existing.appPool);
+			if (!config.isRuntimeAllowed(type)) {
+				throw new DeployException("runtime_not_allowed:" + type.wire());
+			}
+			deps.runtime.validate(runtime);
+			HealthSpec health = healthFromState(existing, component.name());
+			Path live = layout.liveDir(existing.subdir);
+			if (!Files.isDirectory(live, LinkOption.NOFOLLOW_LINKS) || Files.isSymbolicLink(live)) {
+				throw new DeployException("missing_live_component:" + component.name());
+			}
+			targets.add(new ConfigTarget(component.name(), existing.version, live, runtime, health,
+				component.runtimeConfig()));
+		}
+		return new ConfigOperation(request.deployId(), request.timeoutSec(), targets, warnings);
+	}
+
+	private static HealthSpec healthFromState(ComponentState state, String name) throws DeployException {
+		if (state.healthUrl == null) {
+			return null;
+		}
+		try {
+			return new HealthSpec(URI.create(state.healthUrl), state.healthExpectVersionPath,
+				state.healthTimeoutSec == null ? DeployPayloads.DEFAULT_HEALTH_TIMEOUT_SEC : state.healthTimeoutSec);
+		} catch (IllegalArgumentException ex) {
+			throw new DeployException("invalid_state:" + name);
+		}
+	}
+
+	private Map<String, Object> runConfigApply(ConfigOperation op, Run run, DeployReporter reporter, long startedNanos) {
+		reporter.event(null, Stage.ACCEPTED, Status.DONE, null,
+			op.targets().size() + " bilesen icin runtime config uygulanacak");
+		for (String warning : op.warnings()) {
+			reporter.event(null, Stage.ACCEPTED, Status.PROGRESS, null, warning);
+		}
+		ConfigTarget active = null;
+		String failure = null;
+		boolean success = false;
+		try {
+			for (ConfigTarget target : op.targets()) {
+				active = target;
+				run.cancel.throwIfCancelled();
+				target.stage = Stage.CONFIGURING;
+				reporter.event(target.name, Stage.CONFIGURING, Status.STARTED, null,
+					target.config.format().fileName() + " atomik yaziliyor");
+				target.snapshot = RuntimeConfigWriter.apply(target.live, target.config);
+				reporter.event(target.name, Stage.CONFIGURING, Status.DONE, null,
+					target.config.format().fileName() + " yazildi (" + target.config.values().size() + " anahtar)");
+				restartForConfig(target, run.cancel, reporter);
+				checkConfigHealth(target, run.cancel, reporter);
+			}
+			active = null;
+			success = true;
+		} catch (DeployException ex) {
+			failure = (active == null ? "" : active.name + ": ") + ex.getMessage();
+			if (active != null) targetConfigFailed(active, ex.getMessage(), reporter);
+		} catch (RuntimeException ex) {
+			String message = "beklenmeyen hata: " + SafeNames.describe(ex);
+			failure = (active == null ? "" : active.name + ": ") + message;
+			if (active != null) targetConfigFailed(active, message, reporter);
+		}
+		if (!success) {
+			List<ConfigTarget> touched = new ArrayList<>();
+			for (ConfigTarget target : op.targets()) if (target.snapshot != null) touched.add(target);
+			Collections.reverse(touched);
+			for (ConfigTarget target : touched) restoreConfig(target, reporter);
+		}
+		return configResult(op, success, failure, startedNanos, reporter);
+	}
+
+	private void restartForConfig(ConfigTarget target, CancelToken cancel, DeployReporter reporter) throws DeployException {
+		RuntimeType type = target.runtime.type();
+		if (type == RuntimeType.NONE || (type == RuntimeType.IIS_STATIC && target.runtime.appPool() == null)) {
+			reporter.event(target.name, Stage.STARTING, Status.SKIPPED, null, "runtime restart gerektirmiyor");
+			return;
+		}
+		cancel.throwIfCancelled();
+		target.runtimeTouched = true;
+		if (type != RuntimeType.IIS_STATIC) {
+			target.stage = Stage.STOPPING;
+			reporter.event(target.name, Stage.STOPPING, Status.STARTED, null, "runtime durduruluyor");
+			deps.runtime.stop(target.runtime);
+			reporter.event(target.name, Stage.STOPPING, Status.DONE, null, "runtime durduruldu");
+		}
+		cancel.throwIfCancelled();
+		target.stage = Stage.STARTING;
+		reporter.event(target.name, Stage.STARTING, Status.STARTED, null,
+			type == RuntimeType.IIS_STATIC ? "app pool geri donusturuluyor" : "runtime baslatiliyor");
+		deps.runtime.start(target.runtime);
+		reporter.event(target.name, Stage.STARTING, Status.DONE, null, "runtime baslatildi");
+	}
+
+	private void checkConfigHealth(ConfigTarget target, CancelToken cancel, DeployReporter reporter) throws DeployException {
+		if (target.health == null) {
+			reporter.event(target.name, Stage.HEALTH_CHECK, Status.SKIPPED, null, "health tanimli degil");
+			return;
+		}
+		cancel.throwIfCancelled();
+		target.stage = Stage.HEALTH_CHECK;
+		reporter.event(target.name, Stage.HEALTH_CHECK, Status.STARTED, null, "runtime config sonrasi yoklaniyor");
+		deps.health.check(target.health, expectedVersion(target.health, target.version), cancel);
+		reporter.event(target.name, Stage.HEALTH_CHECK, Status.DONE, null, "saglikli");
+	}
+
+	private void restoreConfig(ConfigTarget target, DeployReporter reporter) {
+		reporter.event(target.name, Stage.ROLLING_BACK, Status.STARTED, null, "onceki runtime config geri yukleniyor");
+		List<String> problems = new ArrayList<>();
+		RuntimeType type = target.runtime.type();
+		if (target.runtimeTouched && type != RuntimeType.NONE && type != RuntimeType.IIS_STATIC) {
+			try { deps.runtime.stop(target.runtime); } catch (DeployException ex) { problems.add("durdurma: " + ex.getMessage()); }
+		}
+		try { RuntimeConfigWriter.restore(target.snapshot); } catch (DeployException ex) { problems.add("config: " + ex.getMessage()); }
+		if (target.runtimeTouched && type != RuntimeType.NONE) {
+			try { deps.runtime.start(target.runtime); } catch (DeployException ex) { problems.add("baslatma: " + ex.getMessage()); }
+		}
+		if (target.health != null && problems.isEmpty()) {
+			try {
+				deps.health.check(target.health, expectedVersion(target.health, target.version), CancelToken.none());
+			} catch (DeployException ex) { problems.add("health: " + ex.getMessage()); }
+		}
+		if (problems.isEmpty()) {
+			reporter.event(target.name, Stage.ROLLING_BACK, Status.DONE, null, "onceki runtime config geri yuklendi");
+		} else {
+			target.rollbackError = String.join("; ", problems);
+			reporter.event(target.name, Stage.ROLLING_BACK, Status.FAILED, null, target.rollbackError);
+		}
+	}
+
+	private static void targetConfigFailed(ConfigTarget target, String message, DeployReporter reporter) {
+		target.error = message;
+		reporter.event(target.name, target.stage == null ? Stage.CONFIGURING : target.stage,
+			Status.FAILED, null, message);
+	}
+
+	private static Map<String, Object> configResult(ConfigOperation op, boolean success, String failure,
+			long startedNanos, DeployReporter reporter) {
+		List<Map<String, Object>> components = new ArrayList<>();
+		for (ConfigTarget target : op.targets()) {
+			Map<String, Object> component = new LinkedHashMap<>();
+			component.put("name", target.name);
+			component.put("success", success);
+			component.put("version", target.version);
+			component.put("format", target.config.format().wire());
+			component.put("rolledBack", !success && target.snapshot != null && target.rollbackError == null);
+			String componentError = target.error != null ? target.error
+				: target.snapshot != null ? "baska bir bilesen basarisiz oldugu icin geri alindi"
+				: "uygulanmadi (islem durduruldu)";
+			component.put("error", success ? null : reporter.clean(componentError));
+			component.put("rollbackError", target.rollbackError == null ? null : reporter.clean(target.rollbackError));
+			components.add(component);
+		}
+		Map<String, Object> result = new LinkedHashMap<>();
+		result.put("deployId", op.deployId());
+		result.put("success", success);
+		result.put("version", commonConfigVersion(op.targets()));
+		result.put("rolledBack", !success && op.targets().stream().anyMatch(t -> t.snapshot != null));
+		result.put("durationMs", elapsedMillis(startedNanos));
+		result.put("components", components);
+		result.put("error", success ? null : reporter.clean(failure));
+		return result;
+	}
+
+	private static String commonConfigVersion(List<ConfigTarget> targets) {
+		String version = null;
+		for (ConfigTarget target : targets) {
+			if (version != null && !version.equals(target.version)) return null;
+			version = target.version;
+		}
+		return version;
+	}
+
 	private DeployConfig configured() throws DeployException {
 		DeployConfig config = deps.config.get();
 		if (config == null) {
@@ -592,9 +840,10 @@ public final class ArtifactDeployManager {
 		if (component.runtimeConfig() == null) {
 			skip(target, Stage.CONFIGURING, reporter, "runtimeConfig yok");
 		} else {
-			begin(target, Stage.CONFIGURING, reporter, RuntimeConfigWriter.FILE_NAME + " yaziliyor");
-			RuntimeConfigWriter.write(target.incoming, component.runtimeConfig());
-			done(target, reporter, RuntimeConfigWriter.FILE_NAME + " yazildi (" + component.runtimeConfig().size() + " anahtar)");
+			String fileName = component.runtimeConfigFormat().fileName();
+			begin(target, Stage.CONFIGURING, reporter, fileName + " yaziliyor");
+			RuntimeConfigWriter.write(target.incoming, component.runtimeConfigSpec());
+			done(target, reporter, fileName + " yazildi (" + component.runtimeConfig().size() + " anahtar)");
 		}
 	}
 

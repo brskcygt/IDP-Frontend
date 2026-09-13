@@ -32,7 +32,7 @@ export const TopBar = ({
           INTERNAL DEVELOPER PLATFORM
         </span>
         <span aria-hidden="true" className="text-faint">/</span>
-        <h1 className="text-[13px] font-semibold">Deployments</h1>
+        <h1 className="text-[13px] font-semibold">Projects</h1>
       </div>
 
       <div className="flex items-center gap-2.5">

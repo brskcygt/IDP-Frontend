@@ -18,7 +18,9 @@ const {
   validateCredentials,
   createConfig,
   createWindowsInstaller,
+  createLinuxInstaller,
   gatewayEndpoint,
+  packageAgent,
   yamlString,
 } = require('./agentBuilder');
 
@@ -30,7 +32,12 @@ const AGENT_ID = 'WIN-PROD-01';
 const SECRET = 'agt_S3cr3t"quote\\back:#slash';
 const CF_ID = 'cf-client-id.access';
 const CF_SECRET = 'cf-client-secret-0123456789abcdef';
-const baseInput = { agentId: AGENT_ID, workingDirectory: 'C:\\Uygulamalar\\Ödeme "API"', logLevel: 'INFO' };
+const baseInput = {
+  agentId: AGENT_ID,
+  workingDirectory: 'C:\\Uygulamalar\\Ödeme "API"',
+  deployBasePath: 'C:\\inetpub\\wwwroot\\jetsrm',
+  logLevel: 'INFO',
+};
 const response = (overrides = {}) => ({
   agentId: AGENT_ID,
   secret: SECRET,
@@ -84,7 +91,7 @@ test('validateInput: contract ID format, optional proxy, legacy token/serverUrl 
   const ok = validateInput({ ...baseInput, gatewayToken: 'legacy', serverUrl: 'ws://legacy' });
   assert.deepEqual(Object.keys(ok).sort(), ['agentId', 'deployBasePath', 'keepReleases', 'logLevel', 'proxy', 'workingDirectory']);
   assert.equal(ok.proxy, null);
-  assert.equal(ok.deployBasePath, null);
+  assert.equal(ok.deployBasePath, 'C:\\inetpub\\wwwroot\\jetsrm');
   assert.equal(ok.keepReleases, 3);
   assert.equal(validateInput({ ...baseInput, agentId: `A${'b'.repeat(127)}` }).agentId.length, 128);
   assert.throws(() => validateInput({ ...baseInput, agentId: `A${'b'.repeat(128)}` }), /en fazla 128/);
@@ -102,7 +109,11 @@ test('validateInput: deploy base path must be absolute (Windows drive or POSIX),
   assert.equal(validateInput({ ...baseInput, deployBasePath: ' C:\\inetpub\\wwwroot\\jetsrm\\ ' }).deployBasePath, 'C:\\inetpub\\wwwroot\\jetsrm');
   assert.equal(validateInput({ ...baseInput, deployBasePath: 'D:/apps/Ödeme Portalı' }).deployBasePath, 'D:/apps/Ödeme Portalı');
   assert.equal(validateInput({ ...baseInput, deployBasePath: '/var/www/jetsrm/' }).deployBasePath, '/var/www/jetsrm');
-  assert.equal(validateInput({ ...baseInput, deployBasePath: '   ' }).deployBasePath, null);
+  assert.throws(() => validateInput({ ...baseInput, deployBasePath: '   ' }), /zorunludur/);
+  assert.equal(
+    validateInput({ agentId: AGENT_ID, workingDirectory: 'C:\\inetpub\\wwwroot\\legacy-project', logLevel: 'INFO' }).deployBasePath,
+    'C:\\inetpub\\wwwroot\\legacy-project',
+  );
   const badPaths = [
     ['inetpub\\wwwroot\\jetsrm', /mutlak/],
     ['.\\jetsrm', /mutlak/],
@@ -128,9 +139,8 @@ test('validateInput: deploy base path must be absolute (Windows drive or POSIX),
   }
 });
 
-test('application.yml: deploy section only when a base path is given', () => {
+test('application.yml: required deploy base path is preserved for Windows and Linux', () => {
   const credentials = validateCredentials(response(), AGENT_ID);
-  assert.doesNotMatch(createConfig(validateInput(baseInput), credentials), /deploy:/);
   const config = createConfig(validateInput({ ...baseInput, deployBasePath: 'C:\\inetpub\\wwwroot\\jetsrm', keepReleases: 4 }), credentials);
   assert.match(config, /^deploy:\n {2}base-path: "C:\\\\inetpub\\\\wwwroot\\\\jetsrm"\n {2}keep-releases: 4$/m);
   if (yaml) {
@@ -139,6 +149,9 @@ test('application.yml: deploy section only when a base path is given', () => {
     assert.equal(parsed.deploy['keep-releases'], 4);
     assert.equal(parsed.application['working-directory'], baseInput.workingDirectory);
   }
+  const linuxConfig = createConfig(validateInput({ ...baseInput, deployBasePath: '/var/www/başka-proje' }), credentials);
+  assert.match(linuxConfig, /^deploy:\n {2}base-path: "\/var\/www\/başka-proje"$/m);
+  if (yaml) assert.equal(yaml.load(linuxConfig).deploy['base-path'], '/var/www/başka-proje');
 });
 
 test('validateCredentials rejects bad responses without echoing their values', () => {
@@ -167,8 +180,10 @@ test('gatewayEndpoint: wss -> 443, ws -> explicit port or 80', () => {
   assert.deepEqual(gatewayEndpoint('ws://[fd00::5]:8081'), { host: 'fd00::5', port: 8081 });
 });
 
-test('installer: ASCII, try/catch/finally + pause, transcript, Java 17 check, Windows-ROOT, reachability, handshake hint', () => {
-  const script = createWindowsInstaller(AGENT_ID, 'idp-agent-WIN-PROD-01.jar', 'wss://agent-gw.example.com');
+test('installer: project-local files, IIS/ACL protection, Java 17, reachability and handshake hint', () => {
+  const script = createWindowsInstaller(AGENT_ID, 'idp-agent-WIN-PROD-01.jar', 'wss://agent-gw.example.com', {
+    deployBasePath: baseInput.deployBasePath,
+  });
   assert.match(script, /^[\t\n\r\x20-\x7e]*$/, 'ASCII only');
 
   // Structure: elevation first, then the whole body in try/catch/finally.
@@ -178,6 +193,26 @@ test('installer: ASCII, try/catch/finally + pause, transcript, Java 17 check, Wi
   assert.match(script, /Start-Transcript -LiteralPath \$installLog -Append/);
   assert.match(script, /Stop-Transcript/);
 
+  // Agent files live beside the project, never under ProgramData. The installer creates a missing base path.
+  assert.match(script, /\$projectRoot = 'C:\\inetpub\\wwwroot\\jetsrm'/);
+  assert.match(script, /\$installDir = Join-Path \$projectRoot 'agent'/);
+  assert.match(script, /if \(Test-Path -LiteralPath \$projectRoot\) \{/);
+  assert.match(script, /New-Item -ItemType Directory -Path \$projectRoot -Force/);
+  assert.match(script, /Proje kok dizini olusturuldu/);
+  assert.match(script, /Proje kok yolu bir dizin degil/);
+  assert.match(script, /Agent dizini reparse point olamaz/);
+  assert.doesNotMatch(script, /\$env:ProgramData/);
+
+  // External config is copied beside the JAR and explicitly passed to the agent.
+  assert.match(script, /Copy-Item -LiteralPath \$sourceConfig -Destination \$configFile -Force/);
+  assert.match(script, /--config=__IDP_CONFIG__/);
+
+  // Defense in depth under IIS: deny-all web.config plus SYSTEM/Administrators-only ACL.
+  assert.match(script, /<add accessType="Deny" users="\*" \/>/);
+  assert.match(script, /icacls\.exe \$installDir \/inheritance:r \/grant:r '\*S-1-5-18:\(OI\)\(CI\)F' '\*S-1-5-32-544:\(OI\)\(CI\)F'/);
+  assert.match(script, /Agent dizini ACL korumasi uygulanamadi/);
+  assert.ok(script.indexOf('icacls.exe $installDir') < script.indexOf('Copy-Item -LiteralPath $sourceConfig'), 'ACL precedes secret config copy');
+
   // Java >= 17, stderr-safe under PS 5.1, 1.x aware.
   assert.match(script, /\$ErrorActionPreference = 'Continue'\n {2}try \{\n {4}\$javaVersionText = \(& \$java -version 2>&1[\s\S]*\} finally \{\n {4}\$ErrorActionPreference = \$previousPreference/);
   assert.ok(script.includes(`-match 'version "(\\d+)(\\.(\\d+))?'`));
@@ -186,7 +221,7 @@ test('installer: ASCII, try/catch/finally + pause, transcript, Java 17 check, Wi
   assert.match(script, /'Java 17\+ gerekli, bulunan: '/);
 
   // Launcher: no trust-store override (it would replace the JDK cacerts; the agent combines cacerts + Windows-ROOT itself).
-  assert.match(script, /\n& '__IDP_JAVA__' -jar '__IDP_JAR__' \*>> '__IDP_LOG__'\nexit \$LASTEXITCODE\n'@\n/);
+  assert.match(script, /\n& '__IDP_JAVA__' -jar '__IDP_JAR__' '--config=__IDP_CONFIG__' \*>> '__IDP_LOG__'\nexit \$LASTEXITCODE\n'@\n/);
   assert.doesNotMatch(script, /Windows-ROOT/);
   assert.doesNotMatch(script, /javax\.net\.ssl/);
 
@@ -208,21 +243,57 @@ test('installer: ASCII, try/catch/finally + pause, transcript, Java 17 check, Wi
   const count = (ch) => script.split(ch).length - 1;
   assert.equal(count('{'), count('}'), 'braces balanced');
   assert.equal(count('('), count(')'), 'parentheses balanced');
-  assert.equal(count("@'\n"), 1);
-  assert.equal(count("\n'@\n"), 1);
+  assert.equal(count("@'\n"), 2);
+  assert.equal(count("\n'@\n"), 2);
 });
 
 test('installer: ws port, IPv6, IDN host and proxy check', () => {
-  assert.match(createWindowsInstaller(AGENT_ID, 'a.jar', 'ws://10.0.0.5:8081/agent'), /Test-TcpEndpoint '10\.0\.0\.5' 8081/);
-  assert.match(createWindowsInstaller(AGENT_ID, 'a.jar', 'ws://gw.local'), /Test-TcpEndpoint 'gw\.local' 80/);
-  assert.match(createWindowsInstaller(AGENT_ID, 'a.jar', 'wss://[fd00::5]'), /Test-TcpEndpoint 'fd00::5' 443/);
-  const idn = createWindowsInstaller(AGENT_ID, 'a.jar', 'wss://büro.example.com');
+  const options = { deployBasePath: baseInput.deployBasePath };
+  assert.match(createWindowsInstaller(AGENT_ID, 'a.jar', 'ws://10.0.0.5:8081/agent', options), /Test-TcpEndpoint '10\.0\.0\.5' 8081/);
+  assert.match(createWindowsInstaller(AGENT_ID, 'a.jar', 'ws://gw.local', options), /Test-TcpEndpoint 'gw\.local' 80/);
+  assert.match(createWindowsInstaller(AGENT_ID, 'a.jar', 'wss://[fd00::5]', options), /Test-TcpEndpoint 'fd00::5' 443/);
+  const idn = createWindowsInstaller(AGENT_ID, 'a.jar', 'wss://büro.example.com', options);
   assert.match(idn, /Test-TcpEndpoint 'xn--bro-hoa\.example\.com' 443/);
   assert.match(idn, /^[\t\n\r\x20-\x7e]*$/);
-  const proxied = createWindowsInstaller(AGENT_ID, 'a.jar', 'wss://agent-gw.example.com', { proxy: 'proxy.corp.local:8080' });
+  const proxied = createWindowsInstaller(AGENT_ID, 'a.jar', 'wss://agent-gw.example.com', { ...options, proxy: 'proxy.corp.local:8080' });
   assert.match(proxied, /if \(Test-TcpEndpoint 'proxy\.corp\.local' 8080\) \{/);
   assert.match(proxied, /Proxy''e erisilemiyor: proxy\.corp\.local:8080/);
-  assert.throws(() => createWindowsInstaller("bad'id", 'a.jar', 'wss://agent-gw.example.com'), /geçersiz/);
+  assert.throws(() => createWindowsInstaller("bad'id", 'a.jar', 'wss://agent-gw.example.com', options), /geçersiz/);
+  assert.throws(() => createWindowsInstaller(AGENT_ID, 'a.jar', 'wss://agent-gw.example.com'), /zorunludur/);
+  assert.throws(() => createWindowsInstaller(AGENT_ID, 'a.jar', 'wss://agent-gw.example.com', { deployBasePath: '/var/www/jetsrm' }), /Windows/);
+});
+
+test('linux installer uses <basePath>/agent with external config and a systemd service', () => {
+  const script = createLinuxInstaller(AGENT_ID, 'idp-agent-WIN-PROD-01.jar', { deployBasePath: '/var/www/jetsrm' });
+  assert.match(script, /project_root='\/var\/www\/jetsrm'/);
+  assert.match(script, /install_dir='\/var\/www\/jetsrm\/agent'/);
+  assert.match(script, /--config='\/var\/www\/jetsrm\/agent\/application\.yml'/);
+  assert.match(script, /WorkingDirectory="\/var\/www\/jetsrm\/agent"/);
+  assert.match(script, /ExecStart=\/bin\/sh "\/var\/www\/jetsrm\/agent\/run-agent\.sh"/);
+  assert.match(script, /systemctl enable --now 'idp-agent-WIN-PROD-01'/);
+  assert.match(script, /if \[ ! -d "\$project_root" \]; then\n {2}install -d -m 0755 "\$project_root"/);
+  assert.match(script, /Proje kok dizini olusturuldu/);
+  assert.match(script, /proje kok dizini sembolik bag olamaz/);
+  assert.match(script, /install -d -m 0700/);
+  assert.throws(() => createLinuxInstaller(AGENT_ID, 'a.jar', { deployBasePath: 'C:\\inetpub\\wwwroot\\jetsrm' }), /Linux/);
+});
+
+test('Linux base path produces a Linux package with the exact target in application.yml', () => {
+  const sourceJar = new AdmZip();
+  sourceJar.addFile('META-INF/MANIFEST.MF', Buffer.from('Manifest-Version: 1.0\n'));
+  const archive = packageAgent({
+    jarBuffer: sourceJar.toBuffer(),
+    value: validateInput({ ...baseInput, deployBasePath: '/var/www/jetsrm' }),
+    credentials: validateCredentials(response(), AGENT_ID),
+  });
+  const zip = new AdmZip(archive);
+  assert.deepEqual(zip.getEntries().map((entry) => entry.entryName).sort(), [
+    'application.yml',
+    'idp-agent-WIN-PROD-01.jar',
+    'install-idp-agent-WIN-PROD-01.sh',
+  ]);
+  assert.match(zip.readAsText('application.yml'), /^ {2}base-path: "\/var\/www\/jetsrm"$/m);
+  assert.match(zip.readAsText('install-idp-agent-WIN-PROD-01.sh'), /install_dir='\/var\/www\/jetsrm\/agent'/);
 });
 
 async function makeFakeJar(buildRoot) {
@@ -272,17 +343,18 @@ test('buildAgentJar: secret only inside the ZIP, never in the result; credential
   if (process.platform !== 'win32') assert.equal((await fs.stat(zipPath)).mode & 0o777, 0o600);
 
   const outer = new AdmZip(zipPath);
-  assert.deepEqual(outer.getEntries().map((entry) => entry.entryName).sort(), ['idp-agent-WIN-PROD-01.jar', 'install-idp-agent-WIN-PROD-01.ps1']);
+  assert.deepEqual(outer.getEntries().map((entry) => entry.entryName).sort(), ['application.yml', 'idp-agent-WIN-PROD-01.jar', 'install-idp-agent-WIN-PROD-01.ps1']);
   const jar = new AdmZip(outer.readFile('idp-agent-WIN-PROD-01.jar'));
-  assert.equal(jar.getEntries().filter((entry) => entry.entryName === 'application.yml').length, 1);
+  assert.equal(jar.getEntries().filter((entry) => entry.entryName === 'application.yml').length, 0);
   assert.ok(jar.getEntry('META-INF/MANIFEST.MF'));
-  const config = jar.readAsText('application.yml');
+  const config = outer.readAsText('application.yml');
   assert.ok(config.includes(`agent-secret: ${yamlString(SECRET)}`));
   assert.ok(config.includes('proxy: "proxy.corp.local:8080"'));
   assert.doesNotMatch(config, /token/);
   const installer = outer.readAsText('install-idp-agent-WIN-PROD-01.ps1');
   assert.ok(!installer.includes(SECRET) && !installer.includes(CF_SECRET));
   assert.match(installer, /Test-TcpEndpoint 'agent-gw\.example\.com' 443/);
+  assert.match(installer, /\$installDir = Join-Path \$projectRoot 'agent'/);
 
   assert.deepEqual(await fs.readdir(tmpDir), [], 'build directory removed');
 }));

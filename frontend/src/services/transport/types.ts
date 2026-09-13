@@ -331,6 +331,17 @@ export interface DeployedComponentVersion {
   previousVersions: string[];
 }
 
+export type TargetRuntimeConfigFormat = 'frontend-config-js' | 'env-file';
+
+export interface TargetComponentRuntimeConfig {
+  format: TargetRuntimeConfigFormat;
+  values: Record<string, string>;
+}
+
+export type ComponentTargetRuntimeConfig = Record<string, TargetComponentRuntimeConfig>;
+export type LegacyTargetRuntimeConfig = Record<string, string>;
+export type TargetRuntimeConfig = ComponentTargetRuntimeConfig | LegacyTargetRuntimeConfig;
+
 export interface DeployTarget {
   id: string;
   projectId: string;
@@ -340,7 +351,7 @@ export interface DeployTarget {
   environment: DeployTargetEnvironment | null;
   basePath: string | null;
   components: TargetComponentOverride[] | null;
-  runtimeConfig: Record<string, string> | null;
+  runtimeConfig: TargetRuntimeConfig | null;
   currentReleaseId: string | null;
   currentVersions: Record<string, DeployedComponentVersion> | null;
   createdAt: string | null;
@@ -354,7 +365,7 @@ export interface DeployTargetInput {
   environment?: DeployTargetEnvironment | null;
   basePath?: string | null;
   components?: TargetComponentOverride[] | null;
-  runtimeConfig?: Record<string, string> | null;
+  runtimeConfig?: ComponentTargetRuntimeConfig | null;
 }
 
 export type UpdateDeployTargetInput = Partial<DeployTargetInput>;
@@ -435,6 +446,7 @@ export interface Transport {
     updateTarget(id: string, input: UpdateDeployTargetInput): Promise<DeployTarget>;
     deleteTarget(id: string): Promise<void>;
     refreshTarget(id: string): Promise<DeployTarget>;
+    applyConfig(id: string, input?: { confirmation?: string }): Promise<TriggerDeployResult>;
     deploy(targetId: string, input: { releaseId: string; components?: string[]; confirmation?: string }): Promise<ArtifactDeployRunResult>;
     rollback(targetId: string, input: { components?: string[]; confirmation?: string }): Promise<ArtifactDeployRunResult>;
     events(deploymentId: string): Promise<ArtifactEventsResult>;

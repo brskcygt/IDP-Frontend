@@ -51,6 +51,7 @@ class ArtifactDeployManagerTest {
 	private static final String FRONTEND_TOKEN = "tok-frontend-SECRET-0002";
 	private static final String API_URL = "https://api.customer.example";
 	private static final String ENV_SECRET = "db-password-VERY-secret-42";
+	private static final String CONFIG_SECRET = "runtime-config-SUPER-secret-99";
 	private static final String BACKEND_HEALTH = "http://127.0.0.1:3000/health";
 	private static final String FRONTEND_HEALTH = "http://127.0.0.1:8080/";
 
@@ -167,6 +168,21 @@ class ArtifactDeployManagerTest {
 	private JsonObject deployAndWait(String deployId, String version, Map<String, Object> component) throws Exception {
 		manager.handleDeploy(deploy(deployId, version, 1800, component));
 		return sink.awaitResult(deployId);
+	}
+
+	private static Map<String, Object> runtimeConfig(String format, Map<String, String> values) {
+		return map("format", format, "values", values);
+	}
+
+	@SafeVarargs
+	private static Object configApply(String deployId, Map<String, Object>... components) {
+		return wire(map("deployId", deployId, "timeoutSec", 30,
+			"components", new ArrayList<>(List.of(components))));
+	}
+
+	private JsonObject awaitConfigResult(String deployId) throws Exception {
+		return sink.await(ArtifactDeployManager.CONFIG_RESULT,
+			json -> deployId.equals(json.get("deployId").getAsString()), TestSupport.TIMEOUT);
 	}
 
 	private static JsonObject component(JsonObject result, String name) {
@@ -510,6 +526,69 @@ class ArtifactDeployManagerTest {
 			json -> "req_2".equals(json.get("requestId").getAsString()), TestSupport.TIMEOUT);
 		assertEquals("not_configured", notConfigured.get("error").getAsString());
 		assertTrue(notConfigured.get("basePath").isJsonNull());
+	}
+
+	@Test
+	void appliesFrontendAndBackendConfigWithoutChangingReleaseState() throws Exception {
+		seedLive();
+		start(config(3));
+		manager.handleDeploy(deploy("dep_cfg_seed", "2.0.0", 1800, backend("2.0.0"), frontend("2.0.0")));
+		assertTrue(sink.awaitResult("dep_cfg_seed").get("success").getAsBoolean());
+		String stateBefore = read(base.resolve(".releases/state.json"));
+		runtime.calls.clear();
+		health.checks.clear();
+
+		manager.handleConfigApply(configApply("cfg_apply_ok",
+			map("name", "backend", "runtimeConfig", runtimeConfig("env-file",
+				Map.of("DB_PASSWORD", CONFIG_SECRET, "PORT", "3000"))),
+			map("name", "frontend", "runtimeConfig", runtimeConfig("frontend-config-js",
+				Map.of("VITE_APP_MAIN_URL", "https://new.customer", "VITE_TOKEN", CONFIG_SECRET)))));
+		JsonObject result = awaitConfigResult("cfg_apply_ok");
+
+		assertTrue(result.get("success").getAsBoolean(), result.toString());
+		assertEquals("2.0.0", result.get("version").getAsString());
+		assertEquals("DB_PASSWORD=\"" + CONFIG_SECRET + "\"\nPORT=\"3000\"\n", read(base.resolve("backend/.env")));
+		assertEquals(RuntimeConfigWriter.render(Map.of("VITE_APP_MAIN_URL", "https://new.customer",
+			"VITE_TOKEN", CONFIG_SECRET)), read(base.resolve("frontend/config.js")));
+		assertEquals(stateBefore, read(base.resolve(".releases/state.json")), "config apply release state'i degistirmez");
+		assertEquals(List.of("stop:jetsrm-backend", "start:jetsrm-backend", "start:pool:JetSRM Frontend Pool"),
+			runtime.calls);
+		assertEquals(List.of(BACKEND_HEALTH + "|2.0.0", FRONTEND_HEALTH + "|null"), health.checks);
+		assertFalse(sink.allJson().contains(CONFIG_SECRET));
+		assertFalse(log.all().contains(CONFIG_SECRET));
+		assertEquals(ArtifactDeployManager.CONFIG_RESULT, sink.lastProcess("cfg_apply_ok"));
+	}
+
+	@Test
+	void configHealthFailureRestoresAllConfigsAndRestartsRuntimes() throws Exception {
+		seedLive();
+		start(config(3));
+		manager.handleDeploy(deploy("dep_cfg_seed2", "2.0.0", 1800, backend("2.0.0"), frontend("2.0.0")));
+		assertTrue(sink.awaitResult("dep_cfg_seed2").get("success").getAsBoolean());
+		String backendBefore = read(base.resolve("backend/.env"));
+		String frontendBefore = read(base.resolve("frontend/config.js"));
+		String stateBefore = read(base.resolve(".releases/state.json"));
+		runtime.calls.clear();
+		health.checks.clear();
+		health.failures.put(FRONTEND_HEALTH, new AtomicInteger(1));
+
+		manager.handleConfigApply(configApply("cfg_apply_fail",
+			map("name", "backend", "runtimeConfig", runtimeConfig("env-file", Map.of("SECRET", CONFIG_SECRET))),
+			map("name", "frontend", "runtimeConfig", runtimeConfig("frontend-config-js",
+				Map.of("VITE_SECRET", CONFIG_SECRET)))));
+		JsonObject result = awaitConfigResult("cfg_apply_fail");
+
+		assertFalse(result.get("success").getAsBoolean());
+		assertTrue(result.get("rolledBack").getAsBoolean());
+		assertEquals(backendBefore, read(base.resolve("backend/.env")));
+		assertEquals(frontendBefore, read(base.resolve("frontend/config.js")));
+		assertEquals(stateBefore, read(base.resolve(".releases/state.json")));
+		assertEquals(List.of("stop:jetsrm-backend", "start:jetsrm-backend", "start:pool:JetSRM Frontend Pool",
+			"start:pool:JetSRM Frontend Pool", "stop:jetsrm-backend", "start:jetsrm-backend"), runtime.calls);
+		assertFalse(sink.allJson().contains(CONFIG_SECRET));
+		assertFalse(log.all().contains(CONFIG_SECRET));
+		assertTrue(sink.snapshot().stream().noneMatch(message -> message.process().equals(DeployReporter.RESULT)
+			&& message.json().contains("cfg_apply_fail")), "config sonucu deploy_result kanalina gitmemeli");
 	}
 
 	// ------------------------------------------------------------------ preStart hook'ları (gerçek süreç)

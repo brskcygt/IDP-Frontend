@@ -11,6 +11,7 @@ type ProjectTableProps = {
   hasFilters: boolean;
   deployingElapsed?: string;
   onDeploy: (project: Project) => void;
+  onReleases: (project: Project) => void;
   onAbort: (projectId: string) => void;
   onSettings: (project: Project) => void;
   onOpenHistory: (project: Project) => void;
@@ -24,6 +25,7 @@ export const ProjectTable = ({
   hasFilters,
   deployingElapsed,
   onDeploy,
+  onReleases,
   onAbort,
   onSettings,
   onOpenHistory,
@@ -48,6 +50,7 @@ export const ProjectTable = ({
             project={project}
             elapsedLabel={project.status === "Deploying" ? deployingElapsed : undefined}
             onDeploy={onDeploy}
+            onReleases={onReleases}
             onAbort={onAbort}
             onSettings={onSettings}
             onOpenHistory={onOpenHistory}

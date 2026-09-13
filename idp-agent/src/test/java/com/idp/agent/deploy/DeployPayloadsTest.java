@@ -19,6 +19,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.google.gson.JsonPrimitive;
 import com.idp.agent.deploy.DeployPayloads.ComponentSpec;
+import com.idp.agent.deploy.DeployPayloads.ConfigApplyRequest;
 import com.idp.agent.deploy.DeployPayloads.DeployRequest;
 import com.idp.agent.deploy.DeployPayloads.RollbackRequest;
 
@@ -257,6 +258,46 @@ class DeployPayloadsTest {
 		empty.addProperty("deployId", "dep_5");
 		empty.add("components", new JsonArray());
 		assertThrows(DeployException.class, () -> DeployPayloads.parseRollback(empty));
+	}
+
+	@Test
+	void parsesStructuredDeployConfigAndConfigApply() throws Exception {
+		JsonObject root = sample();
+		JsonObject backendConfig = new JsonObject();
+		backendConfig.addProperty("format", "env-file");
+		backendConfig.add("values", obj("DB_PASSWORD", new JsonPrimitive(ENV_SECRET)));
+		backend(root).add("runtimeConfig", backendConfig);
+		ComponentSpec backend = DeployPayloads.parseDeploy(root).components().get(0);
+		assertEquals(DeployPayloads.RuntimeConfigFormat.ENV_FILE, backend.runtimeConfigFormat());
+		assertEquals(Map.of("DB_PASSWORD", ENV_SECRET), backend.runtimeConfig());
+
+		JsonObject apply = new JsonObject();
+		apply.addProperty("deployId", "cfg_01");
+		JsonArray components = new JsonArray();
+		JsonObject component = new JsonObject();
+		component.addProperty("name", "backend");
+		component.add("runtimeConfig", backendConfig.deepCopy());
+		components.add(component);
+		apply.add("components", components);
+		ConfigApplyRequest request = DeployPayloads.parseConfigApply(new Gson().fromJson(apply, Object.class));
+		assertEquals(1800, request.timeoutSec());
+		assertEquals("backend", request.components().get(0).name());
+		assertEquals(DeployPayloads.RuntimeConfigFormat.ENV_FILE,
+			request.components().get(0).runtimeConfig().format());
+		assertFalse(request.toString().contains(ENV_SECRET), request.toString());
+	}
+
+	@Test
+	void configApplyRejectsLegacyOrMalformedConfigWithoutLeakingValue() {
+		JsonObject apply = JsonParser.parseString("{\"deployId\":\"cfg_bad\",\"components\":[{\"name\":\"backend\","
+			+ "\"runtimeConfig\":{\"DB_PASSWORD\":\"" + ENV_SECRET + "\"}}]}").getAsJsonObject();
+		DeployException legacy = assertThrows(DeployException.class, () -> DeployPayloads.parseConfigApply(apply));
+		assertFalse(legacy.getMessage().contains(ENV_SECRET));
+		JsonObject config = apply.getAsJsonArray("components").get(0).getAsJsonObject().getAsJsonObject("runtimeConfig");
+		config.addProperty("format", "env-file");
+		config.add("values", obj("BAD-KEY", new JsonPrimitive(ENV_SECRET)));
+		DeployException badKey = assertThrows(DeployException.class, () -> DeployPayloads.parseConfigApply(apply));
+		assertFalse(badKey.getMessage().contains(ENV_SECRET));
 	}
 
 	@Test

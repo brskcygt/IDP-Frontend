@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import type { Project } from "@/hooks/useProjects";
 import { useUpdateProjectSettings, useDeleteProject } from "@/hooks/useProjects";
 import { useToast } from "@/hooks/use-toast";
-import { Save } from "lucide-react";
+import { Check, Copy, Save } from "lucide-react";
 import { JenkinsSettings } from "@/components/project/settings/JenkinsSettings";
 import { ServerSettings } from "@/components/project/settings/ServerSettings";
 import { PmpSettings } from "@/components/project/settings/PmpSettings";
@@ -16,38 +16,46 @@ import type { ProjectConfig } from "@/types/project";
 import { getProviderMeta } from "@/lib/providers";
 import { needsNewArtifactToken } from "@/components/project/settings/artifactDeployValidation";
 import { ArtifactDeploySettings } from "@/components/project/settings/ArtifactDeploySettings";
+import { ArtifactTargetsSettings } from "@/components/artifacts/ArtifactTargetsSettings";
 
 type ProjectSettingsModalProps = {
   project: Project | null;
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
+  initialTab?: SettingsTabId;
+  onArtifactRunStarted?: (deploymentId: string) => void;
 };
 
-type SettingsTabId = 'general' | 'vpn' | 'artifacts';
+export type SettingsTabId = 'general' | 'vpn' | 'artifacts' | 'targets';
 
 const SETTINGS_TABS: ReadonlyArray<{ id: SettingsTabId; label: string }> = [
   { id: 'general', label: 'General Settings' },
   { id: 'vpn', label: 'VPN & Gateway' },
   { id: 'artifacts', label: 'Artifact Deploy' },
+  { id: 'targets', label: 'Targets' },
 ];
 
-export const ProjectSettingsModal = ({ project, isOpen, onOpenChange }: ProjectSettingsModalProps) => {
+export const ProjectSettingsModal = ({ project, isOpen, onOpenChange, initialTab = 'general', onArtifactRunStarted }: ProjectSettingsModalProps) => {
   const [config, setConfig] = useState<ProjectConfig>({});
   const [activeTab, setActiveTab] = useState<SettingsTabId>('general');
+  const [projectIdCopied, setProjectIdCopied] = useState(false);
+  const visibleTabs = project?.config?.artifactDeploy
+    ? SETTINGS_TABS
+    : SETTINGS_TABS.filter((tab) => tab.id !== 'targets');
 
   /** Arrow keys move between tabs, Home/End jump to the ends — WAI-ARIA tablist. */
   const handleTabKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
-    const currentIndex = SETTINGS_TABS.findIndex((tab) => tab.id === activeTab);
+    const currentIndex = visibleTabs.findIndex((tab) => tab.id === activeTab);
     let nextIndex: number | null = null;
 
-    if (event.key === 'ArrowRight') nextIndex = (currentIndex + 1) % SETTINGS_TABS.length;
-    else if (event.key === 'ArrowLeft') nextIndex = (currentIndex - 1 + SETTINGS_TABS.length) % SETTINGS_TABS.length;
+    if (event.key === 'ArrowRight') nextIndex = (currentIndex + 1) % visibleTabs.length;
+    else if (event.key === 'ArrowLeft') nextIndex = (currentIndex - 1 + visibleTabs.length) % visibleTabs.length;
     else if (event.key === 'Home') nextIndex = 0;
-    else if (event.key === 'End') nextIndex = SETTINGS_TABS.length - 1;
+    else if (event.key === 'End') nextIndex = visibleTabs.length - 1;
 
     if (nextIndex === null) return;
     event.preventDefault();
-    const next = SETTINGS_TABS[nextIndex];
+    const next = visibleTabs[nextIndex];
     setActiveTab(next.id);
     document.getElementById(`settings-tab-${next.id}`)?.focus();
   };
@@ -61,6 +69,12 @@ export const ProjectSettingsModal = ({ project, isOpen, onOpenChange }: ProjectS
       setConfig(project.config || {});
     }
   }, [project]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const canOpenInitialTab = initialTab !== 'targets' || Boolean(project?.config?.artifactDeploy);
+    setActiveTab(canOpenInitialTab ? initialTab : 'general');
+  }, [initialTab, isOpen, project?.id, project?.config?.artifactDeploy]);
 
   if (!project) return null;
 
@@ -79,6 +93,16 @@ export const ProjectSettingsModal = ({ project, isOpen, onOpenChange }: ProjectS
         toast({ title: 'Error', description: err.message, variant: 'destructive' });
       }
     });
+  };
+
+  const copyProjectId = async () => {
+    try {
+      await navigator.clipboard.writeText(project.id);
+      setProjectIdCopied(true);
+      window.setTimeout(() => setProjectIdCopied(false), 1400);
+    } catch {
+      toast({ title: 'Copy failed', description: 'Project ID could not be copied to the clipboard.', variant: 'destructive' });
+    }
   };
 
   const handleDelete = () => {
@@ -103,7 +127,24 @@ export const ProjectSettingsModal = ({ project, isOpen, onOpenChange }: ProjectS
             <span className="[&>svg]:h-4 [&>svg]:w-4">{providerMeta.icon}</span>
             {project.name}
           </DialogTitle>
-          <DialogDescription>{providerMeta.settingsTitle}</DialogDescription>
+          <DialogDescription className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <span>{providerMeta.settingsTitle}</span>
+            <span aria-hidden="true" className="text-border">•</span>
+            <span className="inline-flex items-center gap-1.5">
+              <span>Project ID:</span>
+              <code className="rounded border border-border/70 bg-accent/50 px-1.5 py-0.5 font-mono text-[11px] text-foreground">{project.id}</code>
+              <button
+                type="button"
+                onClick={() => void copyProjectId()}
+                className="inline-flex items-center gap-1 rounded px-1 py-0.5 text-[11px] text-muted-foreground hover:bg-accent hover:text-foreground"
+                aria-label="Copy project ID"
+                title="Copy project ID"
+              >
+                {projectIdCopied ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
+                <span>{projectIdCopied ? 'Copied' : 'Copy'}</span>
+              </button>
+            </span>
+          </DialogDescription>
         </DialogHeader>
 
         {/* Tab Navigation */}
@@ -113,7 +154,7 @@ export const ProjectSettingsModal = ({ project, isOpen, onOpenChange }: ProjectS
           className="flex items-center gap-4 border-b border-border/50 px-6 mt-4"
           onKeyDown={handleTabKeyDown}
         >
-          {SETTINGS_TABS.map((tab) => {
+          {visibleTabs.map((tab) => {
             const isActive = activeTab === tab.id;
             return (
               <button
@@ -183,14 +224,20 @@ export const ProjectSettingsModal = ({ project, isOpen, onOpenChange }: ProjectS
             <ArtifactDeploySettings config={config} original={project.config?.artifactDeploy} onChange={setConfig} />
           )}
 
+          {activeTab === 'targets' && project.config?.artifactDeploy && (
+            <ArtifactTargetsSettings project={project} onRunStarted={onArtifactRunStarted} />
+          )}
+
         </div>
 
         <DialogFooter className="px-6 pb-6">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button onClick={handleSave} disabled={isPending}>
-            <Save className="mr-2 h-4 w-4" />
-            {isPending ? 'Saving...' : 'Save Settings'}
-          </Button>
+          {activeTab === 'targets' ? <Button variant="outline" onClick={() => onOpenChange(false)}>Close</Button> : <>
+            <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+            <Button onClick={handleSave} disabled={isPending}>
+              <Save className="mr-2 h-4 w-4" />
+              {isPending ? 'Saving...' : 'Save Settings'}
+            </Button>
+          </>}
         </DialogFooter>
       </DialogContent>
     </Dialog>

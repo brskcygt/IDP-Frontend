@@ -1,4 +1,4 @@
-import { RotateCcw, Square } from "lucide-react";
+import { Package, RotateCcw, Square } from "lucide-react";
 import type { Project } from "@/hooks/useProjects";
 import { providerClass } from "@/lib/projectMeta";
 import { StatusMark } from "./StatusMark";
@@ -16,6 +16,7 @@ type ProjectRowProps = {
   runs?: ReadonlyArray<RunOutcome>;
   elapsedLabel?: string;
   onDeploy: (project: Project) => void;
+  onReleases: (project: Project) => void;
   onAbort: (projectId: string) => void;
   onSettings: (project: Project) => void;
   onOpenHistory: (project: Project) => void;
@@ -29,6 +30,7 @@ export const ProjectRow = ({
   runs,
   elapsedLabel,
   onDeploy,
+  onReleases,
   onAbort,
   onSettings,
   onOpenHistory,
@@ -107,13 +109,25 @@ export const ProjectRow = ({
             Abort
           </button>
         ) : isArtifactProject && canView ? (
-          <button
-            type="button"
-            onClick={() => onDeploy(project)}
-            className={cn(ACTION_CLASS, "border border-line-strong hover:bg-accent")}
-          >
-            Releases
-          </button>
+          <div className="flex items-center justify-end gap-1.5">
+            <button
+              type="button"
+              onClick={() => onReleases(project)}
+              aria-label={`Open releases for ${project.name}`}
+              className={cn(ACTION_CLASS, "border border-line-strong hover:bg-accent")}
+            >
+              <Package className="h-3 w-3" aria-hidden="true" />
+              Releases
+            </button>
+            {canDeploy && <button
+              type="button"
+              onClick={() => onDeploy(project)}
+              aria-label={`Deploy ${project.name}`}
+              className={cn(ACTION_CLASS, "bg-primary font-semibold text-primary-foreground hover:bg-primary/90")}
+            >
+              Deploy
+            </button>}
+          </div>
         ) : !isDeploying && hasFailed && canDeploy ? (
           <button
             type="button"

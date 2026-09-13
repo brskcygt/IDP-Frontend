@@ -20,6 +20,29 @@ bkz. `docs/03-ELECTRON-MIMARI.md` §2 dipnotu.
 
 ## Çalıştırma
 
+### Agent kurulum paketinin yerleşimi
+
+`IDP Agent oluştur` akışında deploy taban dizini zorunludur. Agent merkezi bir
+`ProgramData/IDP` dizinine değil, ilgili projenin yanında kurulur:
+
+- Windows: `C:\inetpub\wwwroot\<proje>\agent`
+- Linux: `/var/www/<proje>/agent`
+
+ZIP; config içermeyen JAR, dış `application.yml` ve hedef yola göre bir kurucu
+taşır (`.ps1` veya `.sh`). JAR, config, launcher ve log bu `agent/` dizininde
+kalır; Windows Scheduled Task veya Linux systemd servisi de buradan çalışır.
+Girilen proje kökü hedefte mevcut değilse kurucu onu otomatik oluşturur; ZIP'in
+önceden proje dizinine taşınması veya operatörün webroot altında elle klasör açması
+gerekmez. Yol bir dosyaya ya da reparse point/sembolik bağa denk gelirse kurulum
+güvenli biçimde durur.
+
+Windows kurucusu webroot altındaki agent dosyalarının IIS tarafından statik
+sunulmasını iki katmanda engeller: `web.config` bütün HTTP erişimini reddeder;
+NTFS kalıtımını kesip dizini yalnız SYSTEM ve Administrators'a açar. Bu ACL,
+agent kimliğini taşıyan `application.yml` ile logları da korur. Linux kurucusu
+aynı amaçla dizini `0700`, config/JAR/log dosyalarını `0600` yapar ve servisi
+root altında çalıştırır.
+
 ### Geliştirme modu
 
 ```bash

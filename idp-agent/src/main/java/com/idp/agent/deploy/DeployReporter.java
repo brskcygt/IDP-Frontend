@@ -53,16 +53,25 @@ final class DeployReporter {
 	private final DeployLog log;
 	private final Redactor redactor;
 	private final String deployId;
+	private final String eventProcess;
+	private final String resultProcess;
 	private final long progressIntervalNanos;
 	private final AtomicBoolean finished = new AtomicBoolean();
 	private long lastProgressNanos;
 	private boolean progressSent;
 
 	DeployReporter(Sink sink, DeployLog log, Redactor redactor, String deployId, long progressIntervalMillis) {
+		this(sink, log, redactor, deployId, progressIntervalMillis, EVENT, RESULT);
+	}
+
+	DeployReporter(Sink sink, DeployLog log, Redactor redactor, String deployId, long progressIntervalMillis,
+			String eventProcess, String resultProcess) {
 		this.sink = sink;
 		this.log = log;
 		this.redactor = redactor;
 		this.deployId = deployId;
+		this.eventProcess = eventProcess;
+		this.resultProcess = resultProcess;
 		this.progressIntervalNanos = Math.max(0, progressIntervalMillis) * 1_000_000L;
 	}
 
@@ -79,7 +88,7 @@ final class DeployReporter {
 		payload.put("status", status.wire());
 		payload.put("progress", progress);
 		payload.put("message", text);
-		send(EVENT, payload);
+		send(eventProcess, payload);
 		if (status != Status.PROGRESS) {
 			String line = "[artifact-deploy " + deployId + "] " + (component == null ? "" : component + " ")
 				+ stage.wire + " " + status.wire() + (text.isEmpty() ? "" : ": " + text);
@@ -116,7 +125,7 @@ final class DeployReporter {
 		if (error instanceof String text) {
 			payload.put("error", clean(text));
 		}
-		send(RESULT, payload);
+		send(resultProcess, payload);
 		log.info("[artifact-deploy " + deployId + "] sonuc: success=" + payload.get("success")
 			+ (payload.get("error") == null ? "" : ", error=" + payload.get("error")));
 		return true;

@@ -10,7 +10,7 @@ import { useVpnSessions } from '@/hooks/useVpnSessions';
 import { formatDuration } from '@/lib/format';
 import { useAppVersion } from '@/hooks/useAppVersion';
 
-import { AppRail } from '@/components/layout/AppRail';
+import { AppRail, type AppRailItem } from '@/components/layout/AppRail';
 import { TopBar } from '@/components/layout/TopBar';
 import { StatusFooter } from '@/components/layout/StatusFooter';
 import { DashboardError } from '@/components/layout/DashboardError';
@@ -24,7 +24,7 @@ import { LiveTerminalStream } from '@/components/deployment/LiveTerminalStream';
 import { DeploymentRunsHost } from '@/components/deployment/DeploymentRunsHost';
 import { MfaGlobalModal } from '@/components/deployment/MfaGlobalModal';
 import { DeploymentsSheet } from '@/components/deployment/DeploymentsSheet';
-import { ProjectSettingsModal } from '@/components/project/ProjectSettingsModal';
+import { ProjectSettingsModal, type SettingsTabId } from '@/components/project/ProjectSettingsModal';
 import { ProjectHistorySheet } from '@/components/project/ProjectHistorySheet';
 import { CreateProjectModal } from '@/components/project/CreateProjectModal';
 import { ActivityLogSheet } from '@/components/audit/ActivityLogSheet';
@@ -36,6 +36,8 @@ import { WorkspaceTransferSheet } from '@/components/transfer/WorkspaceTransferS
 import { AgentBuilderSheet } from '@/components/agents/AgentBuilderSheet';
 import { ServerFileTransferSheet } from '@/components/transfer/ServerFileTransferSheet';
 import { ArtifactDeploySheet } from '@/components/artifacts/ArtifactDeploySheet';
+import { ArtifactReleasesSheet } from '@/components/artifacts/ArtifactReleasesSheet';
+import { DeploymentGuideSheet } from '@/components/guide/DeploymentGuideSheet';
 import { useSession } from '@/hooks/useSession';
 import { can } from '@/lib/permissions';
 
@@ -85,8 +87,9 @@ export const Dashboard = ({ onLogout }: { onLogout?: () => void }) => {
   const [settingsTarget, setSettingsTarget] = useState<Project | null>(null);
   const [historyTarget, setHistoryTarget] = useState<Project | null>(null);
   const [artifactTarget, setArtifactTarget] = useState<Project | null>(null);
+  const [settingsInitialTab, setSettingsInitialTab] = useState<SettingsTabId>('general');
   const [openPanel, setOpenPanel] = useState<
-    'trigger' | 'settings' | 'create' | 'stream' | 'sessions' | 'activity' | 'vpn' | 'history' | 'transfer' | 'agent-builder' | 'file-transfer' | 'artifacts' | null
+    'trigger' | 'settings' | 'create' | 'stream' | 'sessions' | 'activity' | 'vpn' | 'history' | 'transfer' | 'agent-builder' | 'file-transfer' | 'artifact-releases' | 'artifact-deploy' | 'guide' | null
   >(null);
 
   // Surfaces the backend's per-project 409 concurrency lock (or any other
@@ -111,11 +114,20 @@ export const Dashboard = ({ onLogout }: { onLogout?: () => void }) => {
         return;
       }
       setArtifactTarget(project);
-      setOpenPanel('artifacts');
+      setOpenPanel('artifact-deploy');
       return;
     }
     setTriggerTarget(project);
     setOpenPanel('trigger');
+  };
+
+  const openArtifactReleases = (project: Project) => {
+    if (window.idp?.mode === 'local') {
+      toast({ title: 'Remote backend required', description: 'Artifact releases are available when Electron is connected to the IDP server.', variant: 'destructive' });
+      return;
+    }
+    setArtifactTarget(project);
+    setOpenPanel('artifact-releases');
   };
 
   const attachArtifactRun = (deploymentId: string) => {
@@ -126,6 +138,13 @@ export const Dashboard = ({ onLogout }: { onLogout?: () => void }) => {
 
   const openSettings = (project: Project) => {
     setSettingsTarget(project);
+    setSettingsInitialTab('general');
+    setOpenPanel('settings');
+  };
+
+  const openTargetSettings = (project: Project) => {
+    setSettingsTarget(project);
+    setSettingsInitialTab('targets');
     setOpenPanel('settings');
   };
 
@@ -250,12 +269,21 @@ export const Dashboard = ({ onLogout }: { onLogout?: () => void }) => {
   ].filter(Boolean) as string[];
 
   const elapsedLabel = formatDuration(activeRun?.elapsedMs ?? 0);
+  const activeRailItem: AppRailItem =
+    openPanel === 'activity' ? 'activity'
+      : openPanel === 'guide' ? 'guide'
+        : openPanel === 'agent-builder' ? 'agent-builder'
+          : openPanel === 'file-transfer' ? 'file-transfer'
+            : openPanel === 'transfer' ? 'transfer'
+              : openPanel === 'vpn' ? 'vpn'
+                : 'projects';
 
   return (
     <div className="flex h-screen overflow-hidden bg-background text-foreground">
       <DeploymentRunsHost records={records} onSnapshot={reportSnapshot} onTriggerFailed={reportTriggerFailed} />
 
       <AppRail
+        activeItem={activeRailItem}
         vpnActive={(vpnSessions?.length ?? 0) > 0}
         canManageProjects={canCreateProject}
         canManageVpn={canManageVpn}
@@ -264,6 +292,7 @@ export const Dashboard = ({ onLogout }: { onLogout?: () => void }) => {
         onOpenTransfer={() => setOpenPanel('transfer')}
         onOpenAgentBuilder={() => setOpenPanel('agent-builder')}
         onOpenFileTransfer={() => setOpenPanel('file-transfer')}
+        onOpenGuide={() => setOpenPanel('guide')}
         onLogout={onLogout}
       />
 
@@ -305,6 +334,7 @@ export const Dashboard = ({ onLogout }: { onLogout?: () => void }) => {
           hasFilters={activeFilters.length > 0}
           deployingElapsed={elapsedLabel}
           onDeploy={openTrigger}
+          onReleases={openArtifactReleases}
           onAbort={abortDeploy}
           onSettings={openSettings}
           onOpenHistory={openHistory}
@@ -340,6 +370,13 @@ export const Dashboard = ({ onLogout }: { onLogout?: () => void }) => {
         project={settingsTarget}
         isOpen={openPanel === 'settings'}
         onOpenChange={(open) => setOpenPanel(open ? 'settings' : null)}
+        initialTab={settingsInitialTab}
+        onArtifactRunStarted={(deploymentId) => {
+          if (!settingsTarget) return;
+          setArtifactTarget(settingsTarget);
+          attach(deploymentId, settingsTarget.id, settingsTarget);
+          setOpenPanel('stream');
+        }}
       />
 
       <ProjectHistorySheet
@@ -386,10 +423,23 @@ export const Dashboard = ({ onLogout }: { onLogout?: () => void }) => {
       <WorkspaceTransferSheet isOpen={openPanel === 'transfer'} onOpenChange={(open) => setOpenPanel(open ? 'transfer' : null)} projects={projects ?? []} />
       <AgentBuilderSheet isOpen={openPanel === 'agent-builder'} onOpenChange={(open) => setOpenPanel(open ? 'agent-builder' : null)} />
       <ServerFileTransferSheet isOpen={openPanel === 'file-transfer'} onOpenChange={(open) => setOpenPanel(open ? 'file-transfer' : null)} />
+      <DeploymentGuideSheet
+        isOpen={openPanel === 'guide'}
+        onOpenChange={(open) => setOpenPanel(open ? 'guide' : null)}
+        onOpenAgentBuilder={() => setOpenPanel('agent-builder')}
+      />
       <ArtifactDeploySheet
         project={artifactTarget}
-        isOpen={openPanel === 'artifacts'}
-        onOpenChange={(open) => setOpenPanel(open ? 'artifacts' : null)}
+        isOpen={openPanel === 'artifact-deploy'}
+        onOpenChange={(open) => setOpenPanel(open ? 'artifact-deploy' : null)}
+        onRunStarted={attachArtifactRun}
+        onOpenReleases={() => artifactTarget && openArtifactReleases(artifactTarget)}
+        onOpenTargets={() => artifactTarget && openTargetSettings(artifactTarget)}
+      />
+      <ArtifactReleasesSheet
+        project={artifactTarget}
+        isOpen={openPanel === 'artifact-releases'}
+        onOpenChange={(open) => setOpenPanel(open ? 'artifact-releases' : null)}
         onRunStarted={attachArtifactRun}
       />
 

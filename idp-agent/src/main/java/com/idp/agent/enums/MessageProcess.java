@@ -12,6 +12,7 @@ public enum MessageProcess {
   RUN_DEPLOY("run_deploy"),
   UPLOAD_LANGUAGES("upload_languages"),
   ARTIFACT_DEPLOY("artifact_deploy"),
+  ARTIFACT_CONFIG_APPLY("artifact_config_apply"),
   ARTIFACT_ROLLBACK("artifact_rollback"),
   ARTIFACT_CANCEL("artifact_cancel"),
   ARTIFACT_STATUS("artifact_status");

@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * Builds the per-agent installation ZIP (agent JAR + Windows installer).
+ * Builds the per-agent installation ZIP (agent JAR + target-OS installer).
  *
  * Identity: every agent gets its OWN secret, issued by the IDP backend
  * (`POST /api/agents/:id/credentials`, injected as `issueCredentials`). There
@@ -11,8 +11,8 @@
  *
  * Secret handling:
  *   - Maven builds the JAR WITHOUT any application.yml. The config (with the
- *     secret) is injected into the finished JAR in memory, so the secret never
- *     lands in a temporary file.
+ *     secret) is added to the finished ZIP in memory and installed next to the
+ *     JAR, so the secret never lands in a temporary build directory.
  *   - Credentials are requested only after the save dialog was confirmed and
  *     the JAR built successfully: a cancelled dialog or a failed build does not
  *     rotate (and so does not disconnect) an existing installation.
@@ -85,11 +85,11 @@ function parseProxy(raw) {
 }
 
 /**
- * Optional artifact-deploy root (`deploy.base-path`): every path the agent
+ * Required artifact-deploy root (`deploy.base-path`): every path the agent
  * writes during an artifact deploy stays inside it. Absolute Windows drive
  * path (`C:\inetpub\wwwroot\jetsrm`) or POSIX path (`/var/www/jetsrm`); no
- * UNC share, no drive/filesystem root, no `.`/`..` segments. Empty → `null`
- * (artifact deploy stays disabled on that agent).
+ * UNC share, no drive/filesystem root, no `.`/`..` segments. The parser
+ * returns null for an empty value; validateInput rejects it with context.
  * @returns {string | null}
  */
 function parseDeployBasePath(raw) {
@@ -135,12 +135,21 @@ function validateInput(input) {
   const workingDirectory = required(input.workingDirectory, 'Repository dizini');
   if (CONTROL_CHARS.test(workingDirectory)) throw new Error('Repository dizini kontrol karakteri içeremez.');
   const proxy = parseProxy(input.proxy);
+  // Older renderer builds expose the project root as `workingDirectory` and
+  // do not send `deployBasePath`. Treat that explicit user-entered path as the
+  // compatibility alias; an explicitly empty deployBasePath still fails.
+  const deployBasePath = parseDeployBasePath(
+    Object.prototype.hasOwnProperty.call(input, 'deployBasePath') ? input.deployBasePath : workingDirectory,
+  );
+  if (!deployBasePath) {
+    throw new Error('Deploy taban dizini zorunludur; agent proje kökündeki agent klasörüne kurulacaktır.');
+  }
   return {
     agentId,
     workingDirectory,
     proxy: proxy ? proxy.value : null,
     logLevel: LOG_LEVELS.includes(input.logLevel) ? input.logLevel : 'INFO',
-    deployBasePath: parseDeployBasePath(input.deployBasePath),
+    deployBasePath,
     keepReleases: parseKeepReleases(input.keepReleases),
   };
 }
@@ -214,15 +223,12 @@ function createConfig(value, credentials) {
     `  working-directory: ${yamlString(value.workingDirectory)}`,
     '',
   ];
-  // Artifact deploy is enabled on the agent only when a base path is given.
-  if (value.deployBasePath) {
-    lines.push(
-      'deploy:',
-      `  base-path: ${yamlString(value.deployBasePath)}`,
-      `  keep-releases: ${value.keepReleases || KEEP_RELEASES_DEFAULT}`,
-      '',
-    );
-  }
+  lines.push(
+    'deploy:',
+    `  base-path: ${yamlString(value.deployBasePath)}`,
+    `  keep-releases: ${value.keepReleases || KEEP_RELEASES_DEFAULT}`,
+    '',
+  );
   return lines.join('\n');
 }
 
@@ -238,16 +244,31 @@ function psQuote(value) {
   return `'${String(value).replace(/'/g, "''")}'`;
 }
 
+/** POSIX shell single-quoted literal. */
+function shQuote(value) {
+  return `'${String(value).replace(/'/g, `'"'"'`)}'`;
+}
+
+/** systemd double-quoted argument; `%` must be doubled to avoid specifier expansion. */
+function systemdQuote(value) {
+  return `"${String(value).replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/%/g, '%%')}"`;
+}
+
 /**
  * One-shot installer (.ps1). Must stay ASCII: Windows PowerShell 5.1 reads a
  * BOM-less script in the ANSI code page. Written for PowerShell 5.1.
  * @param {string} agentId
  * @param {string} jarFileName
  * @param {string} serverUrl - gateway ws:// / wss:// URL (reachability pre-check).
- * @param {{ proxy?: string | null }} [options]
+ * @param {{ proxy?: string | null, deployBasePath: string }} options
  */
-function createWindowsInstaller(agentId, jarFileName, serverUrl, options = {}) {
+function createWindowsInstaller(agentId, jarFileName, serverUrl, options) {
   if (!AGENT_ID.test(agentId)) throw new Error('Agent kimliği geçersiz.');
+  const deployBasePath = parseDeployBasePath(options && options.deployBasePath);
+  if (!deployBasePath) throw new Error('Windows agent kurulumu için deploy taban dizini zorunludur.');
+  if (!/^[A-Za-z]:[\\/]/.test(deployBasePath)) {
+    throw new Error('Windows agent kurulumu için C:\\ ile başlayan bir deploy taban dizini gereklidir.');
+  }
   const taskName = `IDP-Agent-${agentId}`;
   const gateway = gatewayEndpoint(serverUrl);
   const proxy = parseProxy(options.proxy);
@@ -268,11 +289,14 @@ if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administra
 }
 
 $taskName = ${psQuote(taskName)}
-$installDir = Join-Path $env:ProgramData ${psQuote(`IDP\\Agent\\${agentId}`)}
+$projectRoot = ${psQuote(deployBasePath)}
+$installDir = Join-Path $projectRoot 'agent'
 $targetJar = Join-Path $installDir 'idp-agent.jar'
+$configFile = Join-Path $installDir '${CONFIG_ENTRY}'
 $launcher = Join-Path $installDir 'run-agent.ps1'
 $logFile = Join-Path $installDir 'agent.log'
 $installLog = Join-Path $installDir 'install.log'
+$webConfig = Join-Path $installDir 'web.config'
 $transcriptStarted = $false
 $exitCode = 0
 
@@ -293,7 +317,51 @@ function Test-TcpEndpoint([string]$HostName, [int]$Port) {
 }
 
 try {
-  New-Item -ItemType Directory -Path $installDir -Force | Out-Null
+  if (Test-Path -LiteralPath $projectRoot) {
+    $projectRootItem = Get-Item -LiteralPath $projectRoot -Force
+    if (-not $projectRootItem.PSIsContainer) {
+      throw ('Proje kok yolu bir dizin degil: ' + $projectRoot)
+    }
+  } else {
+    New-Item -ItemType Directory -Path $projectRoot -Force | Out-Null
+    Write-Host ('Proje kok dizini olusturuldu: ' + $projectRoot) -ForegroundColor Green
+    $projectRootItem = Get-Item -LiteralPath $projectRoot -Force
+  }
+  if (($projectRootItem.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
+    throw ('Proje kok dizini reparse point olamaz: ' + $projectRoot)
+  }
+  if (Test-Path -LiteralPath $installDir) {
+    $installDirItem = Get-Item -LiteralPath $installDir -Force
+    if (-not $installDirItem.PSIsContainer) { throw ('Agent yolu bir dizin degil: ' + $installDir) }
+    if (($installDirItem.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
+      throw ('Agent dizini reparse point olamaz: ' + $installDir)
+    }
+  } else {
+    New-Item -ItemType Directory -Path $installDir | Out-Null
+  }
+
+  # Lock the directory before copying application.yml. It contains the agent
+  # secret and must never be briefly readable through inherited webroot ACLs.
+  & icacls.exe $installDir /setowner '*S-1-5-32-544' /T /C | Out-Null
+  if ($LASTEXITCODE -ne 0) { throw ('Agent dizini sahipligi korunamadi: ' + $installDir) }
+  & icacls.exe $installDir /inheritance:r /grant:r '*S-1-5-18:(OI)(CI)F' '*S-1-5-32-544:(OI)(CI)F' /T /C | Out-Null
+  if ($LASTEXITCODE -ne 0) { throw ('Agent dizini ACL korumasi uygulanamadi: ' + $installDir) }
+
+  $denyWeb = @'
+<?xml version="1.0" encoding="utf-8"?>
+<configuration>
+  <system.webServer>
+    <security>
+      <authorization>
+        <clear />
+        <add accessType="Deny" users="*" />
+      </authorization>
+    </security>
+  </system.webServer>
+</configuration>
+'@
+  Set-Content -LiteralPath $webConfig -Value $denyWeb -Encoding ASCII
+
   try {
     Start-Transcript -LiteralPath $installLog -Append | Out-Null
     $transcriptStarted = $true
@@ -303,6 +371,8 @@ try {
 
   $sourceJar = Join-Path $PSScriptRoot ${psQuote(jarFileName)}
   if (-not (Test-Path -LiteralPath $sourceJar)) { throw 'Agent JAR dosyasi kurulum betigiyle ayni klasorde olmali.' }
+  $sourceConfig = Join-Path $PSScriptRoot '${CONFIG_ENTRY}'
+  if (-not (Test-Path -LiteralPath $sourceConfig)) { throw '${CONFIG_ENTRY} kurulum betigiyle ayni klasorde olmali.' }
 
   # Java 17+ check. "java -version" writes to stderr; with 'Stop', PS 5.1 turns
   # redirected stderr lines into terminating errors, so relax it for this call.
@@ -345,16 +415,17 @@ ${proxyCheck}
   Start-Sleep -Seconds 1
 
   Copy-Item -LiteralPath $sourceJar -Destination $targetJar -Force
+  Copy-Item -LiteralPath $sourceConfig -Destination $configFile -Force
   if (Test-Path -LiteralPath $logFile) {
     Move-Item -LiteralPath $logFile -Destination ($logFile + '.previous') -Force -ErrorAction SilentlyContinue
   }
   # No JVM trust-store flags here: a launcher-level override would replace the
   # JDK default trust. The agent combines JDK and Windows trust internally.
   $launchContent = @'
-& '__IDP_JAVA__' -jar '__IDP_JAR__' *>> '__IDP_LOG__'
+& '__IDP_JAVA__' -jar '__IDP_JAR__' '--config=__IDP_CONFIG__' *>> '__IDP_LOG__'
 exit $LASTEXITCODE
 '@
-  $launchContent = $launchContent.Replace('__IDP_JAVA__', $java.Replace("'", "''")).Replace('__IDP_JAR__', $targetJar.Replace("'", "''")).Replace('__IDP_LOG__', $logFile.Replace("'", "''"))
+  $launchContent = $launchContent.Replace('__IDP_JAVA__', $java.Replace("'", "''")).Replace('__IDP_JAR__', $targetJar.Replace("'", "''")).Replace('__IDP_CONFIG__', $configFile.Replace("'", "''")).Replace('__IDP_LOG__', $logFile.Replace("'", "''"))
   Set-Content -LiteralPath $launcher -Value $launchContent -Encoding UTF8
   # WorkingDirectory: the agent writes logs\\ relative to its cwd; without it a SYSTEM task starts in System32.
   $action = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument ('-NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -File "' + $launcher + '"') -WorkingDirectory $installDir
@@ -366,6 +437,7 @@ exit $LASTEXITCODE
   Write-Host 'IDP Agent kuruldu ve arka planda baslatildi.' -ForegroundColor Green
   Write-Host ('Gorev: ' + $taskName)
   Write-Host ('Dizin: ' + $installDir)
+  Write-Host ('Config: ' + $configFile)
   Write-Host ('Log: ' + $logFile)
 
   # Connection hint only: not finding the line does not fail the installation.
@@ -402,6 +474,101 @@ exit $exitCode
 `;
   if (!/^[\t\n\r\x20-\x7e]*$/.test(script)) throw new Error('Kurulum betiği ASCII dışı karakter içeremez.');
   return script;
+}
+
+/**
+ * One-shot Linux installer. Installs the agent beside the deployed project at
+ * `<deploy.base-path>/agent` and runs it as a root-owned systemd service.
+ * @param {string} agentId
+ * @param {string} jarFileName
+ * @param {{ deployBasePath: string }} options
+ */
+function createLinuxInstaller(agentId, jarFileName, options) {
+  if (!AGENT_ID.test(agentId)) throw new Error('Agent kimliği geçersiz.');
+  const deployBasePath = parseDeployBasePath(options && options.deployBasePath);
+  if (!deployBasePath) throw new Error('Linux agent kurulumu için deploy taban dizini zorunludur.');
+  if (!deployBasePath.startsWith('/') || deployBasePath.startsWith('//')) {
+    throw new Error('Linux agent kurulumu için / ile başlayan bir deploy taban dizini gereklidir.');
+  }
+  const installDir = `${deployBasePath}/agent`;
+  const serviceName = `idp-agent-${agentId}`;
+  const targetJar = `${installDir}/idp-agent.jar`;
+  const configFile = `${installDir}/${CONFIG_ENTRY}`;
+  const launcher = `${installDir}/run-agent.sh`;
+  const logFile = `${installDir}/agent.log`;
+  const unitFile = `/etc/systemd/system/${serviceName}.service`;
+  return `#!/bin/sh
+set -eu
+
+if [ "$(id -u)" -ne 0 ]; then
+  echo "KURULUM BASARISIZ: root yetkisi gerekli; sudo ile calistirin." >&2
+  exit 1
+fi
+
+project_root=${shQuote(deployBasePath)}
+install_dir=${shQuote(installDir)}
+source_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+source_jar="$source_dir/${jarFileName}"
+source_config="$source_dir/${CONFIG_ENTRY}"
+target_jar=${shQuote(targetJar)}
+config_file=${shQuote(configFile)}
+launcher=${shQuote(launcher)}
+log_file=${shQuote(logFile)}
+unit_file=${shQuote(unitFile)}
+
+if [ -L "$project_root" ]; then
+  echo "KURULUM BASARISIZ: proje kok dizini sembolik bag olamaz: $project_root" >&2
+  exit 1
+fi
+if [ -e "$project_root" ] && [ ! -d "$project_root" ]; then
+  echo "KURULUM BASARISIZ: proje kok yolu bir dizin degil: $project_root" >&2
+  exit 1
+fi
+if [ ! -d "$project_root" ]; then
+  install -d -m 0755 "$project_root"
+  echo "Proje kok dizini olusturuldu: $project_root"
+fi
+if [ ! -f "$source_jar" ]; then echo "KURULUM BASARISIZ: Agent JAR dosyasi kurulum betigiyle ayni klasorde olmali." >&2; exit 1; fi
+if [ ! -f "$source_config" ]; then echo "KURULUM BASARISIZ: ${CONFIG_ENTRY} kurulum betigiyle ayni klasorde olmali." >&2; exit 1; fi
+if ! command -v java >/dev/null 2>&1; then echo "KURULUM BASARISIZ: Java 17+ bulunamadi." >&2; exit 1; fi
+if ! command -v systemctl >/dev/null 2>&1; then echo "KURULUM BASARISIZ: systemd/systemctl bulunamadi." >&2; exit 1; fi
+
+systemctl stop ${shQuote(serviceName)} 2>/dev/null || true
+install -d -m 0700 "$install_dir"
+install -m 0600 "$source_jar" "$target_jar"
+install -m 0600 "$source_config" "$config_file"
+touch "$log_file"
+chmod 0600 "$log_file"
+cat > "$launcher" <<'IDP_LAUNCHER'
+#!/bin/sh
+exec java -jar ${shQuote(targetJar)} --config=${shQuote(configFile)} >> ${shQuote(logFile)} 2>&1
+IDP_LAUNCHER
+chmod 0700 "$launcher"
+
+cat > "$unit_file" <<'IDP_UNIT'
+[Unit]
+Description=IDP deployment agent ${agentId}
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=${systemdQuote(installDir)}
+ExecStart=/bin/sh ${systemdQuote(launcher)}
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
+IDP_UNIT
+chmod 0600 "$unit_file"
+systemctl daemon-reload
+systemctl enable --now ${shQuote(serviceName)}
+echo "IDP Agent kuruldu: $install_dir"
+echo "Servis: ${serviceName}"
+echo "Log: $log_file"
+`;
 }
 
 function resolveMavenExecutable() {
@@ -450,18 +617,29 @@ async function buildTemplateJar(buildRoot) {
 }
 
 /**
- * Everything in memory: JAR + injected application.yml + installer → ZIP bytes.
+ * Everything in memory: config-less JAR + external application.yml + installer → ZIP bytes.
  * @returns {Buffer}
  */
 function packageAgent({ jarBuffer, value, credentials }) {
   const jar = new AdmZip(jarBuffer);
   if (jar.getEntry(CONFIG_ENTRY)) jar.deleteFile(CONFIG_ENTRY);
-  jar.addFile(CONFIG_ENTRY, Buffer.from(createConfig(value, credentials), 'utf8'));
+  const config = Buffer.from(createConfig(value, credentials), 'utf8');
   const jarFileName = `idp-agent-${value.agentId}.jar`;
-  const installerFileName = `install-idp-agent-${value.agentId}.ps1`;
   const zip = new AdmZip();
   zip.addFile(jarFileName, jar.toBuffer());
-  zip.addFile(installerFileName, Buffer.from(createWindowsInstaller(value.agentId, jarFileName, credentials.gatewayUrl, { proxy: value.proxy }), 'utf8'));
+  zip.addFile(CONFIG_ENTRY, config);
+  if (/^[A-Za-z]:[\\/]/.test(value.deployBasePath)) {
+    const installerFileName = `install-idp-agent-${value.agentId}.ps1`;
+    zip.addFile(installerFileName, Buffer.from(createWindowsInstaller(value.agentId, jarFileName, credentials.gatewayUrl, {
+      proxy: value.proxy,
+      deployBasePath: value.deployBasePath,
+    }), 'utf8'));
+  } else {
+    const installerFileName = `install-idp-agent-${value.agentId}.sh`;
+    zip.addFile(installerFileName, Buffer.from(createLinuxInstaller(value.agentId, jarFileName, {
+      deployBasePath: value.deployBasePath,
+    }), 'utf8'));
+  }
   return zip.toBuffer();
 }
 
@@ -526,6 +704,7 @@ module.exports = {
   validateCredentials,
   createConfig,
   createWindowsInstaller,
+  createLinuxInstaller,
   gatewayEndpoint,
   packageAgent,
   resolveMavenExecutable,

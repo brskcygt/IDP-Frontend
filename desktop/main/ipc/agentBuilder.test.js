@@ -37,7 +37,12 @@ const { APP_ORIGIN } = require('../remoteBackend');
 
 const SECRET = 'agt_remote_secret_value_123';
 const CF_SECRET = 'cf-remote-secret-456';
-const input = { agentId: 'WIN-PROD-01', workingDirectory: 'C:\\Apps\\PaymentApi', logLevel: 'INFO' };
+const input = {
+  agentId: 'WIN-PROD-01',
+  workingDirectory: 'C:\\Apps\\PaymentApi',
+  deployBasePath: 'C:\\inetpub\\wwwroot\\jetsrm',
+  logLevel: 'INFO',
+};
 const appEvent = { senderFrame: { origin: APP_ORIGIN } };
 
 const parseIpcError = (err) => JSON.parse(err.message);
@@ -81,8 +86,10 @@ test('remote: the renderer gets path/hash/gateway only — never the secret', as
     const serialized = JSON.stringify(result);
     assert.ok(!serialized.includes(SECRET) && !serialized.includes(CF_SECRET) && !serialized.includes('cf-id'));
     // ...while the ZIP does carry it.
-    const jar = new AdmZip(new AdmZip(result.filePath).readFile('idp-agent-WIN-PROD-01.jar'));
-    assert.match(jar.readAsText('application.yml'), new RegExp(`agent-secret: "${SECRET}"`));
+    const zip = new AdmZip(result.filePath);
+    const jar = new AdmZip(zip.readFile('idp-agent-WIN-PROD-01.jar'));
+    assert.equal(jar.getEntry('application.yml'), null);
+    assert.match(zip.readAsText('application.yml'), new RegExp(`agent-secret: "${SECRET}"`));
   } finally {
     await cleanup();
   }

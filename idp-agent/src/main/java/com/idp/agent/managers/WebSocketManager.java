@@ -28,6 +28,7 @@ import com.idp.agent.logging.AdvancedLogger;
 import com.idp.agent.utilities.SystemUtilities;
 import com.idp.agent.handlers.MessageHandlers.AgentUpdateMessageHandler;
 import com.idp.agent.handlers.MessageHandlers.ArtifactCancelMessageHandler;
+import com.idp.agent.handlers.MessageHandlers.ArtifactConfigApplyMessageHandler;
 import com.idp.agent.handlers.MessageHandlers.ArtifactDeployMessageHandler;
 import com.idp.agent.handlers.MessageHandlers.ArtifactRollbackMessageHandler;
 import com.idp.agent.handlers.MessageHandlers.ArtifactStatusMessageHandler;
@@ -98,6 +99,7 @@ public class WebSocketManager {
 		messageHandlers.put(MessageProcess.RUN_DEPLOY.getValue(), new RunDeployMessageHandler());
 		messageHandlers.put(MessageProcess.UPLOAD_LANGUAGES.getValue(), new UploadLanguagesMessageHandler());
 		messageHandlers.put(MessageProcess.ARTIFACT_DEPLOY.getValue(), new ArtifactDeployMessageHandler());
+		messageHandlers.put(MessageProcess.ARTIFACT_CONFIG_APPLY.getValue(), new ArtifactConfigApplyMessageHandler());
 		messageHandlers.put(MessageProcess.ARTIFACT_ROLLBACK.getValue(), new ArtifactRollbackMessageHandler());
 		messageHandlers.put(MessageProcess.ARTIFACT_CANCEL.getValue(), new ArtifactCancelMessageHandler());
 		messageHandlers.put(MessageProcess.ARTIFACT_STATUS.getValue(), new ArtifactStatusMessageHandler());

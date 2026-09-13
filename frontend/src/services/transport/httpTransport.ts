@@ -426,6 +426,18 @@ export function createHttpTransport(baseUrl: string = ''): Transport {
       return response.json();
     },
 
+    async applyConfig(id: string, input: { confirmation?: string } = {}) {
+      const response = await fetch(`${baseUrl}/api/targets/${encodeURIComponent(id)}/apply-config`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(input),
+      });
+      if (!response.ok) {
+        throw new Error(await readErrorMessage(response, 'Failed to apply target runtime config'));
+      }
+      return response.json();
+    },
+
     async deploy(
       targetId: string,
       input: { releaseId: string; components?: string[]; confirmation?: string },

@@ -69,6 +69,36 @@ public final class DeployPayloads {
 
 	public record HealthSpec(URI url, String expectVersionPath, int timeoutSec) {}
 
+	public enum RuntimeConfigFormat {
+		FRONTEND_CONFIG_JS("frontend-config-js", "config.js"),
+		ENV_FILE("env-file", ".env");
+
+		private final String wire;
+		private final String fileName;
+
+		RuntimeConfigFormat(String wire, String fileName) {
+			this.wire = wire;
+			this.fileName = fileName;
+		}
+
+		public String wire() { return wire; }
+		public String fileName() { return fileName; }
+
+		static RuntimeConfigFormat fromWire(String value) {
+			for (RuntimeConfigFormat format : values()) {
+				if (format.wire.equals(value)) return format;
+			}
+			return null;
+		}
+	}
+
+	public record RuntimeConfigSpec(RuntimeConfigFormat format, Map<String, String> values) {
+		@Override
+		public String toString() {
+			return "RuntimeConfigSpec[format=" + format.wire() + ", keys=" + values.keySet() + "]";
+		}
+	}
+
 	public record HookSpec(String name, String command, List<String> args, Map<String, String> env, int timeoutSec) {
 		@Override
 		public String toString() {
@@ -78,13 +108,22 @@ public final class DeployPayloads {
 	}
 
 	public record ComponentSpec(String name, String subdir, String version, DownloadSpec download,
-			RuntimeSpec runtime, List<String> preserve, HealthSpec health, Map<String, String> runtimeConfig,
+			RuntimeSpec runtime, List<String> preserve, HealthSpec health, RuntimeConfigSpec runtimeConfigSpec,
 			List<HookSpec> preStartHooks) {
+		/** Sözleşme 1.2 kullanan çağıranlar için değer görünümü. */
+		public Map<String, String> runtimeConfig() {
+			return runtimeConfigSpec == null ? null : runtimeConfigSpec.values();
+		}
+
+		public RuntimeConfigFormat runtimeConfigFormat() {
+			return runtimeConfigSpec == null ? null : runtimeConfigSpec.format();
+		}
+
 		@Override
 		public String toString() {
 			return "ComponentSpec[name=" + name + ", subdir=" + subdir + ", version=" + version
 				+ ", runtime=" + runtime + ", preserve=" + preserve.size()
-				+ ", runtimeConfigKeys=" + (runtimeConfig == null ? "null" : runtimeConfig.keySet())
+				+ ", runtimeConfig=" + runtimeConfigSpec
 				+ ", preStartHooks=" + preStartHooks.size() + ", download=" + download + "]";
 		}
 	}
@@ -93,6 +132,16 @@ public final class DeployPayloads {
 			List<ComponentSpec> components) {}
 
 	public record RollbackRequest(String deployId, List<String> components) {}
+
+	/**
+	 * {@code artifact_config_apply} bileşeni. Wire biçimi:
+	 * {@code {name, runtimeConfig:{format:"frontend-config-js"|"env-file", values:{KEY:"value"}}}}.
+	 * Dosya adı istemciden alınmaz; format sırasıyla {@code config.js} ve {@code .env} seçer.
+	 */
+	public record ConfigComponent(String name, RuntimeConfigSpec runtimeConfig) {}
+
+	/** Sonuç {@code artifact_config_result}, ara olaylar {@code artifact_config_event} kanalındadır. */
+	public record ConfigApplyRequest(String deployId, int timeoutSec, List<ConfigComponent> components) {}
 
 	// ------------------------------------------------------------------ yardımcı okuma
 
@@ -202,7 +251,8 @@ public final class DeployPayloads {
 		JsonObject healthObject = optionalObject(object, "health", path + ".health");
 		HealthSpec health = healthObject == null ? null : parseHealth(healthObject, path + ".health");
 		JsonObject configObject = optionalObject(object, "runtimeConfig", path + ".runtimeConfig");
-		Map<String, String> runtimeConfig = configObject == null ? null : parseRuntimeConfig(configObject, path + ".runtimeConfig");
+		RuntimeConfigSpec runtimeConfig = configObject == null ? null : parseRuntimeConfigSpec(configObject,
+			path + ".runtimeConfig", true);
 		JsonObject hooksObject = optionalObject(object, "hooks", path + ".hooks");
 		List<HookSpec> hooks = hooksObject == null ? List.of() : parseHooks(hooksObject, path + ".hooks");
 
@@ -311,27 +361,81 @@ public final class DeployPayloads {
 		return new HealthSpec(url, versionPath, timeoutSec);
 	}
 
-	private static Map<String, String> parseRuntimeConfig(JsonObject object, String path) throws DeployException {
+	private static RuntimeConfigSpec parseRuntimeConfigSpec(JsonObject object, String path, boolean legacyAllowed)
+			throws DeployException {
+		boolean structured = object.has("format") || object.has("values");
+		if (!structured) {
+			if (!legacyAllowed) {
+				throw DeployException.invalidPayload(path + " format ve values icermeli");
+			}
+			return new RuntimeConfigSpec(RuntimeConfigFormat.FRONTEND_CONFIG_JS,
+				parseRuntimeConfigValues(object, path, RuntimeConfigFormat.FRONTEND_CONFIG_JS));
+		}
+		if (object.size() != 2 || !object.has("format") || !object.has("values")) {
+			throw DeployException.invalidPayload(path + " yalniz format ve values icermeli");
+		}
+		String formatText = requiredString(object, "format", path + ".format");
+		RuntimeConfigFormat format = RuntimeConfigFormat.fromWire(formatText);
+		if (format == null) {
+			throw DeployException.invalidPayload(path + ".format bilinmiyor (frontend-config-js|env-file)");
+		}
+		JsonObject values = requiredObject(object, "values", path + ".values");
+		return new RuntimeConfigSpec(format, parseRuntimeConfigValues(values, path + ".values", format));
+	}
+
+	private static Map<String, String> parseRuntimeConfigValues(JsonObject object, String path,
+			RuntimeConfigFormat format) throws DeployException {
 		if (object.size() > MAX_CONFIG_KEYS) {
 			throw DeployException.invalidPayload(path + " en fazla " + MAX_CONFIG_KEYS + " anahtar olabilir");
 		}
 		Map<String, String> result = new LinkedHashMap<>();
 		for (Map.Entry<String, JsonElement> entry : object.entrySet()) {
 			String key = entry.getKey();
-			if (!CONFIG_KEY.matcher(key).matches()) {
-				throw DeployException.invalidPayload(path + " anahtari gecersiz (^[A-Z][A-Z0-9_]*$): "
+			Pattern keyPattern = format == RuntimeConfigFormat.ENV_FILE ? ENV_KEY : CONFIG_KEY;
+			if (!keyPattern.matcher(key).matches()) {
+				throw DeployException.invalidPayload(path + " anahtari gecersiz: "
 					+ SafeNames.printable(key, 64));
 			}
 			if (!isString(entry.getValue())) {
 				throw DeployException.invalidPayload(path + "." + key + " metin olmali");
 			}
 			String value = entry.getValue().getAsString();
-			if (value.length() > MAX_VALUE_LENGTH) {
+			if (value.length() > MAX_VALUE_LENGTH || (format == RuntimeConfigFormat.ENV_FILE && value.indexOf('\0') >= 0)) {
 				throw DeployException.invalidPayload(path + "." + key + " cok uzun");
 			}
 			result.put(key, value);
 		}
 		return Collections.unmodifiableMap(result);
+	}
+
+	// ------------------------------------------------------------------ artifact_config_apply
+
+	public static ConfigApplyRequest parseConfigApply(Object payload) throws DeployException {
+		JsonObject root = root(payload);
+		String deployId = id(root, "deployId");
+		int timeoutSec = integer(root, "timeoutSec", "timeoutSec", 1, 86_400, DEFAULT_TIMEOUT_SEC);
+		JsonArray array = requiredArray(root, "components", "components");
+		if (array.isEmpty() || array.size() > MAX_COMPONENTS) {
+			throw DeployException.invalidPayload("components 1-" + MAX_COMPONENTS + " eleman olmali");
+		}
+		List<ConfigComponent> components = new ArrayList<>();
+		Set<String> names = new HashSet<>();
+		for (int i = 0; i < array.size(); i++) {
+			String path = "components[" + i + "]";
+			JsonElement element = array.get(i);
+			if (element == null || !element.isJsonObject()) {
+				throw DeployException.invalidPayload(path + " nesne olmali");
+			}
+			JsonObject component = element.getAsJsonObject();
+			String name = requiredString(component, "name", path + ".name");
+			if (!COMPONENT.matcher(name).matches() || !names.add(name)) {
+				throw DeployException.invalidPayload(path + ".name gecersiz ya da tekrar ediyor");
+			}
+			RuntimeConfigSpec config = parseRuntimeConfigSpec(
+				requiredObject(component, "runtimeConfig", path + ".runtimeConfig"), path + ".runtimeConfig", false);
+			components.add(new ConfigComponent(name, config));
+		}
+		return new ConfigApplyRequest(deployId, timeoutSec, Collections.unmodifiableList(components));
 	}
 
 	private static List<HookSpec> parseHooks(JsonObject object, String path) throws DeployException {

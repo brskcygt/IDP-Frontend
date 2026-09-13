@@ -271,6 +271,7 @@ export const ipcTransport: Transport = {
     async updateTarget() { throw new Error('Artifact deploy yalnızca uzak backend modunda kullanılabilir.'); },
     async deleteTarget() { throw new Error('Artifact deploy yalnızca uzak backend modunda kullanılabilir.'); },
     async refreshTarget() { throw new Error('Artifact deploy yalnızca uzak backend modunda kullanılabilir.'); },
+    async applyConfig() { throw new Error('Artifact config yalnızca uzak backend modunda uygulanabilir.'); },
     async deploy() { throw new Error('Artifact deploy yalnızca uzak backend modunda kullanılabilir.'); },
     async rollback() { throw new Error('Artifact deploy yalnızca uzak backend modunda kullanılabilir.'); },
     async events() { throw new Error('Artifact deploy yalnızca uzak backend modunda kullanılabilir.'); },
