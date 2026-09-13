@@ -36,6 +36,8 @@ const LOG_LEVELS = ['TRACE', 'DEBUG', 'INFO', 'WARN', 'ERROR'];
 const CONTROL_CHARS = /[\u0000-\u001f\u007f-\u009f\u2028\u2029]/;
 const PROXY = /^(\[[0-9A-Fa-f:.]+\]|[A-Za-z0-9](?:[A-Za-z0-9.-]{0,251}[A-Za-z0-9])?):(\d{1,5})$/;
 const CONFIG_ENTRY = 'application.yml';
+const KEEP_RELEASES_DEFAULT = 3;
+const KEEP_RELEASES_MAX = 20;
 
 function required(value, label, max = 2048) {
   const normalized = String(value || '').trim();
@@ -83,6 +85,43 @@ function parseProxy(raw) {
 }
 
 /**
+ * Optional artifact-deploy root (`deploy.base-path`): every path the agent
+ * writes during an artifact deploy stays inside it. Absolute Windows drive
+ * path (`C:\inetpub\wwwroot\jetsrm`) or POSIX path (`/var/www/jetsrm`); no
+ * UNC share, no drive/filesystem root, no `.`/`..` segments. Empty → `null`
+ * (artifact deploy stays disabled on that agent).
+ * @returns {string | null}
+ */
+function parseDeployBasePath(raw) {
+  const value = String(raw ?? '').trim();
+  if (!value) return null;
+  if (value.length > 260) throw new Error('Deploy taban dizini en fazla 260 karakter olabilir.');
+  if (CONTROL_CHARS.test(value)) throw new Error('Deploy taban dizini kontrol karakteri içeremez.');
+  if (/["*?<>|]/.test(value)) throw new Error('Deploy taban dizini geçersiz karakter içeriyor.');
+  const windows = /^[A-Za-z]:[\\/]/.test(value);
+  const posix = value.startsWith('/') && !value.startsWith('//');
+  if (!windows && !posix) {
+    throw new Error('Deploy taban dizini mutlak bir yol olmalıdır (ör. C:\\inetpub\\wwwroot\\jetsrm veya /var/www/jetsrm); UNC paylaşımı desteklenmez.');
+  }
+  const rest = value.slice(windows ? 3 : 1);
+  if (rest.includes(':')) throw new Error("Deploy taban dizini ':' içeremez.");
+  const segments = rest.split(/[\\/]/).filter(Boolean);
+  if (segments.some((segment) => segment === '.' || segment === '..')) throw new Error("Deploy taban dizini '.' veya '..' içeremez.");
+  if (segments.length === 0) throw new Error('Deploy taban dizini sürücü/dosya sistemi kökü olamaz.');
+  return value.replace(/[\\/]+$/, '');
+}
+
+/** `deploy.keep-releases`: integer 1-20, default 3. */
+function parseKeepReleases(raw) {
+  if (raw === undefined || raw === null || String(raw).trim() === '') return KEEP_RELEASES_DEFAULT;
+  const count = typeof raw === 'number' ? raw : Number(String(raw).trim());
+  if (!Number.isInteger(count) || count < 1 || count > KEEP_RELEASES_MAX) {
+    throw new Error(`Saklanacak önceki sürüm sayısı 1-${KEEP_RELEASES_MAX} arasında tam sayı olmalıdır.`);
+  }
+  return count;
+}
+
+/**
  * Renderer input. Only these fields are read: a renderer that still sends the
  * old `serverUrl` / `gatewayToken` has them ignored — the gateway address and
  * the secret come from the backend now.
@@ -101,6 +140,8 @@ function validateInput(input) {
     workingDirectory,
     proxy: proxy ? proxy.value : null,
     logLevel: LOG_LEVELS.includes(input.logLevel) ? input.logLevel : 'INFO',
+    deployBasePath: parseDeployBasePath(input.deployBasePath),
+    keepReleases: parseKeepReleases(input.keepReleases),
   };
 }
 
@@ -157,7 +198,7 @@ function createConfig(value, credentials) {
     );
   }
   if (value.proxy) server.push(`  proxy: ${yamlString(value.proxy)}`);
-  return [
+  const lines = [
     'server:',
     ...server,
     '',
@@ -172,7 +213,17 @@ function createConfig(value, credentials) {
     'application:',
     `  working-directory: ${yamlString(value.workingDirectory)}`,
     '',
-  ].join('\n');
+  ];
+  // Artifact deploy is enabled on the agent only when a base path is given.
+  if (value.deployBasePath) {
+    lines.push(
+      'deploy:',
+      `  base-path: ${yamlString(value.deployBasePath)}`,
+      `  keep-releases: ${value.keepReleases || KEEP_RELEASES_DEFAULT}`,
+      '',
+    );
+  }
+  return lines.join('\n');
 }
 
 /** Host + TCP port the agent dials: wss → 443, ws → explicit port or 80. */
@@ -305,7 +356,8 @@ exit $LASTEXITCODE
 '@
   $launchContent = $launchContent.Replace('__IDP_JAVA__', $java.Replace("'", "''")).Replace('__IDP_JAR__', $targetJar.Replace("'", "''")).Replace('__IDP_LOG__', $logFile.Replace("'", "''"))
   Set-Content -LiteralPath $launcher -Value $launchContent -Encoding UTF8
-  $action = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument ('-NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -File "' + $launcher + '"')
+  # WorkingDirectory: the agent writes logs\\ relative to its cwd; without it a SYSTEM task starts in System32.
+  $action = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument ('-NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -File "' + $launcher + '"') -WorkingDirectory $installDir
   $trigger = New-ScheduledTaskTrigger -AtStartup
   $settings = New-ScheduledTaskSettingsSet -StartWhenAvailable -RestartCount 999 -RestartInterval (New-TimeSpan -Minutes 1) -ExecutionTimeLimit ([TimeSpan]::Zero)
   $taskPrincipal = New-ScheduledTaskPrincipal -UserId 'SYSTEM' -LogonType ServiceAccount -RunLevel Highest

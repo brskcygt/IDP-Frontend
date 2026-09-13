@@ -260,6 +260,22 @@ export const ipcTransport: Transport = {
     },
   },
 
+  artifacts: {
+    async listReleases() { throw new Error('Artifact deploy yalnızca uzak backend modunda kullanılabilir.'); },
+    async getRelease() { throw new Error('Artifact deploy yalnızca uzak backend modunda kullanılabilir.'); },
+    async createRelease() { throw new Error('Artifact deploy yalnızca uzak backend modunda kullanılabilir.'); },
+    async importRelease() { throw new Error('Artifact deploy yalnızca uzak backend modunda kullanılabilir.'); },
+    async deleteRelease() { throw new Error('Artifact deploy yalnızca uzak backend modunda kullanılabilir.'); },
+    async listTargets() { throw new Error('Artifact deploy yalnızca uzak backend modunda kullanılabilir.'); },
+    async createTarget() { throw new Error('Artifact deploy yalnızca uzak backend modunda kullanılabilir.'); },
+    async updateTarget() { throw new Error('Artifact deploy yalnızca uzak backend modunda kullanılabilir.'); },
+    async deleteTarget() { throw new Error('Artifact deploy yalnızca uzak backend modunda kullanılabilir.'); },
+    async refreshTarget() { throw new Error('Artifact deploy yalnızca uzak backend modunda kullanılabilir.'); },
+    async deploy() { throw new Error('Artifact deploy yalnızca uzak backend modunda kullanılabilir.'); },
+    async rollback() { throw new Error('Artifact deploy yalnızca uzak backend modunda kullanılabilir.'); },
+    async events() { throw new Error('Artifact deploy yalnızca uzak backend modunda kullanılabilir.'); },
+  },
+
   vpn: {
     async sessions(): Promise<VpnSession[]> {
       return call(bridge().vpn.sessions());

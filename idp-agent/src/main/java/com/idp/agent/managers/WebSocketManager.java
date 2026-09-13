@@ -1,6 +1,7 @@
 package com.idp.agent.managers;
 
 import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import com.google.gson.JsonParseException;
 
 import org.java_websocket.client.WebSocketClient;
@@ -26,6 +27,10 @@ import com.idp.agent.enums.OperatingSystem;
 import com.idp.agent.logging.AdvancedLogger;
 import com.idp.agent.utilities.SystemUtilities;
 import com.idp.agent.handlers.MessageHandlers.AgentUpdateMessageHandler;
+import com.idp.agent.handlers.MessageHandlers.ArtifactCancelMessageHandler;
+import com.idp.agent.handlers.MessageHandlers.ArtifactDeployMessageHandler;
+import com.idp.agent.handlers.MessageHandlers.ArtifactRollbackMessageHandler;
+import com.idp.agent.handlers.MessageHandlers.ArtifactStatusMessageHandler;
 import com.idp.agent.handlers.MessageHandlers.GetAppConfigMessageHandler;
 import com.idp.agent.handlers.MessageHandlers.GetAppLogsMessageHandler;
 import com.idp.agent.handlers.MessageHandlers.HandshakeAckMessageHandler;
@@ -55,6 +60,7 @@ public class WebSocketManager {
 	private final SystemUtilities systemUtilities = SystemUtilities.getInstance();
 
 	private final Gson gson = new Gson();
+	private final Gson gsonWithNulls = new GsonBuilder().serializeNulls().create();
 
 	private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor(r -> {
 		Thread t = new Thread(r, "ws-manager");
@@ -91,6 +97,10 @@ public class WebSocketManager {
 		messageHandlers.put(MessageProcess.UPDATE_AGENT.getValue(), new AgentUpdateMessageHandler());
 		messageHandlers.put(MessageProcess.RUN_DEPLOY.getValue(), new RunDeployMessageHandler());
 		messageHandlers.put(MessageProcess.UPLOAD_LANGUAGES.getValue(), new UploadLanguagesMessageHandler());
+		messageHandlers.put(MessageProcess.ARTIFACT_DEPLOY.getValue(), new ArtifactDeployMessageHandler());
+		messageHandlers.put(MessageProcess.ARTIFACT_ROLLBACK.getValue(), new ArtifactRollbackMessageHandler());
+		messageHandlers.put(MessageProcess.ARTIFACT_CANCEL.getValue(), new ArtifactCancelMessageHandler());
+		messageHandlers.put(MessageProcess.ARTIFACT_STATUS.getValue(), new ArtifactStatusMessageHandler());
 	}
 
 	// Singleton getter
@@ -300,6 +310,19 @@ public class WebSocketManager {
 	}
 
 	public void sendMessage(String process, Map<String, ?> payload) {
+		send(process, payload, gson);
+	}
+
+	/**
+	 * Artifact deploy mesajları (deploy_event, deploy_result, artifact_status_result): sözleşmedeki
+	 * {@code "component": null}, {@code "error": null} gibi alanlar düşürülmeden yazılır. Eski mesajlar
+	 * {@link #sendMessage} ile değişmeden gider.
+	 */
+	public void sendMessagePreservingNulls(String process, Map<String, ?> payload) {
+		send(process, payload, gsonWithNulls);
+	}
+
+	private void send(String process, Map<String, ?> payload, Gson serializer) {
 		WebSocketClient client = wsClient;
 		if (client == null || !client.isOpen()) {
 			log.warn("Gateway bağlantısı yok; '" + process + "' mesajı gönderilemedi.");
@@ -315,7 +338,7 @@ public class WebSocketManager {
 		);
 
 		try {
-			client.send(gson.toJson(sendMessage));
+			client.send(serializer.toJson(sendMessage));
 		} catch (WebsocketNotConnectedException ex) {
 			log.warn("Gateway bağlantısı koptu; '" + process + "' mesajı gönderilemedi.");
 		}

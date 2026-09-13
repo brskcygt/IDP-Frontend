@@ -31,6 +31,14 @@ import type {
   ConnectionTestResult,
   RunnerAgent,
   RunnerEnrollment,
+  ArtifactRelease,
+  ArtifactReleaseDetails,
+  ArtifactBuildRunResult,
+  DeployTarget,
+  DeployTargetInput,
+  UpdateDeployTargetInput,
+  ArtifactDeployRunResult,
+  ArtifactEventsResult,
 } from './types';
 
 const JSON_HEADERS = { 'Content-Type': 'application/json' };
@@ -317,6 +325,143 @@ export function createHttpTransport(baseUrl: string = ''): Transport {
       return () => {
         eventSource.close();
       };
+    },
+  },
+
+  artifacts: {
+    async listReleases(projectId: string): Promise<ArtifactRelease[]> {
+      const response = await fetch(`${baseUrl}/api/projects/${encodeURIComponent(projectId)}/releases`);
+      if (!response.ok) {
+        throw new Error(await readErrorMessage(response, 'Failed to fetch artifact releases'));
+      }
+      return response.json();
+    },
+
+    async getRelease(id: string): Promise<ArtifactReleaseDetails> {
+      const response = await fetch(`${baseUrl}/api/releases/${encodeURIComponent(id)}`);
+      if (!response.ok) {
+        throw new Error(await readErrorMessage(response, 'Failed to fetch artifact release'));
+      }
+      return response.json();
+    },
+
+    async createRelease(
+      projectId: string,
+      input: { version: string; ref?: string },
+    ): Promise<ArtifactBuildRunResult> {
+      const response = await fetch(`${baseUrl}/api/projects/${encodeURIComponent(projectId)}/releases`, {
+        method: 'POST',
+        headers: JSON_HEADERS,
+        body: JSON.stringify(input),
+      });
+      if (!response.ok) {
+        throw new Error(await readErrorMessage(response, 'Failed to create artifact release'));
+      }
+      return response.json();
+    },
+
+    async importRelease(projectId: string, version: string): Promise<ArtifactReleaseDetails> {
+      const response = await fetch(`${baseUrl}/api/projects/${encodeURIComponent(projectId)}/releases/import`, {
+        method: 'POST',
+        headers: JSON_HEADERS,
+        body: JSON.stringify({ version }),
+      });
+      if (!response.ok) {
+        throw new Error(await readErrorMessage(response, 'Failed to import artifact release'));
+      }
+      return response.json();
+    },
+
+    async deleteRelease(id: string): Promise<void> {
+      const response = await fetch(`${baseUrl}/api/releases/${encodeURIComponent(id)}`, { method: 'DELETE' });
+      if (!response.ok) {
+        throw new Error(await readErrorMessage(response, 'Failed to delete artifact release'));
+      }
+    },
+
+    async listTargets(projectId: string): Promise<DeployTarget[]> {
+      const response = await fetch(`${baseUrl}/api/projects/${encodeURIComponent(projectId)}/targets`);
+      if (!response.ok) {
+        throw new Error(await readErrorMessage(response, 'Failed to fetch deploy targets'));
+      }
+      return response.json();
+    },
+
+    async createTarget(projectId: string, input: DeployTargetInput): Promise<DeployTarget> {
+      const response = await fetch(`${baseUrl}/api/projects/${encodeURIComponent(projectId)}/targets`, {
+        method: 'POST',
+        headers: JSON_HEADERS,
+        body: JSON.stringify(input),
+      });
+      if (!response.ok) {
+        throw new Error(await readErrorMessage(response, 'Failed to create deploy target'));
+      }
+      return response.json();
+    },
+
+    async updateTarget(id: string, input: UpdateDeployTargetInput): Promise<DeployTarget> {
+      const response = await fetch(`${baseUrl}/api/targets/${encodeURIComponent(id)}`, {
+        method: 'PUT',
+        headers: JSON_HEADERS,
+        body: JSON.stringify(input),
+      });
+      if (!response.ok) {
+        throw new Error(await readErrorMessage(response, 'Failed to update deploy target'));
+      }
+      return response.json();
+    },
+
+    async deleteTarget(id: string): Promise<void> {
+      const response = await fetch(`${baseUrl}/api/targets/${encodeURIComponent(id)}`, { method: 'DELETE' });
+      if (!response.ok) {
+        throw new Error(await readErrorMessage(response, 'Failed to delete deploy target'));
+      }
+    },
+
+    async refreshTarget(id: string): Promise<DeployTarget> {
+      const response = await fetch(`${baseUrl}/api/targets/${encodeURIComponent(id)}/refresh-status`, { method: 'POST' });
+      if (!response.ok) {
+        throw new Error(await readErrorMessage(response, 'Failed to refresh deploy target status'));
+      }
+      return response.json();
+    },
+
+    async deploy(
+      targetId: string,
+      input: { releaseId: string; components?: string[]; confirmation?: string },
+    ): Promise<ArtifactDeployRunResult> {
+      const response = await fetch(`${baseUrl}/api/targets/${encodeURIComponent(targetId)}/deploy`, {
+        method: 'POST',
+        headers: JSON_HEADERS,
+        body: JSON.stringify(input),
+      });
+      if (!response.ok) {
+        throw new Error(await readErrorMessage(response, 'Failed to deploy artifact release'));
+      }
+      return response.json();
+    },
+
+    async rollback(
+      targetId: string,
+      input: { components?: string[]; confirmation?: string },
+    ): Promise<ArtifactDeployRunResult> {
+      const response = await fetch(`${baseUrl}/api/targets/${encodeURIComponent(targetId)}/rollback`, {
+        method: 'POST',
+        headers: JSON_HEADERS,
+        body: JSON.stringify(input),
+      });
+      if (!response.ok) {
+        throw new Error(await readErrorMessage(response, 'Failed to roll back artifact target'));
+      }
+      return response.json();
+    },
+
+    async events(deploymentId: string): Promise<ArtifactEventsResult> {
+      const response = await fetch(`${baseUrl}/api/deployments/${encodeURIComponent(deploymentId)}/events`);
+      if (!response.ok) {
+        throw new Error(await readErrorMessage(response, 'Failed to fetch artifact deployment events'));
+      }
+      return response.json();
     },
   },
 

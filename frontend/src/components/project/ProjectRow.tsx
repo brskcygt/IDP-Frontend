@@ -38,9 +38,11 @@ export const ProjectRow = ({
   // UI from offering a button that is guaranteed to fail.
   const canDeploy = can(session?.role, 'deploy:trigger');
   const canAbort = can(session?.role, 'deploy:abort');
+  const canView = can(session?.role, 'project:read');
 
   const isDeploying = project.status === "Deploying";
   const hasFailed = project.status === "Failed";
+  const isArtifactProject = Boolean(project.config?.artifactDeploy);
 
   return (
     <div
@@ -103,6 +105,14 @@ export const ProjectRow = ({
           >
             <Square className="h-3 w-3" aria-hidden="true" />
             Abort
+          </button>
+        ) : isArtifactProject && canView ? (
+          <button
+            type="button"
+            onClick={() => onDeploy(project)}
+            className={cn(ACTION_CLASS, "border border-line-strong hover:bg-accent")}
+          >
+            Releases
           </button>
         ) : !isDeploying && hasFailed && canDeploy ? (
           <button

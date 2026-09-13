@@ -14,7 +14,14 @@
  * (see `backend/src/server.js` and `backend/src/routes/deploy.js`) so the
  * HTTP implementation is a near-literal translation of this interface.
  */
-import type { ProjectConfig, PmpConfig } from '../../types/project';
+import type {
+  ArtifactHealthConfig,
+  ArtifactOs,
+  ArtifactRuntimeConfig,
+  ArtifactSourcePlatform,
+  ProjectConfig,
+  PmpConfig,
+} from '../../types/project';
 
 // --- Auth --------------------------------------------------------------
 
@@ -251,6 +258,140 @@ export interface PmpTestConnectionResult {
   error?: string;
 }
 
+// --- Artifact deploy ------------------------------------------------------
+
+export type ArtifactReleaseStatus = 'building' | 'ready' | 'failed';
+export type DeployTargetOs = 'windows' | 'linux';
+export type DeployTargetEnvironment = 'Dev' | 'Stage' | 'Prod';
+
+export interface ArtifactManifestEntry {
+  component: string;
+  os: ArtifactOs;
+  file: string;
+  sha256: string;
+  size: number;
+}
+
+export interface ArtifactManifest {
+  schema: 1;
+  project: string;
+  version: string;
+  commit: string | null;
+  createdAt: string | null;
+  artifacts: ArtifactManifestEntry[];
+}
+
+export interface ArtifactSourceIdentity {
+  platform: ArtifactSourcePlatform;
+  owner: string;
+  repo: string;
+  baseUrl: string;
+}
+
+export interface ArtifactRelease {
+  id: string;
+  projectId: string;
+  version: string;
+  commitSha: string | null;
+  sourcePlatform: ArtifactSourcePlatform | null;
+  sourceIdentity: ArtifactSourceIdentity | null;
+  status: ArtifactReleaseStatus;
+  manifest: ArtifactManifest | null;
+  buildDeploymentId: string | null;
+  error: string | null;
+  createdBy: string | null;
+  createdAt: string | null;
+  updatedAt: string | null;
+}
+
+export interface ReleaseArtifact {
+  id: string;
+  releaseId: string;
+  component: string;
+  os: ArtifactOs;
+  fileName: string;
+  sourceRef: string | null;
+  sha256: string;
+  size: number;
+}
+
+export interface ArtifactReleaseDetails extends ArtifactRelease {
+  artifacts: ReleaseArtifact[];
+}
+
+export interface TargetComponentOverride {
+  name: string;
+  runtime?: ArtifactRuntimeConfig;
+  health?: ArtifactHealthConfig | null;
+}
+
+export interface DeployedComponentVersion {
+  version: string | null;
+  deployedAt: string | null;
+  previousVersions: string[];
+}
+
+export interface DeployTarget {
+  id: string;
+  projectId: string;
+  name: string;
+  agentId: string;
+  os: DeployTargetOs;
+  environment: DeployTargetEnvironment | null;
+  basePath: string | null;
+  components: TargetComponentOverride[] | null;
+  runtimeConfig: Record<string, string> | null;
+  currentReleaseId: string | null;
+  currentVersions: Record<string, DeployedComponentVersion> | null;
+  createdAt: string | null;
+  updatedAt: string | null;
+}
+
+export interface DeployTargetInput {
+  name: string;
+  agentId: string;
+  os: DeployTargetOs;
+  environment?: DeployTargetEnvironment | null;
+  basePath?: string | null;
+  components?: TargetComponentOverride[] | null;
+  runtimeConfig?: Record<string, string> | null;
+}
+
+export type UpdateDeployTargetInput = Partial<DeployTargetInput>;
+
+/** Fields shared by every artifact operation that starts a DeploymentManager session. */
+export interface ArtifactRunResult {
+  deploymentId: string;
+  sseUrl: string;
+}
+
+/** Build response: the build has no agent deploy id or stage-events endpoint. */
+export interface ArtifactBuildRunResult extends ArtifactRunResult {
+  release: ArtifactRelease;
+}
+
+/** Agent deploy/rollback response. */
+export interface ArtifactDeployRunResult extends ArtifactRunResult {
+  deployId: string;
+  eventsUrl: string;
+}
+
+export interface ArtifactDeployEvent {
+  id: number;
+  deploymentId: string;
+  ts: string;
+  component: string | null;
+  stage: string | null;
+  status: string | null;
+  progress: number | null;
+  message: string | null;
+}
+
+export interface ArtifactEventsResult {
+  deploymentId: string;
+  events: ArtifactDeployEvent[];
+}
+
 // --- Transport ---------------------------------------------------------
 
 export interface Transport {
@@ -282,6 +423,21 @@ export interface Transport {
      * tears down the underlying connection.
      */
     subscribeLogs(deploymentId: string, handlers: DeployLogSubscriptionHandlers): () => void;
+  };
+  artifacts: {
+    listReleases(projectId: string): Promise<ArtifactRelease[]>;
+    getRelease(id: string): Promise<ArtifactReleaseDetails>;
+    createRelease(projectId: string, input: { version: string; ref?: string }): Promise<ArtifactBuildRunResult>;
+    importRelease(projectId: string, version: string): Promise<ArtifactReleaseDetails>;
+    deleteRelease(id: string): Promise<void>;
+    listTargets(projectId: string): Promise<DeployTarget[]>;
+    createTarget(projectId: string, input: DeployTargetInput): Promise<DeployTarget>;
+    updateTarget(id: string, input: UpdateDeployTargetInput): Promise<DeployTarget>;
+    deleteTarget(id: string): Promise<void>;
+    refreshTarget(id: string): Promise<DeployTarget>;
+    deploy(targetId: string, input: { releaseId: string; components?: string[]; confirmation?: string }): Promise<ArtifactDeployRunResult>;
+    rollback(targetId: string, input: { components?: string[]; confirmation?: string }): Promise<ArtifactDeployRunResult>;
+    events(deploymentId: string): Promise<ArtifactEventsResult>;
   };
   vpn: {
     sessions(): Promise<VpnSession[]>;

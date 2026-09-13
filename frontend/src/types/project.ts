@@ -70,6 +70,62 @@ export interface CiConfig {
   correlationInput?: string;
 }
 
+export type ArtifactSourcePlatform = 'bitbucket' | 'github';
+export type ArtifactSourceAuthType = 'bearer' | 'basic';
+export type ArtifactBuildProvider = 'pipeline' | 'jenkins' | 'none';
+export type ArtifactOs = 'any' | 'win-x64' | 'linux-x64';
+export type ArtifactRuntimeType = 'nssm' | 'windows-service' | 'iis-static' | 'systemd' | 'none';
+
+export interface ArtifactRuntimeConfig {
+  type: ArtifactRuntimeType;
+  serviceName?: string | null;
+  appPool?: string | null;
+}
+
+export interface ArtifactHealthConfig {
+  url: string;
+  expectVersionPath?: string | null;
+  timeoutSec?: number;
+}
+
+export interface ArtifactPreStartHook {
+  name: string;
+  command: string;
+  args?: string[];
+  env?: Record<string, string>;
+  timeoutSec?: number;
+}
+
+export interface ArtifactComponentConfig {
+  name: string;
+  subdir: string;
+  os?: ArtifactOs | null;
+  runtime: ArtifactRuntimeConfig;
+  preserve?: string[];
+  health?: ArtifactHealthConfig | null;
+  writeRuntimeConfig?: boolean;
+  hooks?: { preStart: ArtifactPreStartHook[] } | null;
+}
+
+export interface ArtifactDeployConfig {
+  source?: {
+    platform?: ArtifactSourcePlatform;
+    owner?: string;
+    repo?: string;
+    baseUrl?: string;
+    authType?: ArtifactSourceAuthType;
+    username?: string;
+    /** Write-only. An empty value preserves the stored token unless source identity changed. */
+    token?: string;
+    /** True when the backend already has a dedicated artifact source token. */
+    hasToken?: boolean;
+  };
+  build?: { provider?: ArtifactBuildProvider };
+  versionVariable?: string;
+  artifactName?: string;
+  components?: ArtifactComponentConfig[];
+}
+
 export type MfaType = 'none' | 'push' | 'totp';
 
 /**
@@ -277,6 +333,9 @@ export interface ProjectConfig {
   // CI Pipeline provider — also reuses `username` (Atlassian email, Bitbucket
   // basic auth) and `apiToken`/`hasApiToken` (the CI token) from above.
   ciConfig?: CiConfig;
+
+  // Versioned artifact build/import and agent-based target deployment.
+  artifactDeploy?: ArtifactDeployConfig;
 
   // VPN & Gateway
   vpnEnabled?: boolean;

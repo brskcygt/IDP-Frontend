@@ -82,8 +82,10 @@ test('yamlString escapes controls and YAML 1.1 line breaks; output is JSON-compa
 
 test('validateInput: contract ID format, optional proxy, legacy token/serverUrl ignored', () => {
   const ok = validateInput({ ...baseInput, gatewayToken: 'legacy', serverUrl: 'ws://legacy' });
-  assert.deepEqual(Object.keys(ok).sort(), ['agentId', 'logLevel', 'proxy', 'workingDirectory']);
+  assert.deepEqual(Object.keys(ok).sort(), ['agentId', 'deployBasePath', 'keepReleases', 'logLevel', 'proxy', 'workingDirectory']);
   assert.equal(ok.proxy, null);
+  assert.equal(ok.deployBasePath, null);
+  assert.equal(ok.keepReleases, 3);
   assert.equal(validateInput({ ...baseInput, agentId: `A${'b'.repeat(127)}` }).agentId.length, 128);
   assert.throws(() => validateInput({ ...baseInput, agentId: `A${'b'.repeat(128)}` }), /en fazla 128/);
   assert.throws(() => validateInput({ ...baseInput, agentId: '-bad' }), /Agent kimliği/);
@@ -93,6 +95,49 @@ test('validateInput: contract ID format, optional proxy, legacy token/serverUrl 
   assert.equal(validateInput({ ...baseInput, proxy: '[fd00::1]:3128' }).proxy, '[fd00::1]:3128');
   for (const proxy of ['http://proxy:8080', 'proxy', 'proxy:0', 'proxy:70000', 'a..b:80', 'proxy:80 x']) {
     assert.throws(() => validateInput({ ...baseInput, proxy }), /host:port/, proxy);
+  }
+});
+
+test('validateInput: deploy base path must be absolute (Windows drive or POSIX), keep-releases 1-20', () => {
+  assert.equal(validateInput({ ...baseInput, deployBasePath: ' C:\\inetpub\\wwwroot\\jetsrm\\ ' }).deployBasePath, 'C:\\inetpub\\wwwroot\\jetsrm');
+  assert.equal(validateInput({ ...baseInput, deployBasePath: 'D:/apps/Ödeme Portalı' }).deployBasePath, 'D:/apps/Ödeme Portalı');
+  assert.equal(validateInput({ ...baseInput, deployBasePath: '/var/www/jetsrm/' }).deployBasePath, '/var/www/jetsrm');
+  assert.equal(validateInput({ ...baseInput, deployBasePath: '   ' }).deployBasePath, null);
+  const badPaths = [
+    ['inetpub\\wwwroot\\jetsrm', /mutlak/],
+    ['.\\jetsrm', /mutlak/],
+    ['\\\\fileserver\\share\\jetsrm', /mutlak/],
+    ['//fileserver/share', /mutlak/],
+    ['C:\\', /kökü/],
+    ['/', /kökü/],
+    ['C:\\inetpub\\..\\Windows', /'\.\.'/],
+    ['/var/www/./x', /'\.\.'/],
+    ['C:\\inetpub\\site:stream', /':'/],
+    ['C:\\inet"pub', /geçersiz karakter/],
+    ['C:\\inetpub\n\\x', /kontrol karakteri/],
+    [`C:\\${'a'.repeat(300)}`, /260/],
+  ];
+  for (const [deployBasePath, pattern] of badPaths) {
+    assert.throws(() => validateInput({ ...baseInput, deployBasePath }), pattern, deployBasePath);
+  }
+  assert.equal(validateInput({ ...baseInput, keepReleases: '5' }).keepReleases, 5);
+  assert.equal(validateInput({ ...baseInput, keepReleases: 20 }).keepReleases, 20);
+  assert.equal(validateInput({ ...baseInput, keepReleases: '' }).keepReleases, 3);
+  for (const keepReleases of [0, 21, 1.5, 'x', -1]) {
+    assert.throws(() => validateInput({ ...baseInput, keepReleases }), /1-20/, String(keepReleases));
+  }
+});
+
+test('application.yml: deploy section only when a base path is given', () => {
+  const credentials = validateCredentials(response(), AGENT_ID);
+  assert.doesNotMatch(createConfig(validateInput(baseInput), credentials), /deploy:/);
+  const config = createConfig(validateInput({ ...baseInput, deployBasePath: 'C:\\inetpub\\wwwroot\\jetsrm', keepReleases: 4 }), credentials);
+  assert.match(config, /^deploy:\n {2}base-path: "C:\\\\inetpub\\\\wwwroot\\\\jetsrm"\n {2}keep-releases: 4$/m);
+  if (yaml) {
+    const parsed = yaml.load(config);
+    assert.equal(parsed.deploy['base-path'], 'C:\\inetpub\\wwwroot\\jetsrm');
+    assert.equal(parsed.deploy['keep-releases'], 4);
+    assert.equal(parsed.application['working-directory'], baseInput.workingDirectory);
   }
 });
 
@@ -150,6 +195,9 @@ test('installer: ASCII, try/catch/finally + pause, transcript, Java 17 check, Wi
   assert.match(script, /if \(Test-TcpEndpoint 'agent-gw\.example\.com' 443\) \{/);
   assert.match(script, /Gateway''e erisilemiyor: agent-gw\.example\.com:443 - ag\/proxy\/firewall kontrol edin'\) -ForegroundColor Yellow/);
   assert.doesNotMatch(script, /Proxy erisilebilir/);
+
+  // Scheduled task runs in the install dir (relative logs\ must not land in System32).
+  assert.match(script, /\$action = New-ScheduledTaskAction -Execute 'powershell\.exe' -Argument \([^\n]*\) -WorkingDirectory \$installDir\n/);
 
   // Handshake hint after start, 20 s, non-fatal.
   assert.match(script, /Start-ScheduledTask -TaskName \$taskName[\s\S]*AddSeconds\(20\)[\s\S]*-Pattern 'Handshake onaylan'/);

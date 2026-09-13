@@ -2,6 +2,7 @@ package com.idp.agent;
 
 import com.idp.agent.connection.AgentConnectionConfig;
 import com.idp.agent.connection.InvalidConfigException;
+import com.idp.agent.deploy.DeployConfig;
 import com.idp.agent.enums.OperatingSystem;
 import com.idp.agent.logging.AdvancedLogger;
 import com.idp.agent.managers.WebSocketManager;
@@ -65,6 +66,14 @@ public class Starter {
 		}
 		if (connection.isLegacyTokenIgnored()) {
 			advancedLogger.warn("server.token artik kullanilmiyor; yok sayildi (server.agent-secret kullaniliyor).");
+		}
+		DeployConfig deployConfig = config.getDeployConfig();
+		if (deployConfig.isConfigured()) {
+			advancedLogger.info("Artifact deploy: " + deployConfig.describe());
+		} else if (deployConfig.error() != null) {
+			advancedLogger.warn("Artifact deploy devre disi: " + deployConfig.notConfiguredError());
+		} else {
+			advancedLogger.debug("Artifact deploy yapilandirilmadi (deploy.base-path yok).");
 		}
 
 		WebSocketManager wsManager = WebSocketManager.getInstance(connection);

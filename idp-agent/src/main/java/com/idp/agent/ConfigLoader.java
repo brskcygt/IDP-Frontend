@@ -9,11 +9,13 @@ import org.yaml.snakeyaml.Yaml;
 
 import com.idp.agent.connection.AgentConnectionConfig;
 import com.idp.agent.connection.InvalidConfigException;
+import com.idp.agent.deploy.DeployConfig;
 
 public class ConfigLoader {
 	private final Map<String, Object> config;
 	private static ConfigLoader instance;
 	private AgentConnectionConfig connectionConfig;
+	private DeployConfig deployConfig;
 
 	private ConfigLoader(String yamlPath) {
 		InputStream in = null;
@@ -76,6 +78,17 @@ public class ConfigLoader {
 			connectionConfig = AgentConnectionConfig.fromYaml(config);
 		}
 		return connectionConfig;
+	}
+
+	/**
+	 * Artifact deploy yerel ayarları ({@code deploy:} bölümü). Bölüm yoksa ya da hatalıysa
+	 * yapılandırılmamış bir nesne döner; agent'ın geri kalanı etkilenmez.
+	 */
+	public synchronized DeployConfig getDeployConfig() {
+		if (deployConfig == null) {
+			deployConfig = DeployConfig.fromYaml(config);
+		}
+		return deployConfig;
 	}
 
 	public String getAgentId() {

@@ -14,6 +14,8 @@ import { VpnSettings } from "@/components/project/settings/VpnSettings";
 import { DangerZone } from "@/components/project/settings/DangerZone";
 import type { ProjectConfig } from "@/types/project";
 import { getProviderMeta } from "@/lib/providers";
+import { needsNewArtifactToken } from "@/components/project/settings/artifactDeployValidation";
+import { ArtifactDeploySettings } from "@/components/project/settings/ArtifactDeploySettings";
 
 type ProjectSettingsModalProps = {
   project: Project | null;
@@ -21,11 +23,12 @@ type ProjectSettingsModalProps = {
   onOpenChange: (open: boolean) => void;
 };
 
-type SettingsTabId = 'general' | 'vpn';
+type SettingsTabId = 'general' | 'vpn' | 'artifacts';
 
 const SETTINGS_TABS: ReadonlyArray<{ id: SettingsTabId; label: string }> = [
   { id: 'general', label: 'General Settings' },
   { id: 'vpn', label: 'VPN & Gateway' },
+  { id: 'artifacts', label: 'Artifact Deploy' },
 ];
 
 export const ProjectSettingsModal = ({ project, isOpen, onOpenChange }: ProjectSettingsModalProps) => {
@@ -62,6 +65,11 @@ export const ProjectSettingsModal = ({ project, isOpen, onOpenChange }: ProjectS
   if (!project) return null;
 
   const handleSave = () => {
+    if (needsNewArtifactToken(project.config?.artifactDeploy, config.artifactDeploy)) {
+      setActiveTab('artifacts');
+      toast({ title: 'Repository token required', description: 'The artifact source changed. Enter the token for the new source before saving.', variant: 'destructive' });
+      return;
+    }
     mutate({ id: project.id, config }, {
       onSuccess: () => {
         toast({ title: 'Settings Saved', description: 'Deployment configuration updated successfully.' });
@@ -169,6 +177,10 @@ export const ProjectSettingsModal = ({ project, isOpen, onOpenChange }: ProjectS
 
           {activeTab === 'vpn' && (
             <VpnSettings config={config} onChange={setConfig} projectId={project.id} />
+          )}
+
+          {activeTab === 'artifacts' && (
+            <ArtifactDeploySettings config={config} original={project.config?.artifactDeploy} onChange={setConfig} />
           )}
 
         </div>

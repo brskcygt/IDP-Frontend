@@ -31,7 +31,7 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: 'http://localhost:3001',
+        target: `http://localhost:${process.env.IDP_BACKEND_PORT ?? 3001}`,
         changeOrigin: true,
       },
       // NOTE: the /socket.io proxy was removed along with the dead WebSocket

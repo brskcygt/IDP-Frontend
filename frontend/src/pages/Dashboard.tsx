@@ -35,6 +35,7 @@ import { Toaster } from '@/components/ui/toaster';
 import { WorkspaceTransferSheet } from '@/components/transfer/WorkspaceTransferSheet';
 import { AgentBuilderSheet } from '@/components/agents/AgentBuilderSheet';
 import { ServerFileTransferSheet } from '@/components/transfer/ServerFileTransferSheet';
+import { ArtifactDeploySheet } from '@/components/artifacts/ArtifactDeploySheet';
 import { useSession } from '@/hooks/useSession';
 import { can } from '@/lib/permissions';
 
@@ -83,8 +84,9 @@ export const Dashboard = ({ onLogout }: { onLogout?: () => void }) => {
   const [triggerTarget, setTriggerTarget] = useState<Project | null>(null);
   const [settingsTarget, setSettingsTarget] = useState<Project | null>(null);
   const [historyTarget, setHistoryTarget] = useState<Project | null>(null);
+  const [artifactTarget, setArtifactTarget] = useState<Project | null>(null);
   const [openPanel, setOpenPanel] = useState<
-    'trigger' | 'settings' | 'create' | 'stream' | 'sessions' | 'activity' | 'vpn' | 'history' | 'transfer' | 'agent-builder' | 'file-transfer' | null
+    'trigger' | 'settings' | 'create' | 'stream' | 'sessions' | 'activity' | 'vpn' | 'history' | 'transfer' | 'agent-builder' | 'file-transfer' | 'artifacts' | null
   >(null);
 
   // Surfaces the backend's per-project 409 concurrency lock (or any other
@@ -99,8 +101,27 @@ export const Dashboard = ({ onLogout }: { onLogout?: () => void }) => {
   if (isError) return <DashboardError />;
 
   const openTrigger = (project: Project) => {
+    if (project.config?.artifactDeploy) {
+      if (window.idp?.mode === 'local') {
+        toast({
+          title: 'Remote backend required',
+          description: 'Artifact deployment is available when Electron is connected to the IDP server.',
+          variant: 'destructive',
+        });
+        return;
+      }
+      setArtifactTarget(project);
+      setOpenPanel('artifacts');
+      return;
+    }
     setTriggerTarget(project);
     setOpenPanel('trigger');
+  };
+
+  const attachArtifactRun = (deploymentId: string) => {
+    if (!artifactTarget) return;
+    attach(deploymentId, artifactTarget.id, artifactTarget);
+    setOpenPanel('stream');
   };
 
   const openSettings = (project: Project) => {
@@ -365,6 +386,12 @@ export const Dashboard = ({ onLogout }: { onLogout?: () => void }) => {
       <WorkspaceTransferSheet isOpen={openPanel === 'transfer'} onOpenChange={(open) => setOpenPanel(open ? 'transfer' : null)} projects={projects ?? []} />
       <AgentBuilderSheet isOpen={openPanel === 'agent-builder'} onOpenChange={(open) => setOpenPanel(open ? 'agent-builder' : null)} />
       <ServerFileTransferSheet isOpen={openPanel === 'file-transfer'} onOpenChange={(open) => setOpenPanel(open ? 'file-transfer' : null)} />
+      <ArtifactDeploySheet
+        project={artifactTarget}
+        isOpen={openPanel === 'artifacts'}
+        onOpenChange={(open) => setOpenPanel(open ? 'artifacts' : null)}
+        onRunStarted={attachArtifactRun}
+      />
 
       {/* Global, Sheet-independent (T-75): stays visible/blocking even while the terminal Sheet is closed. */}
       <MfaGlobalModal runs={runs} activeRunKey={activeRunKey} onCancel={abortRun} />
