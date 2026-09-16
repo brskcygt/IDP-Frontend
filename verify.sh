@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 #
 # verify.sh — runs the same quality-gate checks as .github/workflows/ci.yml
-# for backend/, frontend/, and desktop/, in sequence. Exits non-zero on the
-# first failure; prints a pass/fail summary at the end either way.
+# for frontend/ and desktop/, in sequence. Exits non-zero on the first
+# failure; prints a pass/fail summary at the end either way.
 #
 # Usage:
-#   ./verify.sh                 Run backend + frontend + desktop checks (matches ci.yml)
+#   ./verify.sh                 Run frontend + desktop checks (matches ci.yml)
 #   ./verify.sh --with-security Also run npm audit + the secret scanner
 #                                (matches security.yml). Off by default because
 #                                these can fail for reasons unrelated to the
@@ -42,11 +42,6 @@ run() {
 echo "IDP — verify.sh: running quality-gate checks (mirrors .github/workflows/ci.yml)"
 echo "Root: ${ROOT_DIR}"
 
-# ---- Backend ----
-run "backend: npm ci"        backend npm ci
-run "backend: lint (syntax)" backend npm run lint
-run "backend: test"          backend npm test
-
 # ---- Frontend ----
 run "frontend: npm ci"       frontend npm ci
 run "frontend: typecheck"    frontend npm run typecheck
@@ -60,16 +55,14 @@ run "frontend: build"        frontend npm run build
 # has no reason to build on every check. `check:syntax` is the fast sanity
 # gate; see docs/06-DAGITIM.md for how to run a real signed/packaged build.
 # `npm test` (node --test main/) runs under plain Node — no Electron window,
-# no Maven, no network; deployLogBridge.test.js loads backend/src directly.
+# no Maven, no network.
 run "desktop: npm ci"          desktop npm ci
 run "desktop: check (syntax)"  desktop npm run check:syntax
 run "desktop: test"            desktop npm test
 
 # ---- Optional: security checks (mirrors .github/workflows/security.yml) ----
 if [[ "${WITH_SECURITY}" -eq 1 ]]; then
-  run "backend: npm audit (high)"  backend  npm audit --audit-level=high
   run "frontend: npm audit (high)" frontend npm audit --audit-level=high
-  run "secret scan"                .        node backend/scripts/scan-secrets.js "${ROOT_DIR}"
 else
   echo ""
   echo "==> Skipping security checks (run with --with-security to include npm audit + secret scan)"

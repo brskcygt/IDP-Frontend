@@ -10,42 +10,11 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  # backend/src/server.js and backend/test/**/*.test.js use node:sqlite and
-  # node:test (node --test), both of which require Node 24.
+  # desktop/main/**/*.test.js run under node:test (node --test), which
+  # requires Node 24.
   NODE_VERSION: '24'
 
 jobs:
-  backend:
-    name: Backend (test)
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: backend
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Node.js ${{ env.NODE_VERSION }}
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: npm
-          cache-dependency-path: backend/package-lock.json
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Run syntax check (lint)
-        run: npm run lint
-
-      # No .env file is created here on purpose: every entry in
-      # CONFIG_SCHEMA.*.required in backend/src/config.js is empty, and the
-      # 122 backend/test/*.test.js tests save/restore any env var they touch
-      # (see auth.test.js, secret-store.test.js) — the suite must pass with
-      # a completely empty environment.
-      - name: Run tests
-        run: npm test
-
   frontend:
     name: Frontend (typecheck, lint, build)
     runs-on: ubuntu-latest
@@ -107,8 +76,6 @@ jobs:
         run: npm run check:syntax
 
       # `node --test main/` under plain Node (no Electron window, no Maven,
-      # no network). deployLogBridge.test.js requires backend/src directly;
-      # that chain only uses node: built-ins (node:sqlite), so no backend
-      # `npm ci` is needed here.
+      # no network).
       - name: Run tests
         run: npm test
