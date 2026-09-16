@@ -1,5 +1,6 @@
 import type { ArtifactComponentConfig } from '@/types/project';
 import type {
+  ArtifactRelease,
   ComponentTargetRuntimeConfig,
   TargetRuntimeConfig,
   TargetRuntimeConfigFormat,
@@ -87,3 +88,29 @@ export const parseRuntimeConfigEditors = (
 
   return [component.name, { format: editor.format, values }];
 }));
+
+/** Keys already present in an editor's `KEY=value` text (malformed lines are ignored). */
+export const runtimeConfigEditorKeys = (text: string): Set<string> => new Set(
+  text.split(/\r?\n/)
+    .map((line) => line.slice(0, Math.max(line.indexOf('='), 0)).trim())
+    .filter(Boolean),
+);
+
+/** Appends `KEY=value` lines, keeping the text newline-separated. */
+export const appendRuntimeConfigLines = (text: string, lines: string[]): string => {
+  if (lines.length === 0) return text;
+  const base = text.replace(/\s+$/, '');
+  return [base, ...lines].filter(Boolean).join('\n');
+};
+
+/**
+ * Release whose `.env.example` keys should be suggested: the target's
+ * installed release when it has a schema, otherwise the newest ready one that does.
+ */
+export const pickConfigSchemaRelease = (
+  releases: ArtifactRelease[] | undefined,
+  currentReleaseId: string | null | undefined,
+): ArtifactRelease | null => {
+  const withSchema = (releases ?? []).filter((release) => release.status === 'ready' && release.configSchema);
+  return withSchema.find((release) => release.id === currentReleaseId) ?? withSchema[0] ?? null;
+};

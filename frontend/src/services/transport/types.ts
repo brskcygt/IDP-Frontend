@@ -288,6 +288,17 @@ export interface ArtifactSourceIdentity {
   baseUrl: string;
 }
 
+/** A key suggested by a component's `.env.example`, parsed when the release was finalized. */
+export interface ReleaseConfigKey {
+  key: string;
+  defaultValue: string;
+  description: string | null;
+  /** Commented out in the example (`# KEY=value`). */
+  optional: boolean;
+}
+
+export type ReleaseConfigSchema = Record<string, { source: string; keys: ReleaseConfigKey[] }>;
+
 export interface ArtifactRelease {
   id: string;
   projectId: string;
@@ -297,6 +308,7 @@ export interface ArtifactRelease {
   sourceIdentity: ArtifactSourceIdentity | null;
   status: ArtifactReleaseStatus;
   manifest: ArtifactManifest | null;
+  configSchema?: ReleaseConfigSchema | null;
   buildDeploymentId: string | null;
   error: string | null;
   createdBy: string | null;

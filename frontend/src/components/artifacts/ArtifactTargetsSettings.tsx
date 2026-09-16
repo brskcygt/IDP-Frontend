@@ -1,16 +1,23 @@
 import { useEffect, useMemo, useState } from 'react';
-import { FileCog, Loader2, Pencil, RefreshCw, Server, Trash2 } from 'lucide-react';
+import { FileCog, Loader2, Pencil, Plus, RefreshCw, Server, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { useArtifactActions, useArtifactAgents, useArtifactTargets } from '@/hooks/useArtifacts';
+import { useArtifactActions, useArtifactAgents, useArtifactReleases, useArtifactTargets } from '@/hooks/useArtifacts';
 import { useToast } from '@/hooks/use-toast';
 import type { Project } from '@/hooks/useProjects';
 import type { DeployTarget, DeployTargetInput } from '@/services/transport/types';
-import { createRuntimeConfigEditors, parseRuntimeConfigEditors, type RuntimeConfigEditors } from '@/components/artifacts/runtimeConfig';
+import {
+  appendRuntimeConfigLines,
+  createRuntimeConfigEditors,
+  parseRuntimeConfigEditors,
+  pickConfigSchemaRelease,
+  runtimeConfigEditorKeys,
+  type RuntimeConfigEditors,
+} from '@/components/artifacts/runtimeConfig';
 
 type Props = {
   project: Project;
@@ -23,6 +30,7 @@ const formatDate = (value: string | null) => value ? new Intl.DateTimeFormat(und
 export const ArtifactTargetsSettings = ({ project, onRunStarted }: Props) => {
   const targets = useArtifactTargets(project.id);
   const agents = useArtifactAgents(true);
+  const releases = useArtifactReleases(project.id);
   const actions = useArtifactActions(project.id);
   const { toast } = useToast();
   const components = useMemo(() => project.config?.artifactDeploy?.components ?? [], [project]);
@@ -31,6 +39,11 @@ export const ArtifactTargetsSettings = ({ project, onRunStarted }: Props) => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [runtimeEditors, setRuntimeEditors] = useState<RuntimeConfigEditors>({});
   const [confirmations, setConfirmations] = useState<Record<string, string>>({});
+  const editingTarget = (targets.data ?? []).find((target) => target.id === editingId);
+  const schemaRelease = useMemo(
+    () => pickConfigSchemaRelease(releases.data, editingTarget?.currentReleaseId),
+    [releases.data, editingTarget?.currentReleaseId],
+  );
 
   useEffect(() => {
     setInput(initialTarget);
@@ -89,6 +102,34 @@ export const ArtifactTargetsSettings = ({ project, onRunStarted }: Props) => {
             return <div key={component.name} className="rounded-md border border-border/60 bg-accent/10 p-3">
               <div className="flex flex-wrap items-center justify-between gap-2"><div><p className="font-mono text-xs font-semibold">{component.name}</p><p className="text-[10px] text-muted-foreground">{component.subdir} · {component.runtime.type}</p></div><Select value={editor.format} onValueChange={(format: 'frontend-config-js' | 'env-file') => setRuntimeEditors((current) => ({ ...current, [component.name]: { ...editor, format } }))}><SelectTrigger className="h-8 w-36"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="frontend-config-js">config.js</SelectItem><SelectItem value="env-file">.env</SelectItem></SelectContent></Select></div>
               <Textarea aria-label={`${component.name} runtime config`} className="mt-2 min-h-24 font-mono text-xs" value={editor.text} onChange={(event) => setRuntimeEditors((current) => ({ ...current, [component.name]: { ...editor, text: event.target.value } }))} placeholder={editor.format === 'frontend-config-js' ? 'API_BASE_URL=https://api.example.com' : 'PORT=3000'} />
+              {(() => {
+                const suggested = schemaRelease?.configSchema?.[component.name]?.keys ?? [];
+                if (suggested.length === 0) return null;
+                const present = runtimeConfigEditorKeys(editor.text);
+                const missing = suggested.filter((item) => !present.has(item.key));
+                const append = (items: typeof suggested) => setRuntimeEditors((current) => ({
+                  ...current,
+                  [component.name]: { ...editor, text: appendRuntimeConfigLines(editor.text, items.map((item) => `${item.key}=${item.defaultValue}`)) },
+                }));
+                const required = missing.filter((item) => !item.optional);
+                return <div className="mt-2">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="text-[10px] text-muted-foreground">Supported keys from <span className="font-mono">.env.example</span> · release {schemaRelease?.version}{missing.length === 0 ? ` · all ${suggested.length} set` : ''}</p>
+                    {required.length > 1 && <Button type="button" size="sm" variant="ghost" className="h-6 px-2 text-[10px]" onClick={() => append(required)}>Add {required.length} required</Button>}
+                  </div>
+                  {missing.length > 0 && <div className="mt-1.5 flex flex-wrap gap-1.5">
+                    {missing.map((item) => <button
+                      key={item.key}
+                      type="button"
+                      onClick={() => append([item])}
+                      title={[item.description, `Default: ${item.defaultValue || '(empty)'}`, item.optional ? 'Optional' : null].filter(Boolean).join('\n')}
+                      className={item.optional
+                        ? 'flex items-center gap-1 rounded border border-dashed border-border px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground hover:border-primary/40 hover:text-foreground'
+                        : 'flex items-center gap-1 rounded border border-primary/30 bg-primary/5 px-1.5 py-0.5 font-mono text-[10px] text-primary hover:bg-primary/10'}
+                    ><Plus className="h-3 w-3" />{item.key}</button>)}
+                  </div>}
+                </div>;
+              })()}
             </div>;
           })}
         </div>

@@ -116,6 +116,7 @@ const githubSteps: GuideStep[] = [
       'Target adı, online agent, işletim sistemi, ortam ve base path’i seç.',
       'Target base path ile agent application.yml içindeki deploy.base-path birebir aynı olmalı.',
       'Backend için env-file, frontend için frontend-config-js runtime config kullan; config.js içine secret koyma.',
+      'Paketin köküne .env.example koyarsan runtime config editörü desteklenen anahtarları öneri olarak gösterir (# satırları açıklama olur).',
     ],
   },
   {
