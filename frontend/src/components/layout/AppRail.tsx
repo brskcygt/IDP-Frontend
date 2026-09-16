@@ -3,6 +3,7 @@ import {
   Activity,
   BookOpenText,
   LayoutGrid,
+  LifeBuoy,
   LogOut,
   PackageOpen,
   PackagePlus,
@@ -18,6 +19,7 @@ export type AppRailItem =
   | "projects"
   | "activity"
   | "guide"
+  | "troubleshooting"
   | "agent-builder"
   | "transfer";
 
@@ -26,6 +28,7 @@ type AppRailProps = {
   onOpenTransfer: () => void;
   onOpenAgentBuilder: () => void;
   onOpenGuide: () => void;
+  onOpenTroubleshooting: () => void;
   onLogout?: () => void;
   canManageProjects: boolean;
   activeItem?: AppRailItem;
@@ -105,6 +108,7 @@ export const AppRail = ({
   onOpenTransfer,
   onOpenAgentBuilder,
   onOpenGuide,
+  onOpenTroubleshooting,
   onLogout,
   canManageProjects,
   activeItem = "projects",
@@ -164,6 +168,7 @@ export const AppRail = ({
         <RailButton icon={LayoutGrid} label="Projects" expanded={expanded} active={activeItem === "projects"} />
         <RailButton icon={Activity} label="Activity log" expanded={expanded} active={activeItem === "activity"} onClick={onOpenActivityLog} />
         <RailButton icon={BookOpenText} label="Deployment guide" expanded={expanded} active={activeItem === "guide"} onClick={onOpenGuide} />
+        <RailButton icon={LifeBuoy} label="Troubleshooting" expanded={expanded} active={activeItem === "troubleshooting"} onClick={onOpenTroubleshooting} />
 
         <RailSectionLabel label="Operations" expanded={expanded} />
         {canManageProjects && (
