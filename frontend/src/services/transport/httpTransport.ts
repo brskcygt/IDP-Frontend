@@ -42,11 +42,30 @@ import type {
 
 const JSON_HEADERS = { 'Content-Type': 'application/json' };
 
-/** Extracts `{ error }` from a failed response body, falling back to `fallback`. */
+/** Validation errors listed after the message; the rest are summarized as "+N more". */
+const MAX_ERROR_DETAILS = 5;
+
+/**
+ * Extracts `{ error }` from a failed response body, falling back to `fallback`.
+ * A 400 from the settings/validation layer also carries `details` —
+ * `[{ path, message }]` — which is the only place the offending field is
+ * named, so those are appended (e.g. "components.0.name: Must match …").
+ */
 async function readErrorMessage(response: Response, fallback: string): Promise<string> {
   try {
     const body = await response.json();
-    return typeof body?.error === 'string' ? body.error : fallback;
+    const message = typeof body?.error === 'string' ? body.error : fallback;
+    const details: string[] = Array.isArray(body?.details)
+      ? body.details
+        .filter((detail: unknown): detail is { path?: unknown; message: string } =>
+          typeof detail === 'object' && detail !== null && typeof (detail as { message?: unknown }).message === 'string')
+        .map((detail: { path?: unknown; message: string }) =>
+          (typeof detail.path === 'string' && detail.path ? `${detail.path}: ${detail.message}` : detail.message))
+      : [];
+    if (details.length === 0) return message;
+    const shown = details.slice(0, MAX_ERROR_DETAILS);
+    const more = details.length - shown.length;
+    return [message, ...shown, ...(more > 0 ? [`+${more} more`] : [])].join('\n');
   } catch {
     return fallback;
   }
@@ -123,7 +142,7 @@ export function createHttpTransport(baseUrl: string = ''): Transport {
         body: JSON.stringify(input),
       });
       if (!response.ok) {
-        throw new Error('Failed to create project');
+        throw new Error(await readErrorMessage(response, 'Failed to create project'));
       }
       return response.json();
     },
@@ -135,7 +154,7 @@ export function createHttpTransport(baseUrl: string = ''): Transport {
         body: JSON.stringify(config),
       });
       if (!response.ok) {
-        throw new Error('Failed to update project settings');
+        throw new Error(await readErrorMessage(response, 'Failed to update project settings'));
       }
       return response.json();
     },
