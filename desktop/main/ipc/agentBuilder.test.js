@@ -14,7 +14,6 @@ const path = require('node:path');
 const AdmZip = require('adm-zip');
 
 const handlers = new Map();
-let currentRole = null;
 
 function stubModule(request, exports) {
   const filename = require.resolve(request);
@@ -25,13 +24,9 @@ stubModule('electron', {
   app: { isPackaged: false },
   dialog: { showSaveDialog: async () => { throw new Error('tests inject showSaveDialog'); } },
 });
-stubModule('./session', { getCurrentRole: () => currentRole });
-stubModule('./backendModules', { getBackendModules: () => ({ permissions: { can: (role) => role === 'admin' } }) });
 
 const {
-  registerAgentBuilderHandlers,
   registerRemoteAgentBuilderHandlers,
-  LOCAL_MODE_UNSUPPORTED,
 } = require('./agentBuilder');
 const { APP_ORIGIN } = require('../remoteBackend');
 
@@ -124,18 +119,4 @@ test('remote: a backend error (503) reaches the renderer as a typed IPC error', 
   } finally {
     await cleanup();
   }
-});
-
-test('local mode: permission gate first, then an explicit "remote mode required" error', async () => {
-  handlers.clear();
-  registerAgentBuilderHandlers();
-  const handler = handlers.get('idp:agentBuilder:build');
-
-  currentRole = null;
-  await assert.rejects(handler({}, input), (err) => /not logged in/.test(parseIpcError(err).message));
-  currentRole = 'deployer';
-  await assert.rejects(handler({}, input), (err) => parseIpcError(err).kind === 'PermissionError');
-  currentRole = 'admin';
-  await assert.rejects(handler({}, input), (err) => parseIpcError(err).message === LOCAL_MODE_UNSUPPORTED);
-  assert.match(LOCAL_MODE_UNSUPPORTED, /uzak mod/);
 });

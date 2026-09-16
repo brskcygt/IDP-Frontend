@@ -2,21 +2,15 @@
  * Transport factory — the one place that decides which `Transport`
  * implementation the app is running against.
  *
- * T-91: when running inside the Electron shell, `desktop/preload/index.js`
- * exposes the full IPC business-logic bridge on `window.idp` — every
- * `Transport` operation goes through `ipcMain.handle` (see
- * `desktop/main/ipc/*.js`) instead of HTTP. T-90's embedded HTTP server is
- * gone; there is no backend origin to point `httpTransport` at anymore. In
- * a plain browser tab (`window.idp` undefined), behavior is unchanged:
- * relative `fetch`, proxied by Vite in dev.
+ * In the Electron shell (`window.idp` present) business calls are same-origin
+ * HTTP against `app://idp`, which the main process forwards to the configured
+ * IDP server — see `./remoteTransport.ts`. The shell only adds the two
+ * desktop-only namespaces on top of `httpTransport`.
  *
- * Remote mode (`window.idp.mode === 'remote'`, desktop app with
- * `IDP_SERVER_URL`): business calls are same-origin HTTP against `app://idp`,
- * which the main process forwards to the remote server — see
- * `./remoteTransport.ts`.
+ * In a plain browser tab (`window.idp` undefined): relative `fetch`, proxied
+ * by Vite in dev.
  */
 import { httpTransport } from './httpTransport';
-import { ipcTransport } from './ipcTransport';
 import { createRemoteTransport } from './remoteTransport';
 import type { Transport } from './types';
 // `window.idp` is declared globally by `../../types/desktop.d.ts`; it needs
@@ -34,13 +28,7 @@ export function getTransport(): Transport {
   if (resolved) return resolved;
 
   const idp = typeof window !== 'undefined' ? window.idp : undefined;
-  if (!idp) {
-    resolved = httpTransport;
-  } else if (idp.mode === 'remote') {
-    resolved = createRemoteTransport();
-  } else {
-    resolved = ipcTransport;
-  }
+  resolved = idp ? createRemoteTransport() : httpTransport;
 
   return resolved;
 }

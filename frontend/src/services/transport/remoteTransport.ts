@@ -21,7 +21,7 @@
  *     directly, and the remote bridge still exposes it.
  */
 import { createHttpTransport } from './httpTransport';
-import { callIpc } from './ipcTransport';
+import { callIpc } from './ipcError';
 import type { Transport, AgentBuildInput, AgentBuildResult } from './types';
 
 function unsupported(feature: string): never {

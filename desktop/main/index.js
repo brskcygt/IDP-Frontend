@@ -36,10 +36,8 @@
 const path = require('path');
 const { app, BrowserWindow, session, protocol, dialog } = require('electron');
 
-const { resolveBackendRoot } = require('./backendPaths');
 
-const { loadBackendModules } = require('./ipc/backendModules');
-const { registerIpcHandlers, registerRemoteIpcHandlers } = require('./ipc');
+const { registerRemoteIpcHandlers } = require('./ipc');
 const { applyCsp, buildCsp, lockdownNavigation } = require('./security');
 const {
   APP_SCHEME,
@@ -63,16 +61,17 @@ const isDev = !app.isPackaged && process.env.IDP_DESKTOP_ENV !== 'production';
 const REMOTE_MODE_ARG = '--idp-remote-mode';
 
 /**
- * Remote mode switch: `IDP_SERVER_URL` from the environment or `idp.env`.
- * Decided HERE, before app 'ready', because the `app://` scheme's privileges
- * can only be registered before 'ready'. Unset → `null` → local mode, and
- * nothing below changes for it.
- * @type {{ serverOrigin: string | null, error: string | null } | null}
+ * `IDP_SERVER_URL` from the environment or `idp.env`. Read HERE, before app
+ * 'ready', only so an invalid or missing value can be reported early; the
+ * setup window fills it in at startup when it is unset (see mainRemote).
+ * @type {{ serverOrigin: string | null, error: string | null, raw: string } | null}
  */
-const remoteSetting = resolveRemoteSetting();
-if (remoteSetting && remoteSetting.serverOrigin) {
-  protocol.registerSchemesAsPrivileged([{ scheme: APP_SCHEME, privileges: APP_SCHEME_PRIVILEGES }]);
-}
+let remoteSetting = resolveRemoteSetting();
+
+// Unconditional: the app always serves its UI from `app://idp`, and scheme
+// privileges can only be registered before 'ready' — long before the setup
+// window has had a chance to supply a server address.
+protocol.registerSchemesAsPrivileged([{ scheme: APP_SCHEME, privileges: APP_SCHEME_PRIVILEGES }]);
 
 /** Set in remote mode once the `app://` handler is installed (see mainRemote). */
 let remoteBackend = null;
@@ -93,55 +92,11 @@ function resolveFrontendIndexHtml() {
  * still wins.
  */
 /**
- * On the very first launch a random admin password is generated. Surface it in
- * a dialog (read-once — see userStore.takeBootstrapPassword) so the operator
- * can save it. Never shown again, and never written anywhere in plaintext.
- */
-function showFirstRunPasswordIfAny(backendRoot) {
-  let password = null;
-  try {
-    const userStore = require(path.join(backendRoot, 'src', 'auth', 'userStore'));
-    password = userStore.takeBootstrapPassword();
-  } catch (err) {
-    console.warn('[first-run] could not read the bootstrap password:', err.message);
-    return;
-  }
-
-  if (!password) return; // account already existed, or IDP_ADMIN_PASSWORD was used
-
-  const { dialog, clipboard } = require('electron');
-  const parent = mainWindow && !mainWindow.isDestroyed() ? mainWindow : undefined;
-  const options = {
-    type: 'info',
-    title: 'IDP — ilk kurulum',
-    message: 'Yönetici hesabı oluşturuldu',
-    detail:
-      `Kullanıcı adı:  admin\n` +
-      `Parola:         ${password}\n\n` +
-      'Bu parola bir daha GÖSTERİLMEYECEK ve hiçbir yerde düz metin olarak ' +
-      'saklanmıyor. Şimdi kaydedin.\n\n' +
-      'Unutursanız: uygulama veri klasöründeki users.json dosyasını silip ' +
-      'uygulamayı yeniden başlatın; yeni bir parola üretilir.',
-    buttons: ['Parolayı kopyala ve devam et', 'Devam et'],
-    defaultId: 0,
-    cancelId: 1,
-    noLink: true,
-  };
-  const choice = parent
-    ? dialog.showMessageBoxSync(parent, options)
-    : dialog.showMessageBoxSync(options);
-
-  if (choice === 0) clipboard.writeText(password);
-}
-
-/**
  * Reads `<userData>/idp.env` into `process.env`.
  *
- * The packaged app has no configuration otherwise: `backend/.env` is not copied
- * into the bundle (it holds secrets and would be baked in at build time), and
- * an app launched from Finder inherits no shell environment. So there was
- * nowhere for an operator to set anything — MFA_WEBHOOK_API_KEY, a proxy, a
- * custom port — and features that depend on it silently stayed off.
+ * The packaged app has no configuration otherwise: an app launched from
+ * Finder inherits no shell environment, so without this file there would be
+ * nowhere for an operator to set the server address or a CA bundle.
  *
  * Lives in the data directory rather than inside the bundle so it survives
  * updates and reinstalls. Values already present in the environment win, so
@@ -182,11 +137,12 @@ function parseUserConfigText(text) {
 }
 
 /**
- * Remote mode setting — same precedence as loadUserConfig() (a non-empty
+ * Server address setting — same precedence as loadUserConfig() (a non-empty
  * environment value wins over the file). Read-only: runs before app 'ready'
  * and must not create the template or touch process.env.
- * @returns {{ serverOrigin: string | null, error: string | null } | null}
- *   `null` → local mode; `error` set → IDP_SERVER_URL present but invalid.
+ * @returns {{ serverOrigin: string | null, error: string | null, raw: string } | null}
+ *   `null` → not configured yet; `error` set → present but invalid. Either
+ *   way the setup window asks for it (see mainRemote).
  */
 function resolveRemoteSetting() {
   let raw = process.env.IDP_SERVER_URL;
@@ -198,8 +154,8 @@ function resolveRemoteSetting() {
       if (fs.existsSync(configPath)) {
         // FIRST occurrence wins — the same line loadUserConfig() applies to
         // process.env (it sets the first value, then skips later duplicates
-        // because the variable is no longer empty). Mode decision and env
-        // can therefore never disagree.
+        // because the variable is no longer empty), so this and process.env
+        // can never disagree.
         const entry = parseUserConfigText(fs.readFileSync(configPath, 'utf8'))
           .find(([key]) => key === 'IDP_SERVER_URL');
         if (entry) raw = entry[1];
@@ -211,9 +167,9 @@ function resolveRemoteSetting() {
   if (raw === undefined || raw.trim() === '') return null;
 
   try {
-    return { serverOrigin: parseServerUrl(raw), error: null };
+    return { serverOrigin: parseServerUrl(raw), error: null, raw };
   } catch (err) {
-    return { serverOrigin: null, error: err.message };
+    return { serverOrigin: null, error: err.message, raw };
   }
 }
 
@@ -225,22 +181,9 @@ function loadUserConfig() {
     const template = [
       '# IDP desktop settings. Restart the app after editing.',
       '#',
-      '# Remote mode: use an IDP server on the internal network instead of the',
-      '# backend embedded in this app. Scheme + host + port only. Leave unset',
-      '# for the local (embedded) mode.',
+      '# Address of the IDP server this app connects to. Scheme + host + port',
+      '# only. Leave this unset and the app asks for it on startup.',
       '# IDP_SERVER_URL=http://10.0.0.5:3001',
-      '',
-      '# Automatic OTP capture: set a long random key, then point your phone\'s',
-      '# SMS-forwarding app at the URL the app prints on startup. Leave this',
-      '# unset and no port is opened at all.',
-      '# MFA_WEBHOOK_API_KEY=',
-      '',
-      '# Port for that listener (default 8787).',
-      '# IDP_WEBHOOK_PORT=8787',
-      '',
-      '# Skip the generated first-run admin password and use this instead.',
-      '# Only read when no account exists yet.',
-      '# IDP_ADMIN_PASSWORD=',
       '',
       '# Trust an internal CA (path to a PEM bundle).',
       '# NOTE: Node reads this only when the process starts, and this file is',
@@ -280,46 +223,16 @@ function loadUserConfig() {
   return configPath;
 }
 
-function redirectBackendDataToUserDir() {
-  const fs = require('fs');
-  const dataDir = app.getPath('userData');
-
-  try {
-    fs.mkdirSync(dataDir, { recursive: true, mode: 0o700 });
-  } catch {
-    // Electron creates this directory itself; a failure here is not fatal.
-  }
-
-  const defaults = {
-    IDP_DB_PATH: path.join(dataDir, 'idp.db'),
-    IDP_USERS_PATH: path.join(dataDir, 'users.json'),
-    IDP_SESSIONS_PATH: path.join(dataDir, 'sessions.json'),
-  };
-
-  for (const [key, value] of Object.entries(defaults)) {
-    if (!process.env[key] || process.env[key].trim() === '') {
-      process.env[key] = value;
-    }
-  }
-
-  console.log(`[data] Backend data directory: ${dataDir}`);
-}
 
 async function createWindow() {
   const preloadPath = path.join(__dirname, '..', 'preload', 'index.js');
-  const remote = remoteBackend !== null;
 
   // CSP + navigation lockdown apply to the default session, which is what
   // a BrowserWindow uses unless a custom `partition` is passed — we don't
   // pass one at this stage, so this covers the one window we open.
-  // Remote mode always loads the BUILT bundle from app://idp (never the Vite
+  // The UI is always the BUILT bundle served from app://idp (never the Vite
   // dev server), so it always gets the production policy.
-  applyCsp(
-    session.defaultSession,
-    remote
-      ? { isDev: false, devServerOrigin: null }
-      : { isDev, devServerOrigin: isDev ? DEV_SERVER_URL : null }
-  );
+  applyCsp(session.defaultSession, { isDev: false, devServerOrigin: null });
 
   const webPreferences = {
     contextIsolation: true,
@@ -327,8 +240,8 @@ async function createWindow() {
     sandbox: true,
     webSecurity: true,
     preload: preloadPath,
+    additionalArguments: [REMOTE_MODE_ARG],
   };
-  if (remote) webPreferences.additionalArguments = [REMOTE_MODE_ARG];
 
   const win = new BrowserWindow({
     width: 1280,
@@ -336,30 +249,11 @@ async function createWindow() {
     webPreferences,
   });
 
-  let allowedOrigins;
-  if (remote) {
-    allowedOrigins = [`${APP_ORIGIN}/`];
-  } else {
-    allowedOrigins = isDev
-      ? [DEV_SERVER_URL, 'file://']
-      : ['file://'];
-  }
-  lockdownNavigation(win.webContents, allowedOrigins);
+  lockdownNavigation(win.webContents, [`${APP_ORIGIN}/`]);
 
-  if (remote) {
-    // IPC channels were registered once in mainRemote().
-    await win.loadURL(APP_INDEX_URL);
-    if (isDev) win.webContents.openDevTools({ mode: 'detach' });
-  } else {
-    registerIpcHandlers(win);
-
-    if (isDev) {
-      await win.loadURL(DEV_SERVER_URL);
-      win.webContents.openDevTools({ mode: 'detach' });
-    } else {
-      await win.loadFile(resolveFrontendIndexHtml());
-    }
-  }
+  // IPC channels were registered once in mainRemote().
+  await win.loadURL(APP_INDEX_URL);
+  if (isDev) win.webContents.openDevTools({ mode: 'detach' });
 
   mainWindow = win;
   return win;
@@ -375,14 +269,24 @@ async function mainRemote() {
   const fs = require('fs');
   const userConfigPath = loadUserConfig();
 
-  if (remoteSetting.error) {
-    dialog.showErrorBox(
-      'IDP — IDP_SERVER_URL geçersiz',
-      `${remoteSetting.error}\n\nAyar dosyası: ${userConfigPath}\n\n` +
-      'Gömülü backend ile (yerel modda) açmak için IDP_SERVER_URL satırını silin.'
-    );
-    app.quit();
-    return;
+  // No usable address yet: ask for one instead of quitting. Covers both the
+  // first run and an IDP_SERVER_URL that was hand-edited into something
+  // invalid.
+  if (!remoteSetting || remoteSetting.error) {
+    const { promptForServerUrl } = require('./setup/serverSetup');
+    const serverOrigin = await promptForServerUrl({
+      configPath: userConfigPath,
+      initialValue: remoteSetting ? remoteSetting.raw : '',
+      error: remoteSetting ? remoteSetting.error : null,
+    });
+    if (!serverOrigin) {
+      app.quit();
+      return;
+    }
+    remoteSetting = { serverOrigin, error: null, raw: serverOrigin };
+    // loadUserConfig() already ran, so the freshly written line would not be
+    // picked up by anything that reads process.env later in this startup.
+    process.env.IDP_SERVER_URL = serverOrigin;
   }
 
   const frontendRoot = path.dirname(resolveFrontendIndexHtml());
@@ -443,92 +347,7 @@ async function mainRemote() {
 
 async function main() {
   await app.whenReady();
-
-  if (remoteSetting) {
-    await mainRemote();
-    return;
-  }
-
-  // Point every backend data file at the per-user data directory BEFORE any
-  // backend module is required — each of them resolves its own path at import
-  // time.
-  //
-  // Without this the packaged app writes `idp.db`, `users.json` and
-  // `sessions.json` inside `IDP.app/Contents/Resources/backend/src/`: every
-  // project, credential reference and audit record would live inside the app
-  // bundle, and would be destroyed by the next update or reinstall. macOS also
-  // refuses those writes outright when it translocates a quarantined app.
-  redirectBackendDataToUserDir();
-
-  // Load the operator's settings from the data directory. Must run before any
-  // backend module is required, since config.js reads process.env at import.
-  const userConfigPath = loadUserConfig();
-
-  let backendRoot;
-  try {
-    backendRoot = resolveBackendRoot(app.isPackaged, process.resourcesPath);
-    const backendModules = loadBackendModules(backendRoot);
-    const { bootstrapCore } = backendModules;
-    const migration = await require('./runnerSecrets').migrateRunnerAdminKey({
-      configPath: userConfigPath,
-      secretStore: backendModules.secretStore,
-    });
-    if (migration.migrated) {
-      console.log('[runner] Admin API key migrated from idp.env to OS keychain-backed safeStorage.');
-    }
-    bootstrapCore();
-  } catch (err) {
-    console.error('[desktop] Backend başlatılamadı, uygulama kapatılıyor:', err);
-    app.quit();
-    return;
-  }
-
-  // The SAML sign-in window (T-94) and the OS elevation dialog (T-93) are no
-  // longer registered: both existed only to serve VPN tunnel establishment,
-  // which was removed. `main/saml/`, `main/elevation/` and the matching
-  // backend provider slots are kept for a possible rollback.
-
-  // Applies to every webContents this app creates — the guardrail belongs
-  // at the app level, not just on the one window we happen to open at
-  // startup (docs/03-ELECTRON-MIMARI.md §9: "app.on('web-contents-created')
-  // içinde bu guard'ları bağla").
-  app.on('web-contents-created', (_event, contents) => {
-    const allowedOrigins = isDev ? [DEV_SERVER_URL, 'file://'] : ['file://'];
-    lockdownNavigation(contents, allowedOrigins);
-  });
-
-  await createWindow();
-
-  // After the window exists, so the dialog is parented to it rather than
-  // floating alone. userStore also prints this to stdout, but that is invisible
-  // for an app launched from Finder — the account would exist with a password
-  // nobody could read.
-  showFirstRunPasswordIfAny(backendRoot);
-
-  // The OTP webhook listener is no longer started: it only ever fed the VPN
-  // MFA flow. `main/webhook/otpWebhookServer.js` is kept for a rollback.
-
-  // The menu is how an operator finds any of this: an app launched from Finder
-  // has no console, so the settings path is invisible unless the UI surfaces it.
-  require('./appMenu').buildAppMenu({
-    getMainWindow: () => (mainWindow && !mainWindow.isDestroyed() ? mainWindow : null),
-  });
-
-  // Auto-update is opt-in and best-effort: with no IDP_UPDATE_FEED_URL baked
-  // into the build there is no publish config, every check rejects, and this
-  // stays a no-op. An unsigned build can never self-update either
-  // (docs/06-DAGITIM.md) — so this must never be allowed to block startup.
-  try {
-    require('./updater').initAutoUpdater(mainWindow);
-  } catch (err) {
-    console.warn('[updater] disabled:', err.message);
-  }
-
-  app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) {
-      createWindow();
-    }
-  });
+  await mainRemote();
 }
 
 // No backend child process to kill anymore (T-91) — everything this app

@@ -2,13 +2,10 @@
  * Transport — the single boundary between the React app and "however we
  * talk to the backend right now."
  *
- * Today the only implementation is `httpTransport` (fetch + EventSource
- * against the Express server). When this app moves into Electron, an
- * `ipcTransport` implementing this same interface will be swapped in via
- * `getTransport()` (see `./index.ts`) and call through `window.idp.*`
- * instead — talking IPC to the main process, with logs delivered via
- * `ipcRenderer.on` instead of SSE. Nothing outside `services/transport/`
- * should change when that happens.
+ * Two implementations: `httpTransport` (fetch + EventSource against the
+ * Express server) and `remoteTransport`, which is `httpTransport` against
+ * `app://idp` plus the desktop-only namespaces that go over IPC. Nothing
+ * outside `services/transport/` knows which one is in use.
  *
  * Field names below intentionally mirror the current REST/SSE contract
  * (see `backend/src/server.js` and `backend/src/routes/deploy.js`) so the

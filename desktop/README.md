@@ -1,5 +1,20 @@
 # IDP Desktop (Electron) — T-91
 
+> **GÜNCEL DURUM (gömülü backend kaldırıldı).** Uygulama artık backend'i kendi
+> içinde çalıştırmıyor: her zaman `IDP_SERVER_URL`'deki IDP sunucusuna bağlanıyor.
+> Arayüz `app://idp`'den servis ediliyor, `/api/*` çağrıları ana süreçteki
+> proxy üzerinden sunucuya gidiyor (`main/remoteBackend.js`). IPC köprüsünde
+> yalnızca iki masaüstü özelliği kaldı: agent JAR üreticisi ve güncelleyici
+> (`main/ipc/index.js`). Adres tanımlı değilse ilk açılışta kurulum penceresi
+> soruyor (`main/setup/serverSetup.js`).
+>
+> Aşağıdaki bölümlerin çoğu T-91'in gömülü-backend mimarisini anlatıyor ve
+> **artık geçerli değil**; tarihsel kayıt olarak duruyor. Silinen dosyalar:
+> `main/backendPaths.js`, `main/ipc/backendModules.js`, `main/ipc/{auth,projects,
+> deploy,deployLogBridge,hostKeys,users,audit,pmp,agents,session,helpers,
+> fileTransfer,vpn,runners}.js`, `build/afterPack.js`,
+> `frontend/src/services/transport/ipcTransport.ts`.
+
 Bu klasör IDP portalının Electron masaüstü kabuğudur. `docs/03-ELECTRON-MIMARI.md`
 §2'de tarif edilen **seçenek B (IPC-native)** burada uygulandı: Express artık
 Electron içinde hiç çalışmıyor — `backend/src/core/**` (T-58, zaten Express'ten

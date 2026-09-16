@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8" />
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'" />
+<title>IDP — Sunucu adresi</title>
+<style>
+  :root { color-scheme: dark; }
+  body {
+    margin: 0; padding: 28px 30px;
+    font: 13px/1.5 -apple-system, "Segoe UI", system-ui, sans-serif;
+    background: #111315; color: #e6e8ea;
+  }
+  h1 { margin: 0 0 6px; font-size: 16px; font-weight: 600; }
+  p.lead { margin: 0 0 20px; color: #9aa0a6; }
+  label { display: block; margin-bottom: 6px; font-size: 12px; color: #9aa0a6; }
+  input {
+    width: 100%; box-sizing: border-box; padding: 9px 11px;
+    font: inherit; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    background: #1a1d20; color: #e6e8ea;
+    border: 1px solid #2c3033; border-radius: 6px;
+  }
+  input:focus { outline: none; border-color: #4c8dff; }
+  .row { display: flex; gap: 8px; margin-top: 20px; }
+  button {
+    flex: 1; padding: 9px 14px; font: inherit; font-weight: 500;
+    border-radius: 6px; border: 1px solid #2c3033;
+    background: #1a1d20; color: #e6e8ea; cursor: pointer;
+  }
+  button.primary { background: #2f6fd0; border-color: #2f6fd0; color: #fff; }
+  button:disabled { opacity: .55; cursor: default; }
+  #status { margin-top: 16px; min-height: 34px; font-size: 12px; }
+  #status.error { color: #ff8b8b; }
+  #status.ok { color: #7fd58a; }
+  #status.busy { color: #9aa0a6; }
+  footer { margin-top: 18px; font-size: 11px; color: #6b7177; word-break: break-all; }
+</style>
+</head>
+<body>
+  <h1>IDP sunucusuna bağlan</h1>
+  <p class="lead">Uygulama arayüzü şirket ağındaki IDP sunucusundan çalışır. Sunucunun adresini girin.</p>
+
+  <label for="url">Sunucu adresi</label>
+  <input id="url" type="text" spellcheck="false" autocomplete="off" placeholder="http://10.0.0.5:3001" />
+
+  <div class="row">
+    <button id="test">Bağlantıyı test et</button>
+    <button id="save" class="primary">Kaydet ve başlat</button>
+  </div>
+
+  <div id="status"></div>
+  <footer id="configPath"></footer>
+
+<script>
+  const urlInput = document.getElementById('url');
+  const testBtn = document.getElementById('test');
+  const saveBtn = document.getElementById('save');
+  const status = document.getElementById('status');
+
+  function setStatus(text, kind) {
+    status.textContent = text;
+    status.className = kind || '';
+  }
+
+  function busy(isBusy) {
+    testBtn.disabled = isBusy;
+    saveBtn.disabled = isBusy;
+  }
+
+  async function run(action, pendingText) {
+    busy(true);
+    setStatus(pendingText, 'busy');
+    try {
+      const result = await action(urlInput.value);
+      // A successful save closes this window from the main process; anything
+      // that comes back here is either a failure or a reachable-server note.
+      setStatus(result.message, result.ok ? 'ok' : 'error');
+    } catch (err) {
+      setStatus(err && err.message ? err.message : String(err), 'error');
+    } finally {
+      busy(false);
+    }
+  }
+
+  testBtn.addEventListener('click', () => run((v) => window.idpSetup.test(v), 'Deneniyor…'));
+  saveBtn.addEventListener('click', () => run((v) => window.idpSetup.save(v), 'Kaydediliyor…'));
+  urlInput.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') saveBtn.click();
+  });
+
+  window.idpSetup.context().then((context) => {
+    if (context.initialValue) urlInput.value = context.initialValue;
+    if (context.error) setStatus(context.error, 'error');
+    document.getElementById('configPath').textContent = `Ayar dosyası: ${context.configPath}`;
+    urlInput.focus();
+  });
+</script>
+</body>
+</html>

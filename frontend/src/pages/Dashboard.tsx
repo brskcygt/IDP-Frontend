@@ -99,14 +99,6 @@ export const Dashboard = ({ onLogout }: { onLogout?: () => void }) => {
 
   const openTrigger = (project: Project) => {
     if (project.config?.artifactDeploy) {
-      if (window.idp?.mode === 'local') {
-        toast({
-          title: 'Remote backend required',
-          description: 'Artifact deployment is available when Electron is connected to the IDP server.',
-          variant: 'destructive',
-        });
-        return;
-      }
       setArtifactTarget(project);
       setOpenPanel('artifact-deploy');
       return;
@@ -116,10 +108,6 @@ export const Dashboard = ({ onLogout }: { onLogout?: () => void }) => {
   };
 
   const openArtifactReleases = (project: Project) => {
-    if (window.idp?.mode === 'local') {
-      toast({ title: 'Remote backend required', description: 'Artifact releases are available when Electron is connected to the IDP server.', variant: 'destructive' });
-      return;
-    }
     setArtifactTarget(project);
     setOpenPanel('artifact-releases');
   };

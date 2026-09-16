@@ -4,30 +4,6 @@ const { ipcMain } = require('electron');
 const { buildAgentJar } = require('../agentBuilder');
 
 /**
- * Agent packages carry a per-agent secret issued by the IDP backend
- * (`POST /api/agents/:id/credentials`). The local (embedded backend) mode is
- * IPC-native — no Express server, so no local HTTP route to call — and its
- * backend modules expose no credential-issuing service. Talking to the gateway's
- * control API directly from here would bypass the backend's authorization,
- * audit and ID bookkeeping, so the local mode refuses with a clear message.
- */
-const LOCAL_MODE_UNSUPPORTED =
-  'Agent kurulum paketi yerel (gömülü backend) modda üretilemiyor: agent kimliği IDP sunucusunda üretilir. ' +
-  'Uygulamayı uzak modda (IDP_SERVER_URL) açıp tekrar deneyin.';
-
-/** Local mode: authorization comes from the in-process session (see ./helpers.js). */
-function registerAgentBuilderHandlers() {
-  // Required here rather than at module load: helpers.js pulls in
-  // backend/src/core/*, which only the local (embedded backend) mode has.
-  const { ipcHandler } = require('./helpers');
-  // Permission first (same gate as before), then the refusal — before any
-  // save dialog or Maven run.
-  ipcMain.handle('idp:agentBuilder:build', ipcHandler('project:write', async () => {
-    throw new Error(LOCAL_MODE_UNSUPPORTED);
-  }));
-}
-
-/**
  * Mirror of backend/src/auth/permissions.js for the one action needed here:
  * ROLE_RANK (viewer < deployer < admin) and ACTION_MIN_ROLE['project:write'] =
  * 'admin'. Copied instead of required because remote mode must not depend on
@@ -95,8 +71,6 @@ function registerRemoteAgentBuilderHandlers({ getRemoteUser, issueAgentCredentia
 }
 
 module.exports = {
-  registerAgentBuilderHandlers,
   registerRemoteAgentBuilderHandlers,
   canWriteProjects,
-  LOCAL_MODE_UNSUPPORTED,
 };

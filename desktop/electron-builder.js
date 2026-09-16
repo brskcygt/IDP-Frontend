@@ -111,24 +111,6 @@ module.exports = {
   files: ['main/**/*', 'preload/**/*', 'build/update-public-key.pem', '!**/*.map'],
   extraResources: [
     {
-      from: '../backend',
-      to: 'backend',
-      filter: [
-        '**/*',
-        '!src/*.example.json',
-        '!src/*.bak',
-        '!src/*.enc.json',
-        '!src/*.db*',
-        '!src/projects.json',
-        '!src/audit_logs.json',
-        '!src/users.json',
-        '!src/sessions.json',
-        '!.env',
-        '!test/**',
-        '!node_modules{,/**/*}',
-      ],
-    },
-    {
       from: '../frontend/dist',
       to: 'frontend',
     },
@@ -139,8 +121,6 @@ module.exports = {
     },
   ],
   asar: true,
-  // Backend node_modules workaround (T-91) — unrelated to T-95, do not touch.
-  afterPack: 'build/afterPack.js',
   // Notarization (T-95) — no-ops when signing/notarization env vars are
   // absent; see build/notarize.js's doc comment.
   afterSign: 'build/notarize.js',
