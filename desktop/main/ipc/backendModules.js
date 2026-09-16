@@ -19,7 +19,6 @@ let cached = null;
 
 function buildModules(backendRoot) {
   const src = (relativePath) => require(path.join(backendRoot, 'src', relativePath));
-  const backendDependency = (name) => require(path.join(backendRoot, 'node_modules', name));
 
   return {
     backendRoot,
@@ -39,8 +38,6 @@ function buildModules(backendRoot) {
     appConfig: src('config').loadConfig(),
     secretStore: src('core/secrets/secretStoreInstance'),
     AgentGatewayClient: src('services/agent/AgentGatewayClient'),
-    NodeSSH: backendDependency('node-ssh').NodeSSH,
-    createHostVerifier: src('services/ssh/hostKeyVerifier').createHostVerifier,
   };
 }
 

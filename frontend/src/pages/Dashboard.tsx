@@ -31,7 +31,6 @@ import { Toaster } from '@/components/ui/toaster';
 // import { RunnerManagementSheet } from '@/components/runners/RunnerManagementSheet';
 import { WorkspaceTransferSheet } from '@/components/transfer/WorkspaceTransferSheet';
 import { AgentBuilderSheet } from '@/components/agents/AgentBuilderSheet';
-import { ServerFileTransferSheet } from '@/components/transfer/ServerFileTransferSheet';
 import { ArtifactDeploySheet } from '@/components/artifacts/ArtifactDeploySheet';
 import { ArtifactReleasesSheet } from '@/components/artifacts/ArtifactReleasesSheet';
 import { DeploymentGuideSheet } from '@/components/guide/DeploymentGuideSheet';
@@ -84,7 +83,7 @@ export const Dashboard = ({ onLogout }: { onLogout?: () => void }) => {
   const [artifactTarget, setArtifactTarget] = useState<Project | null>(null);
   const [settingsInitialTab, setSettingsInitialTab] = useState<SettingsTabId>('general');
   const [openPanel, setOpenPanel] = useState<
-    'trigger' | 'settings' | 'create' | 'stream' | 'sessions' | 'activity' | 'history' | 'transfer' | 'agent-builder' | 'file-transfer' | 'artifact-releases' | 'artifact-deploy' | 'guide' | null
+    'trigger' | 'settings' | 'create' | 'stream' | 'sessions' | 'activity' | 'history' | 'transfer' | 'agent-builder' | 'artifact-releases' | 'artifact-deploy' | 'guide' | null
   >(null);
 
   // Surfaces the backend's per-project 409 concurrency lock (or any other
@@ -268,9 +267,8 @@ export const Dashboard = ({ onLogout }: { onLogout?: () => void }) => {
     openPanel === 'activity' ? 'activity'
       : openPanel === 'guide' ? 'guide'
         : openPanel === 'agent-builder' ? 'agent-builder'
-          : openPanel === 'file-transfer' ? 'file-transfer'
-            : openPanel === 'transfer' ? 'transfer'
-              : 'projects';
+          : openPanel === 'transfer' ? 'transfer'
+            : 'projects';
 
   return (
     <div className="flex h-screen overflow-hidden bg-background text-foreground">
@@ -282,7 +280,6 @@ export const Dashboard = ({ onLogout }: { onLogout?: () => void }) => {
         onOpenActivityLog={() => setOpenPanel('activity')}
         onOpenTransfer={() => setOpenPanel('transfer')}
         onOpenAgentBuilder={() => setOpenPanel('agent-builder')}
-        onOpenFileTransfer={() => setOpenPanel('file-transfer')}
         onOpenGuide={() => setOpenPanel('guide')}
         onLogout={onLogout}
       />
@@ -408,7 +405,6 @@ export const Dashboard = ({ onLogout }: { onLogout?: () => void }) => {
       {/* Legacy Cloudflare runner management sheet intentionally hidden. */}
       <WorkspaceTransferSheet isOpen={openPanel === 'transfer'} onOpenChange={(open) => setOpenPanel(open ? 'transfer' : null)} projects={projects ?? []} />
       <AgentBuilderSheet isOpen={openPanel === 'agent-builder'} onOpenChange={(open) => setOpenPanel(open ? 'agent-builder' : null)} />
-      <ServerFileTransferSheet isOpen={openPanel === 'file-transfer'} onOpenChange={(open) => setOpenPanel(open ? 'file-transfer' : null)} />
       <DeploymentGuideSheet
         isOpen={openPanel === 'guide'}
         onOpenChange={(open) => setOpenPanel(open ? 'guide' : null)}

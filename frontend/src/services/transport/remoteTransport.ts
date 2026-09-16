@@ -15,8 +15,8 @@
  * Only the desktop-only namespaces differ from `httpTransport`:
  *   - agentBuilder: builds and saves the JAR on THIS machine → IPC. The main
  *     process checks `project:write` against the remote session.
- *   - fileTransfer, runners: backed by modules of the embedded (local)
- *     backend, which does not run in remote mode → explicit errors.
+ *   - runners: backed by modules of the embedded (local) backend, which
+ *     does not run in remote mode → explicit errors.
  *   - update: not part of `Transport`; components read `window.idp.update`
  *     directly, and the remote bridge still exposes it.
  */
@@ -47,15 +47,6 @@ export function createRemoteTransport(): Transport {
     agentBuilder: {
       async build(input: AgentBuildInput): Promise<AgentBuildResult> {
         return callIpc(remoteBridge().agentBuilder.build(input));
-      },
-    },
-
-    fileTransfer: {
-      async selectFile() {
-        return unsupported('Dosya aktarımı');
-      },
-      async upload() {
-        return unsupported('Dosya aktarımı');
       },
     },
 

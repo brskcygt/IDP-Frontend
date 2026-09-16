@@ -2,7 +2,6 @@ import { useState, type FocusEvent, type ReactNode } from "react";
 import {
   Activity,
   BookOpenText,
-  FileUp,
   LayoutGrid,
   LogOut,
   PackageOpen,
@@ -20,14 +19,12 @@ export type AppRailItem =
   | "activity"
   | "guide"
   | "agent-builder"
-  | "file-transfer"
   | "transfer";
 
 type AppRailProps = {
   onOpenActivityLog: () => void;
   onOpenTransfer: () => void;
   onOpenAgentBuilder: () => void;
-  onOpenFileTransfer: () => void;
   onOpenGuide: () => void;
   onLogout?: () => void;
   canManageProjects: boolean;
@@ -107,7 +104,6 @@ export const AppRail = ({
   onOpenActivityLog,
   onOpenTransfer,
   onOpenAgentBuilder,
-  onOpenFileTransfer,
   onOpenGuide,
   onLogout,
   canManageProjects,
@@ -173,7 +169,6 @@ export const AppRail = ({
         {canManageProjects && (
           <>
             <RailButton icon={PackagePlus} label="Create IDP agent" expanded={expanded} active={activeItem === "agent-builder"} onClick={onOpenAgentBuilder} />
-            <RailButton icon={FileUp} label="Send file to server" expanded={expanded} active={activeItem === "file-transfer"} onClick={onOpenFileTransfer} />
             <RailButton icon={PackageOpen} label="Import / export" expanded={expanded} active={activeItem === "transfer"} onClick={onOpenTransfer} />
           </>
         )}

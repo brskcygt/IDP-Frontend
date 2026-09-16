@@ -137,11 +137,6 @@ if (isRemoteMode) {
       list: () => invoke('idp:agents:list'),
     },
 
-    fileTransfer: {
-      selectFile: () => invoke('idp:fileTransfer:selectFile'),
-      upload: (input) => invoke('idp:fileTransfer:upload', input),
-    },
-
     pmp: {
       testConnection: (config) => invoke('idp:pmp:testConnection', config),
     },

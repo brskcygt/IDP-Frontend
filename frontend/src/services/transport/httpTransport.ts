@@ -568,11 +568,6 @@ export function createHttpTransport(baseUrl: string = ''): Transport {
       throw new Error('Agent JAR oluşturma yalnızca IDP masaüstü uygulamasında kullanılabilir.');
     },
   },
-  fileTransfer: {
-    async selectFile(): Promise<import('./types').SelectedTransferFile> { throw new Error('Dosya aktarımı yalnızca IDP masaüstü uygulamasında kullanılabilir.'); },
-    async upload(): Promise<import('./types').FileTransferResult> { throw new Error('Dosya aktarımı yalnızca IDP masaüstü uygulamasında kullanılabilir.'); },
-  },
-
   pmp: {
     async testConnection(config: PmpConfig): Promise<PmpTestConnectionResult> {
       const response = await fetch(`${baseUrl}/api/pmp/test-connection`, {

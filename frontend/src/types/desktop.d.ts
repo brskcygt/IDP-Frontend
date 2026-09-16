@@ -114,10 +114,6 @@ export interface IdpDesktopBridge {
   agentBuilder: {
     build(input: import('@/services/transport/types').AgentBuildInput): Promise<import('@/services/transport/types').AgentBuildResult>;
   };
-  fileTransfer: {
-    selectFile(): Promise<import('@/services/transport/types').SelectedTransferFile>;
-    upload(input: import('@/services/transport/types').FileTransferInput): Promise<import('@/services/transport/types').FileTransferResult>;
-  };
   pmp: {
     testConnection(config: PmpConfig): Promise<PmpTestConnectionResult>;
   };

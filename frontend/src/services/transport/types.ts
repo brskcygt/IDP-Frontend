@@ -233,9 +233,6 @@ export interface AgentBuildResult {
   /** Whether Cloudflare Access service credentials were embedded. */
   cfAccess?: boolean;
 }
-export interface FileTransferInput { localPath: string; host: string; port: number; username: string; password: string; remotePath: string; }
-export interface SelectedTransferFile { canceled: boolean; filePath?: string; name?: string; size?: number; }
-export interface FileTransferResult { ok: true; remotePath: string; bytes: number; }
 
 // --- PMP -------------------------------------------------------------------
 
@@ -465,10 +462,6 @@ export interface Transport {
   };
   agentBuilder: {
     build(input: AgentBuildInput): Promise<AgentBuildResult>;
-  };
-  fileTransfer: {
-    selectFile(): Promise<SelectedTransferFile>;
-    upload(input: FileTransferInput): Promise<FileTransferResult>;
   };
   pmp: {
     testConnection(config: PmpConfig): Promise<PmpTestConnectionResult>;

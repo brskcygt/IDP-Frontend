@@ -31,7 +31,6 @@ function registerIpcHandlers(win) {
   const { registerUpdateHandlers } = require('./update');
   const { registerAgentBuilderHandlers } = require('./agentBuilder');
   const { registerAgentHandlers } = require('./agents');
-  const { registerFileTransferHandlers } = require('./fileTransfer');
 
   registerAuthHandlers();
   registerProjectHandlers();
@@ -43,7 +42,6 @@ function registerIpcHandlers(win) {
   registerUpdateHandlers();
   registerAgentBuilderHandlers();
   registerAgentHandlers();
-  registerFileTransferHandlers();
 
   win.on('closed', () => {
     unsubscribeAllDeployLogs();

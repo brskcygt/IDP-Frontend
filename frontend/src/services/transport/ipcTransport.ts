@@ -330,11 +330,6 @@ export const ipcTransport: Transport = {
       return call(bridge().agentBuilder.build(input));
     },
   },
-  fileTransfer: {
-    async selectFile() { return call(bridge().fileTransfer.selectFile()); },
-    async upload(input: import('./types').FileTransferInput) { return call(bridge().fileTransfer.upload(input)); },
-  },
-
   pmp: {
     async testConnection(config: PmpConfig): Promise<PmpTestConnectionResult> {
       return call(bridge().pmp.testConnection(config));
