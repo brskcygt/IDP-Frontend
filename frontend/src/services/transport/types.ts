@@ -198,6 +198,25 @@ export interface RunnerRelease { ok: true; releaseId: string; installerSha256: s
 export interface RunnerReleaseHistory extends Omit<RunnerRelease, 'ok'> { active: boolean; }
 export interface RunnerReleaseUploadToken { ok: true; uploadToken: string; expiresAt: number; }
 
+/** One entry on the agent listener's source-IP allowlist. */
+export interface AgentAllowlistEntry {
+  /** An address or CIDR, already normalised by the gateway. */
+  entry: string;
+  note: string;
+  addedAt: string;
+  addedBy: string | null;
+}
+
+/**
+ * `enforcing` is reported separately rather than derived from
+ * `entries.length`: an empty list means "no restriction", and the UI has to
+ * say so plainly instead of looking like a restriction that blocks everyone.
+ */
+export interface AgentAllowlist {
+  enforcing: boolean;
+  entries: AgentAllowlistEntry[];
+}
+
 export interface IdpAgent {
   id: string;
   online: boolean;
@@ -456,6 +475,9 @@ export interface Transport {
   };
   agents: {
     list(): Promise<IdpAgent[]>;
+    allowlist(): Promise<AgentAllowlist>;
+    addAllowlistEntry(entry: string, note?: string): Promise<AgentAllowlist>;
+    removeAllowlistEntry(entry: string): Promise<AgentAllowlist>;
   };
   agentBuilder: {
     build(input: AgentBuildInput): Promise<AgentBuildResult>;

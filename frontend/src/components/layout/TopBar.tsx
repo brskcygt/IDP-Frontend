@@ -1,11 +1,12 @@
 import { useState } from "react";
-import { KeyRound, Plus, Search, Users } from "lucide-react";
+import { KeyRound, Network, Plus, Search, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useSession } from "@/hooks/useSession";
 import { can } from "@/lib/permissions";
 import { UserManagementSheet } from "@/components/admin/UserManagementSheet";
 import { KnownHostKeysSheet } from "@/components/admin/KnownHostKeysSheet";
+import { AgentAllowlistSheet } from "@/components/agents/AgentAllowlistSheet";
 
 type TopBarProps = {
   search: string;
@@ -21,9 +22,12 @@ export const TopBar = ({
   const { data: session } = useSession();
   const [isUserManagementOpen, setIsUserManagementOpen] = useState(false);
   const [isHostKeysOpen, setIsHostKeysOpen] = useState(false);
+  const [isAllowlistOpen, setIsAllowlistOpen] = useState(false);
   const isAdmin = can(session?.role, 'user:manage');
   const canCreateProject = can(session?.role, 'project:write');
   const canManageHostKeys = can(session?.role, 'vpn:manage');
+  // Same permission the agent credential endpoints require.
+  const canManageAgents = can(session?.role, 'project:write');
 
   return (
     <header className="flex h-12 shrink-0 items-center justify-between border-b border-line bg-bar px-5">
@@ -79,6 +83,18 @@ export const TopBar = ({
                 <KeyRound className="h-3.5 w-3.5" aria-hidden="true" />
               </Button>
             )}
+            {canManageAgents && (
+              <Button
+                variant="ghost"
+                size="icon"
+                title="Agent erişim listesi"
+                aria-label="Agent erişim listesi"
+                className="h-[30px] w-[30px] text-dim hover:bg-accent hover:text-foreground"
+                onClick={() => setIsAllowlistOpen(true)}
+              >
+                <Network className="h-3.5 w-3.5" aria-hidden="true" />
+              </Button>
+            )}
             {isAdmin && (
               <Button
                 variant="ghost"
@@ -100,6 +116,9 @@ export const TopBar = ({
       )}
       {canManageHostKeys && (
         <KnownHostKeysSheet isOpen={isHostKeysOpen} onOpenChange={setIsHostKeysOpen} />
+      )}
+      {canManageAgents && (
+        <AgentAllowlistSheet isOpen={isAllowlistOpen} onOpenChange={setIsAllowlistOpen} />
       )}
     </header>
   );

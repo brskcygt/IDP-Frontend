@@ -561,6 +561,34 @@ export function createHttpTransport(baseUrl: string = ''): Transport {
       if (!response.ok) throw new Error(await readErrorMessage(response, 'Agent listesi alınamadı'));
       return response.json();
     },
+
+    async allowlist(): Promise<import('./types').AgentAllowlist> {
+      const response = await fetch(`${baseUrl}/api/agents/allowlist`, { credentials: 'include' });
+      if (!response.ok) throw new Error(await readErrorMessage(response, 'Erişim listesi alınamadı'));
+      return response.json();
+    },
+
+    async addAllowlistEntry(entry: string, note = ''): Promise<import('./types').AgentAllowlist> {
+      const response = await fetch(`${baseUrl}/api/agents/allowlist`, {
+        method: 'POST',
+        headers: JSON_HEADERS,
+        credentials: 'include',
+        body: JSON.stringify({ entry, note }),
+      });
+      if (!response.ok) throw new Error(await readErrorMessage(response, 'Adres eklenemedi'));
+      return response.json();
+    },
+
+    async removeAllowlistEntry(entry: string): Promise<import('./types').AgentAllowlist> {
+      const response = await fetch(`${baseUrl}/api/agents/allowlist`, {
+        method: 'DELETE',
+        headers: JSON_HEADERS,
+        credentials: 'include',
+        body: JSON.stringify({ entry }),
+      });
+      if (!response.ok) throw new Error(await readErrorMessage(response, 'Adres çıkarılamadı'));
+      return response.json();
+    },
   },
 
   agentBuilder: {
