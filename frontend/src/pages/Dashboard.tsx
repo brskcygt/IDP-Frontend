@@ -6,7 +6,6 @@ import { useProjectFilters } from '@/hooks/useProjectFilters';
 import { useToast } from '@/hooks/use-toast';
 import { useQueryClient } from '@tanstack/react-query';
 import { getTransport } from '@/services/transport';
-import { useVpnSessions } from '@/hooks/useVpnSessions';
 import { formatDuration } from '@/lib/format';
 import { useAppVersion } from '@/hooks/useAppVersion';
 
@@ -22,13 +21,11 @@ import { ProjectTable } from '@/components/project/ProjectTable';
 import { TriggerModal } from '@/components/deployment/TriggerModal';
 import { LiveTerminalStream } from '@/components/deployment/LiveTerminalStream';
 import { DeploymentRunsHost } from '@/components/deployment/DeploymentRunsHost';
-import { MfaGlobalModal } from '@/components/deployment/MfaGlobalModal';
 import { DeploymentsSheet } from '@/components/deployment/DeploymentsSheet';
 import { ProjectSettingsModal, type SettingsTabId } from '@/components/project/ProjectSettingsModal';
 import { ProjectHistorySheet } from '@/components/project/ProjectHistorySheet';
 import { CreateProjectModal } from '@/components/project/CreateProjectModal';
 import { ActivityLogSheet } from '@/components/audit/ActivityLogSheet';
-import { VpnSessionsSheet } from '@/components/vpn/VpnSessionsSheet';
 import { Toaster } from '@/components/ui/toaster';
 // Legacy Cloudflare runner UI retained on disk but intentionally disabled.
 // import { RunnerManagementSheet } from '@/components/runners/RunnerManagementSheet';
@@ -53,9 +50,7 @@ export const Dashboard = ({ onLogout }: { onLogout?: () => void }) => {
   const { data: session } = useSession();
   const canDeploy = can(session?.role, 'deploy:trigger');
   const canCreateProject = can(session?.role, 'project:write');
-  const canManageVpn = can(session?.role, 'vpn:manage');
   const { data: projects, isLoading, isError } = useProjects();
-  const { data: vpnSessions } = useVpnSessions();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const {
@@ -89,7 +84,7 @@ export const Dashboard = ({ onLogout }: { onLogout?: () => void }) => {
   const [artifactTarget, setArtifactTarget] = useState<Project | null>(null);
   const [settingsInitialTab, setSettingsInitialTab] = useState<SettingsTabId>('general');
   const [openPanel, setOpenPanel] = useState<
-    'trigger' | 'settings' | 'create' | 'stream' | 'sessions' | 'activity' | 'vpn' | 'history' | 'transfer' | 'agent-builder' | 'file-transfer' | 'artifact-releases' | 'artifact-deploy' | 'guide' | null
+    'trigger' | 'settings' | 'create' | 'stream' | 'sessions' | 'activity' | 'history' | 'transfer' | 'agent-builder' | 'file-transfer' | 'artifact-releases' | 'artifact-deploy' | 'guide' | null
   >(null);
 
   // Surfaces the backend's per-project 409 concurrency lock (or any other
@@ -275,8 +270,7 @@ export const Dashboard = ({ onLogout }: { onLogout?: () => void }) => {
         : openPanel === 'agent-builder' ? 'agent-builder'
           : openPanel === 'file-transfer' ? 'file-transfer'
             : openPanel === 'transfer' ? 'transfer'
-              : openPanel === 'vpn' ? 'vpn'
-                : 'projects';
+              : 'projects';
 
   return (
     <div className="flex h-screen overflow-hidden bg-background text-foreground">
@@ -284,11 +278,8 @@ export const Dashboard = ({ onLogout }: { onLogout?: () => void }) => {
 
       <AppRail
         activeItem={activeRailItem}
-        vpnActive={(vpnSessions?.length ?? 0) > 0}
         canManageProjects={canCreateProject}
-        canManageVpn={canManageVpn}
         onOpenActivityLog={() => setOpenPanel('activity')}
-        onOpenVpnSessions={() => setOpenPanel('vpn')}
         onOpenTransfer={() => setOpenPanel('transfer')}
         onOpenAgentBuilder={() => setOpenPanel('agent-builder')}
         onOpenFileTransfer={() => setOpenPanel('file-transfer')}
@@ -414,11 +405,6 @@ export const Dashboard = ({ onLogout }: { onLogout?: () => void }) => {
         onOpenChange={(open) => setOpenPanel(open ? 'activity' : null)}
       />
 
-      <VpnSessionsSheet
-        isOpen={openPanel === 'vpn'}
-        onOpenChange={(open) => setOpenPanel(open ? 'vpn' : null)}
-      />
-
       {/* Legacy Cloudflare runner management sheet intentionally hidden. */}
       <WorkspaceTransferSheet isOpen={openPanel === 'transfer'} onOpenChange={(open) => setOpenPanel(open ? 'transfer' : null)} projects={projects ?? []} />
       <AgentBuilderSheet isOpen={openPanel === 'agent-builder'} onOpenChange={(open) => setOpenPanel(open ? 'agent-builder' : null)} />
@@ -442,9 +428,6 @@ export const Dashboard = ({ onLogout }: { onLogout?: () => void }) => {
         onOpenChange={(open) => setOpenPanel(open ? 'artifact-releases' : null)}
         onRunStarted={attachArtifactRun}
       />
-
-      {/* Global, Sheet-independent (T-75): stays visible/blocking even while the terminal Sheet is closed. */}
-      <MfaGlobalModal runs={runs} activeRunKey={activeRunKey} onCancel={abortRun} />
 
       <Toaster />
     </div>

@@ -38,12 +38,9 @@ const { app, BrowserWindow, session, protocol, dialog } = require('electron');
 
 const { resolveBackendRoot } = require('./backendPaths');
 
-/** Filled in when the OTP webhook listener starts; null when it is disabled. */
-let webhookInfo = null;
 const { loadBackendModules } = require('./ipc/backendModules');
 const { registerIpcHandlers, registerRemoteIpcHandlers } = require('./ipc');
 const { applyCsp, buildCsp, lockdownNavigation } = require('./security');
-const { createSamlWindowProvider } = require('./saml/samlWindow');
 const {
   APP_SCHEME,
   APP_ORIGIN,
@@ -80,11 +77,6 @@ if (remoteSetting && remoteSetting.serverOrigin) {
 /** Set in remote mode once the `app://` handler is installed (see mainRemote). */
 let remoteBackend = null;
 
-// T-94: tracked so the SAML sign-in window (registered below via
-// setSamlWindowProvider) can open modal-to-parent instead of as a stray
-// top-level window. Read lazily through a getter closure — the provider is
-// registered before this window exists yet, and only actually opens the
-// SAML window much later, on demand, during a VPN connect.
 let mainWindow = null;
 
 function resolveFrontendIndexHtml() {
@@ -376,8 +368,7 @@ async function createWindow() {
 /**
  * Remote mode startup (IDP_SERVER_URL). Everything tied to the embedded
  * backend is skipped: backend module loading, bootstrapCore, redirecting its
- * data files, the SAML window / elevation providers, the OTP webhook
- * listener, the first-run password dialog and every backend-backed IPC
+ * data files, the first-run password dialog and every backend-backed IPC
  * channel. What stays: window + security, menu, updater, agentBuilder.
  */
 async function mainRemote() {
@@ -422,7 +413,6 @@ async function mainRemote() {
   await createWindow();
 
   require('./appMenu').buildAppMenu({
-    getWebhookInfo: () => null,
     getMainWindow: () => (mainWindow && !mainWindow.isDestroyed() ? mainWindow : null),
     remote: {
       serverUrl: remoteBackend.serverOrigin,
@@ -493,26 +483,10 @@ async function main() {
     return;
   }
 
-  // T-94: register the Electron SAML sign-in window as the desktop-path
-  // provider for AzureAdMfaHandler (docs/03-ELECTRON-MIMARI.md §7). Required
-  // directly off `backendRoot` (not via ipc/backendModules.js) since this is
-  // registered before any IPC handler is wired up. When no provider is
-  // registered — the web/server deployment — AzureAdMfaHandler falls back to
-  // its existing headless-Playwright flow unchanged.
-  const { setSamlWindowProvider } = require(
-    path.join(backendRoot, 'src', 'services', 'vpn', 'samlWindowProvider')
-  );
-  setSamlWindowProvider(createSamlWindowProvider(() => mainWindow));
-
-  // T-93: register the OS-native elevation dialog (macOS osascript "with
-  // administrator privileges") as VpnManager's elevationProvider, replacing
-  // the removed grant-permissions endpoint (SEC-02/SEC-08). No-op fallback
-  // (plain sudo spawn) stays intact when this is never called — see
-  // backend/src/services/vpn/elevationProvider.js.
-  const { setElevationProvider } = require(
-    path.join(backendRoot, 'src', 'services', 'vpn', 'elevationProvider')
-  );
-  setElevationProvider(require('./elevation/osElevation').elevate);
+  // The SAML sign-in window (T-94) and the OS elevation dialog (T-93) are no
+  // longer registered: both existed only to serve VPN tunnel establishment,
+  // which was removed. `main/saml/`, `main/elevation/` and the matching
+  // backend provider slots are kept for a possible rollback.
 
   // Applies to every webContents this app creates — the guardrail belongs
   // at the app level, not just on the one window we happen to open at
@@ -531,23 +505,12 @@ async function main() {
   // nobody could read.
   showFirstRunPasswordIfAny(backendRoot);
 
-  // Opt-in inbound channel for forwarded OTP messages. Does nothing unless
-  // MFA_WEBHOOK_API_KEY is set — see main/webhook/otpWebhookServer.js.
-  try {
-    const { startOtpWebhookServer } = require('./webhook/otpWebhookServer');
-    webhookInfo = startOtpWebhookServer({
-      otpWebhookManager: require(path.join(backendRoot, 'src', 'services', 'mfa', 'OtpWebhookManager')),
-      createRateLimiter: require(path.join(backendRoot, 'src', 'core', 'rateLimiter')).createRateLimiter,
-    });
-  } catch (err) {
-    console.warn('[webhook] disabled:', err.message);
-  }
+  // The OTP webhook listener is no longer started: it only ever fed the VPN
+  // MFA flow. `main/webhook/otpWebhookServer.js` is kept for a rollback.
 
   // The menu is how an operator finds any of this: an app launched from Finder
-  // has no console, so the webhook URL and the settings path are invisible
-  // unless the UI surfaces them.
+  // has no console, so the settings path is invisible unless the UI surfaces it.
   require('./appMenu').buildAppMenu({
-    getWebhookInfo: () => webhookInfo,
     getMainWindow: () => (mainWindow && !mainWindow.isDestroyed() ? mainWindow : null),
   });
 

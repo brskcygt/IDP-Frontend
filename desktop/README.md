@@ -134,8 +134,7 @@ tam olarak bir `ipcMain.handle` kanalı var:
 |---|---|
 | `ipc/auth.js` | `idp:auth:login`, `idp:auth:logout`, `idp:auth:me` |
 | `ipc/projects.js` | `idp:projects:list/get/create/updateConfig/remove/environments/telemetry/testConnection` |
-| `ipc/deploy.js` | `idp:deploy:trigger/abort/submitMfa/sessions/history/logsArchive/subscribeLogs/unsubscribeLogs` |
-| `ipc/vpn.js` | `idp:vpn:sessions/clearProjectSession/forceDisconnect` |
+| `ipc/deploy.js` | `idp:deploy:trigger/abort/sessions/history/logsArchive/subscribeLogs/unsubscribeLogs` |
 | `ipc/hostKeys.js` | `idp:hostKeys:list/forget` |
 | `ipc/users.js` | `idp:users:list/create/update/remove` |
 | `ipc/audit.js` | `idp:audit:list` |

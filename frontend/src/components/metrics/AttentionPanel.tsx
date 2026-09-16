@@ -1,6 +1,5 @@
 import { CheckCircle2 } from "lucide-react";
 import type { Project } from "@/hooks/useProjects";
-import { useVpnSessions } from "@/hooks/useVpnSessions";
 import { formatRelativeTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -11,10 +10,8 @@ type AttentionPanelProps = {
 
 const VISIBLE_LIMIT = 3;
 
-/** Failed deployments first, VPN reachability underneath — both real state. */
+/** Failed deployments, most recent first — real state, not a placeholder. */
 export const AttentionPanel = ({ failed, onRetry }: AttentionPanelProps) => {
-  const { data: sessions } = useVpnSessions();
-  const activeSessions = sessions?.length ?? 0;
   const visible = failed.slice(0, VISIBLE_LIMIT);
 
   return (
@@ -64,22 +61,6 @@ export const AttentionPanel = ({ failed, onRetry }: AttentionPanelProps) => {
       )}
 
       <div className="flex-grow" />
-
-      <div className="flex items-center justify-between border-t border-line pt-2.5">
-        <span className="font-mono text-[10px] tracking-[0.1em] text-dim">VPN SESSIONS</span>
-        <span
-          className={cn(
-            "flex items-center gap-1.5 font-mono text-xs",
-            activeSessions > 0 ? "text-status-ok" : "text-dim",
-          )}
-        >
-          <span
-            aria-hidden="true"
-            className={cn("h-1.5 w-1.5 rounded-full", activeSessions > 0 ? "bg-status-ok" : "bg-faint")}
-          />
-          {activeSessions > 0 ? `${activeSessions} active` : "none"}
-        </span>
-      </div>
     </section>
   );
 };

@@ -9,7 +9,6 @@ import {
   PackagePlus,
   PanelLeftClose,
   PanelLeftOpen,
-  ShieldCheck,
   Terminal,
   type LucideIcon,
 } from "lucide-react";
@@ -22,20 +21,16 @@ export type AppRailItem =
   | "guide"
   | "agent-builder"
   | "file-transfer"
-  | "transfer"
-  | "vpn";
+  | "transfer";
 
 type AppRailProps = {
   onOpenActivityLog: () => void;
-  onOpenVpnSessions: () => void;
   onOpenTransfer: () => void;
   onOpenAgentBuilder: () => void;
   onOpenFileTransfer: () => void;
   onOpenGuide: () => void;
   onLogout?: () => void;
-  vpnActive: boolean;
   canManageProjects: boolean;
-  canManageVpn: boolean;
   activeItem?: AppRailItem;
 };
 
@@ -110,15 +105,12 @@ const RailSectionLabel = ({ label, expanded }: { label: string; expanded: boolea
  */
 export const AppRail = ({
   onOpenActivityLog,
-  onOpenVpnSessions,
   onOpenTransfer,
   onOpenAgentBuilder,
   onOpenFileTransfer,
   onOpenGuide,
   onLogout,
-  vpnActive,
   canManageProjects,
-  canManageVpn,
   activeItem = "projects",
 }: AppRailProps) => {
   const [hovered, setHovered] = useState(false);
@@ -184,17 +176,6 @@ export const AppRail = ({
             <RailButton icon={FileUp} label="Send file to server" expanded={expanded} active={activeItem === "file-transfer"} onClick={onOpenFileTransfer} />
             <RailButton icon={PackageOpen} label="Import / export" expanded={expanded} active={activeItem === "transfer"} onClick={onOpenTransfer} />
           </>
-        )}
-
-        {canManageVpn && (
-          <RailButton
-            icon={ShieldCheck}
-            label="VPN sessions"
-            expanded={expanded}
-            active={activeItem === "vpn"}
-            onClick={onOpenVpnSessions}
-            status={vpnActive ? <span className="mr-3 h-2 w-2 rounded-full bg-status-ok" aria-label="VPN active" /> : undefined}
-          />
         )}
 
         <div className="flex-grow" />

@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from 'react';
 import type { Project } from './useProjects';
-import type { DeploymentStatus, MfaEvent } from './useDeploymentLogStream';
+import type { DeploymentStatus } from './useDeploymentLogStream';
 
 /** Static identity for a tracked run — set once at creation, never mutated. */
 export type DeploymentRunRecord = {
@@ -18,10 +18,8 @@ export type DeploymentRunSnapshot = {
   deploymentId: string | null;
   status: DeploymentStatus;
   logs: string[];
-  mfaEvent: MfaEvent | null;
   elapsedMs: number;
   abort: () => void;
-  submitMfa: (code?: string) => Promise<void>;
 };
 
 export type DeploymentRunView = DeploymentRunRecord & DeploymentRunSnapshot;
@@ -33,10 +31,8 @@ const IDLE_SNAPSHOT: DeploymentRunSnapshot = {
   deploymentId: null,
   status: 'connecting',
   logs: [],
-  mfaEvent: null,
   elapsedMs: 0,
   abort: () => {},
-  submitMfa: async () => {},
 };
 
 let runCounter = 0;

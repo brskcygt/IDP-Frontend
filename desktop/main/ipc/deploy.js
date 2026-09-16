@@ -97,17 +97,8 @@ function registerDeployHandlers(win) {
     })
   );
 
-  ipcMain.handle(
-    'idp:deploy:submitMfa',
-    ipcHandler('deploy:trigger', async (_event, deploymentId, code) => {
-      const { core, auditLogger } = getBackendModules();
-      const resolved = deploymentManager.resolveMfa(deploymentId, code);
-      if (!resolved) {
-        throw new core.NotFoundError('No active MFA request found for this deployment.');
-      }
-      auditLogger.log(session.getCurrentActor(), 'MFA_SUBMITTED', 'MFA response submitted', { deploymentId });
-    })
-  );
+  // 'idp:deploy:submitMfa' was removed together with the VPN tunnel step:
+  // nothing sets an MFA resolver anymore, so it could only ever fail.
 
   ipcMain.handle(
     'idp:deploy:sessions',

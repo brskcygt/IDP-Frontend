@@ -63,7 +63,7 @@ export interface ProjectEnvironmentsResult {
  * T-73: a single diagnostic check from `POST /api/projects/:id/test-connection`.
  * `ok: null` means "not tested" (e.g. an earlier check in the chain failed
  * first, or testing it for real would require a live vault credential fetch
- * or a VPN tunnel — see backend/src/core/diagnostics/connectionTest.js) —
+ * — see backend/src/core/diagnostics/connectionTest.js —
  * distinct from `false`, which means the check actually ran and failed.
  */
 export interface ConnectionCheckResult {
@@ -96,10 +96,6 @@ export interface TelemetryData {
 
 export type DeploymentStatus = 'idle' | 'connecting' | 'running' | 'succeeded' | 'failed' | 'aborted';
 
-export type MfaEvent =
-  | { type: 'MFA_REQUIRED'; payload: { authType: 'push' | 'totp' } }
-  | { type: 'MFA_NUMBER_MATCHING'; payload: { number: string } };
-
 export interface TriggerDeployResult {
   deploymentId: string;
 }
@@ -130,15 +126,6 @@ export interface DeployLogSubscriptionHandlers {
   onEnd(message: string): void;
   /** Fired when the connection is lost (before any built-in reconnect). */
   onError(): void;
-}
-
-// --- VPN -------------------------------------------------------------------
-
-export interface VpnSession {
-  projectId: string;
-  projectName: string;
-  provider: string;
-  expiresAt: number;
 }
 
 // --- Host keys ---------------------------------------------------------
@@ -419,13 +406,12 @@ export interface Transport {
     remove(id: string): Promise<void>;
     environments(id: string): Promise<ProjectEnvironmentsResult>;
     telemetry(id: string): Promise<TelemetryData>;
-    /** T-73: read-only diagnostic probe — never triggers a deploy or opens a VPN tunnel. */
+    /** T-73: read-only diagnostic probe — never triggers a deploy. */
     testConnection(id: string, environment?: string): Promise<ConnectionTestResult>;
   };
   deploy: {
     trigger(projectId: string, parameters: Record<string, unknown>): Promise<TriggerDeployResult>;
     abort(deploymentId: string): Promise<void>;
-    submitMfa(deploymentId: string, code?: string): Promise<void>;
     sessions(): Promise<DeploymentSession[]>;
     history(projectId?: string, limit?: number): Promise<DeploymentHistoryEntry[]>;
     logsArchive(deploymentId: string): Promise<string>;
@@ -450,11 +436,6 @@ export interface Transport {
     deploy(targetId: string, input: { releaseId: string; components?: string[]; confirmation?: string }): Promise<ArtifactDeployRunResult>;
     rollback(targetId: string, input: { components?: string[]; confirmation?: string }): Promise<ArtifactDeployRunResult>;
     events(deploymentId: string): Promise<ArtifactEventsResult>;
-  };
-  vpn: {
-    sessions(): Promise<VpnSession[]>;
-    clearProjectSession(projectId: string): Promise<void>;
-    forceDisconnect(): Promise<void>;
   };
   hostKeys: {
     list(): Promise<HostKeyRecord[]>;

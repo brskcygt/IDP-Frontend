@@ -24,7 +24,6 @@ function registerIpcHandlers(win) {
   const { registerAuthHandlers } = require('./auth');
   const { registerProjectHandlers } = require('./projects');
   const { registerDeployHandlers, unsubscribeAllDeployLogs } = require('./deploy');
-  const { registerVpnHandlers } = require('./vpn');
   const { registerHostKeyHandlers } = require('./hostKeys');
   const { registerUserHandlers } = require('./users');
   const { registerAuditHandlers } = require('./audit');
@@ -37,7 +36,6 @@ function registerIpcHandlers(win) {
   registerAuthHandlers();
   registerProjectHandlers();
   registerDeployHandlers(win);
-  registerVpnHandlers();
   registerHostKeyHandlers();
   registerUserHandlers();
   registerAuditHandlers();

@@ -5,7 +5,7 @@
  *
  * This is a straight relocation of what used to live in `services/api.ts`
  * and inline inside `hooks/useDeploymentLogStream.ts` — behavior is
- * preserved line-for-line, including quirks (e.g. `abort`/`submitMfa` not
+ * preserved line-for-line, including quirks (e.g. `abort` not
  * checking `response.ok`, `trigger` letting a non-JSON error body reject
  * with a raw parse error). Do not "fix" those here; they're preserved on
  * purpose so this refactor stays behavior-neutral. See T-59.
@@ -21,7 +21,6 @@ import type {
   DeploymentSession,
   DeploymentHistoryEntry,
   DeployLogSubscriptionHandlers,
-  VpnSession,
   HostKeyRecord,
   ApiUser,
   CreateUserInput,
@@ -198,15 +197,6 @@ export function createHttpTransport(baseUrl: string = ''): Transport {
       // hook, which always resolves (and the caller always moves to
       // "aborted") regardless of what the server actually reported.
       await fetch(`${baseUrl}/api/deploy/${deploymentId}/abort`, { method: 'POST' });
-    },
-
-    async submitMfa(deploymentId, code) {
-      // Same intentional non-check as abort() above.
-      await fetch(`${baseUrl}/api/deploy/${deploymentId}/submit-mfa`, {
-        method: 'POST',
-        headers: JSON_HEADERS,
-        body: JSON.stringify({ code: code || '' }),
-      });
     },
 
     async sessions(): Promise<DeploymentSession[]> {
@@ -474,26 +464,6 @@ export function createHttpTransport(baseUrl: string = ''): Transport {
         throw new Error(await readErrorMessage(response, 'Failed to fetch artifact deployment events'));
       }
       return response.json();
-    },
-  },
-
-  vpn: {
-    async sessions(): Promise<VpnSession[]> {
-      const response = await fetch(`${baseUrl}/api/vpn/sessions`);
-      if (!response.ok) throw new Error('Failed to fetch VPN sessions');
-      return response.json();
-    },
-
-    async clearProjectSession(projectId: string): Promise<void> {
-      const response = await fetch(`${baseUrl}/api/projects/${projectId}/vpn/clear-session`, { method: 'POST' });
-      if (!response.ok) throw new Error('Failed to clear VPN session');
-      await response.json();
-    },
-
-    async forceDisconnect(): Promise<void> {
-      const response = await fetch(`${baseUrl}/api/vpn/force-disconnect`, { method: 'POST' });
-      if (!response.ok) throw new Error('Failed to force disconnect VPN');
-      await response.json();
     },
   },
 

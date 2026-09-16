@@ -39,7 +39,6 @@ import type {
   DeploymentSession,
   DeploymentHistoryEntry,
   DeployLogSubscriptionHandlers,
-  VpnSession,
   HostKeyRecord,
   ApiUser,
   CreateUserInput,
@@ -175,10 +174,6 @@ export const ipcTransport: Transport = {
       await call(bridge().deploy.abort(deploymentId));
     },
 
-    async submitMfa(deploymentId, code) {
-      await call(bridge().deploy.submitMfa(deploymentId, code || ''));
-    },
-
     async sessions(): Promise<DeploymentSession[]> {
       return call(bridge().deploy.sessions());
     },
@@ -275,18 +270,6 @@ export const ipcTransport: Transport = {
     async deploy() { throw new Error('Artifact deploy yalnızca uzak backend modunda kullanılabilir.'); },
     async rollback() { throw new Error('Artifact deploy yalnızca uzak backend modunda kullanılabilir.'); },
     async events() { throw new Error('Artifact deploy yalnızca uzak backend modunda kullanılabilir.'); },
-  },
-
-  vpn: {
-    async sessions(): Promise<VpnSession[]> {
-      return call(bridge().vpn.sessions());
-    },
-    async clearProjectSession(projectId: string): Promise<void> {
-      await call(bridge().vpn.clearProjectSession(projectId));
-    },
-    async forceDisconnect(): Promise<void> {
-      await call(bridge().vpn.forceDisconnect());
-    },
   },
 
   hostKeys: {

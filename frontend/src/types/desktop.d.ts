@@ -27,7 +27,6 @@ import type {
   TriggerDeployResult,
   DeploymentSession,
   DeploymentHistoryEntry,
-  VpnSession,
   HostKeyRecord,
   ApiUser,
   CreateUserInput,
@@ -77,7 +76,6 @@ export interface IdpDesktopBridge {
   deploy: {
     trigger(projectId: string, parameters: Record<string, unknown>): Promise<TriggerDeployResult>;
     abort(deploymentId: string): Promise<void>;
-    submitMfa(deploymentId: string, code?: string): Promise<void>;
     sessions(): Promise<DeploymentSession[]>;
     history(projectId?: string, limit?: number): Promise<DeploymentHistoryEntry[]>;
     logsArchive(deploymentId: string): Promise<string>;
@@ -86,11 +84,6 @@ export interface IdpDesktopBridge {
     unsubscribeLogs(subscriptionId: string): Promise<void>;
     /** Registers a listener for every deploy-log event; returns an unsubscribe function. `ipcRenderer` is never exposed directly. */
     onLogEvent(callback: (payload: IdpDeployLogEvent) => void): () => void;
-  };
-  vpn: {
-    sessions(): Promise<VpnSession[]>;
-    clearProjectSession(projectId: string): Promise<void>;
-    forceDisconnect(): Promise<void>;
   };
   hostKeys: {
     list(): Promise<HostKeyRecord[]>;

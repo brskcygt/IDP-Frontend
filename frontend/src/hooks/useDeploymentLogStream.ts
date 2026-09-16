@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { getTransport } from '../services/transport';
-import type { DeploymentStatus, MfaEvent } from '../services/transport/types';
+import type { DeploymentStatus } from '../services/transport/types';
 
-export type { DeploymentStatus, MfaEvent } from '../services/transport/types';
+export type { DeploymentStatus } from '../services/transport/types';
 
 type UseDeploymentLogStreamReturn = {
   /** All log lines received so far */
@@ -14,16 +14,12 @@ type UseDeploymentLogStreamReturn = {
   isDeploying: boolean;
   /** The active deployment ID (null if none) */
   deploymentId: string | null;
-  /** Active MFA request event */
-  mfaEvent: MfaEvent | null;
   /** Trigger a new deployment via the transport layer */
   triggerDeploy: (projectId: string, params: Record<string, unknown>) => Promise<void>;
   /** Abort the active deployment via the transport layer */
   abortDeploy: () => Promise<void>;
   /** Attach to an existing background deployment */
   attachToDeployment: (deploymentId: string) => void;
-  /** Submit MFA response via the transport layer */
-  submitMfa: (code?: string) => Promise<void>;
   /** Clear the log buffer */
   clearLogs: () => void;
 };
@@ -40,8 +36,7 @@ type UseDeploymentLogStreamReturn = {
  *
  * All actual `fetch`/`EventSource` plumbing lives in
  * `services/transport/httpTransport.ts` — this hook only owns UI-facing
- * state and the parsing of the `__EVENT__:` MFA control-message convention
- * embedded in ordinary log lines. That split keeps this hook unchanged when
+ * state. That split keeps this hook unchanged when
  * the transport implementation eventually becomes IPC-backed in Electron.
  *
  * Usage:
@@ -53,7 +48,6 @@ export function useDeploymentLogStream(): UseDeploymentLogStreamReturn {
   const [logs, setLogs] = useState<string[]>([]);
   const [status, setStatus] = useState<DeploymentStatus>('idle');
   const [deploymentId, setDeploymentId] = useState<string | null>(null);
-  const [mfaEvent, setMfaEvent] = useState<MfaEvent | null>(null);
   const queryClient = useQueryClient();
   const transportRef = useRef(getTransport());
   const unsubscribeRef = useRef<(() => void) | null>(null);
@@ -70,20 +64,7 @@ export function useDeploymentLogStream(): UseDeploymentLogStreamReturn {
 
     unsubscribeRef.current = transportRef.current.deploy.subscribeLogs(depId, {
       onLog: (line) => {
-        if (line.startsWith('__EVENT__:')) {
-          try {
-            const ev = JSON.parse(line.slice(10)) as { type: string; payload?: unknown };
-            if (ev.type === 'MFA_REQUIRED' || ev.type === 'MFA_NUMBER_MATCHING') {
-              setMfaEvent(ev as MfaEvent);
-            } else if (ev.type === 'MFA_NUMBER_MATCHING_SUCCESS' || ev.type === 'MFA_RESOLVED') {
-              setMfaEvent(null);
-            }
-          } catch {
-            setLogs((prev) => [...prev, line]);
-          }
-        } else {
-          setLogs((prev) => [...prev, line]);
-        }
+        setLogs((prev) => [...prev, line]);
       },
 
       onStatus: (nextStatusValue) => {
@@ -96,11 +77,6 @@ export function useDeploymentLogStream(): UseDeploymentLogStreamReturn {
           // The backend stamps project.status / lastDeploy when a deployment
           // settles; refetch so the card stops showing "Deploying" without
           // polling the project list on a timer.
-          // Clear any outstanding MFA challenge. The prompt is modal and has no
-          // dismiss of its own, so leaving it set after the deployment ends
-          // traps the operator behind a dialog for a run that is already over.
-          setMfaEvent(null);
-
           queryClient.invalidateQueries({ queryKey: ['projects'] });
           // The deployment row was just written by the backend; without this the
           // project row keeps showing the previous run's outcome and duration
@@ -151,7 +127,6 @@ export function useDeploymentLogStream(): UseDeploymentLogStreamReturn {
     setLogs([`Attaching to existing deployment session: ${depId}...`]);
     setStatus('connecting');
     setDeploymentId(depId);
-    setMfaEvent(null);
     connectToStream(depId);
   }, [connectToStream]);
 
@@ -164,25 +139,9 @@ export function useDeploymentLogStream(): UseDeploymentLogStreamReturn {
     try {
       await transportRef.current.deploy.abort(deploymentId);
       setStatus('aborted');
-      setMfaEvent(null);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Unknown error';
       setLogs((prev) => [...prev, `ERROR: Failed to abort: ${message}`]);
-    }
-  }, [deploymentId]);
-
-  /**
-   * Submit MFA code to the active deployment.
-   */
-  const submitMfa = useCallback(async (code?: string) => {
-    if (!deploymentId) return;
-
-    try {
-      await transportRef.current.deploy.submitMfa(deploymentId, code);
-      setMfaEvent(null);
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Unknown error';
-      setLogs((prev) => [...prev, `ERROR: Failed to submit MFA: ${message}`]);
     }
   }, [deploymentId]);
 
@@ -193,7 +152,6 @@ export function useDeploymentLogStream(): UseDeploymentLogStreamReturn {
     setLogs([]);
     setStatus('idle');
     setDeploymentId(null);
-    setMfaEvent(null);
   }, []);
 
   /**
@@ -213,11 +171,9 @@ export function useDeploymentLogStream(): UseDeploymentLogStreamReturn {
     status,
     isDeploying: status === 'running' || status === 'connecting',
     deploymentId,
-    mfaEvent,
     triggerDeploy,
     abortDeploy,
     attachToDeployment,
-    submitMfa,
     clearLogs,
   };
 }

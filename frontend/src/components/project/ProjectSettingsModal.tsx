@@ -10,7 +10,6 @@ import { ServerSettings } from "@/components/project/settings/ServerSettings";
 import { PmpSettings } from "@/components/project/settings/PmpSettings";
 import { PipelineSettings } from "@/components/project/settings/PipelineSettings";
 import { ConnectionTestPanel } from "@/components/project/settings/ConnectionTestPanel";
-import { VpnSettings } from "@/components/project/settings/VpnSettings";
 import { DangerZone } from "@/components/project/settings/DangerZone";
 import type { ProjectConfig } from "@/types/project";
 import { getProviderMeta } from "@/lib/providers";
@@ -26,11 +25,10 @@ type ProjectSettingsModalProps = {
   onArtifactRunStarted?: (deploymentId: string) => void;
 };
 
-export type SettingsTabId = 'general' | 'vpn' | 'artifacts' | 'targets';
+export type SettingsTabId = 'general' | 'artifacts' | 'targets';
 
 const SETTINGS_TABS: ReadonlyArray<{ id: SettingsTabId; label: string }> = [
   { id: 'general', label: 'General Settings' },
-  { id: 'vpn', label: 'VPN & Gateway' },
   { id: 'artifacts', label: 'Artifact Deploy' },
   { id: 'targets', label: 'Targets' },
 ];
@@ -214,10 +212,6 @@ export const ProjectSettingsModal = ({ project, isOpen, onOpenChange, initialTab
                 onConfirmDelete={handleDelete}
               />
             </>
-          )}
-
-          {activeTab === 'vpn' && (
-            <VpnSettings config={config} onChange={setConfig} projectId={project.id} />
           )}
 
           {activeTab === 'artifacts' && (

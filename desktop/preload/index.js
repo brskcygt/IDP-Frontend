@@ -87,7 +87,6 @@ if (isRemoteMode) {
     deploy: {
       trigger: (projectId, parameters) => invoke('idp:deploy:trigger', projectId, parameters),
       abort: (deploymentId) => invoke('idp:deploy:abort', deploymentId),
-      submitMfa: (deploymentId, code) => invoke('idp:deploy:submitMfa', deploymentId, code),
       sessions: () => invoke('idp:deploy:sessions'),
       history: (projectId, limit) => invoke('idp:deploy:history', projectId, limit),
       logsArchive: (deploymentId) => invoke('idp:deploy:logsArchive', deploymentId),
@@ -114,12 +113,6 @@ if (isRemoteMode) {
         ipcRenderer.on('idp:deploy:log-event', listener);
         return () => ipcRenderer.removeListener('idp:deploy:log-event', listener);
       },
-    },
-
-    vpn: {
-      sessions: () => invoke('idp:vpn:sessions'),
-      clearProjectSession: (projectId) => invoke('idp:vpn:clearProjectSession', projectId),
-      forceDisconnect: () => invoke('idp:vpn:forceDisconnect'),
     },
 
     hostKeys: {

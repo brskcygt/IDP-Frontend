@@ -33,12 +33,6 @@ export const testPmpConnection = (pmpConfig: PmpConfig): Promise<PmpTestConnecti
 
 export const fetchAuditLogs = () => getTransport().audit.list();
 
-export const clearVpnSession = (id: string) => getTransport().vpn.clearProjectSession(id);
-
-export const forceDisconnectVpn = () => getTransport().vpn.forceDisconnect();
-
-export const fetchVpnSessions = () => getTransport().vpn.sessions();
-
 export const deleteProject = (id: string) => getTransport().projects.remove(id);
 
 export const fetchTelemetry = (projectId: string) => getTransport().projects.telemetry(projectId);

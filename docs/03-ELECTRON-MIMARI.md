@@ -197,7 +197,10 @@ raporluyor ama otomatik taşımıyor. Electron'a geçmeden önce `scriptContent`
 
 ---
 
-## 6. Ayrıcalıklı işlemler (VPN / sudo)
+## 6. Ayrıcalıklı işlemler (VPN / sudo) — GEÇERSİZ
+
+> VPN tünel kurulumu üründen kaldırıldı; bu bölümdeki elevation ve
+> `VpnSupervisor` tasarımı artık uygulanmıyor. Tarihsel kayıt olarak duruyor.
 
 `POST /api/vpn/grant-permissions` (SEC-02) tamamen kalkacak. Yerine:
 

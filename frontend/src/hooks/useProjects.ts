@@ -38,20 +38,6 @@ export const useCreateProject = () => {
   });
 };
 
-export const useClearVpnSession = () => {
-  const transport = getTransport();
-  return useMutation({
-    mutationFn: (id: string) => transport.vpn.clearProjectSession(id),
-  });
-};
-
-export const useForceDisconnectVpn = () => {
-  const transport = getTransport();
-  return useMutation({
-    mutationFn: () => transport.vpn.forceDisconnect(),
-  });
-};
-
 export const useDeleteProject = () => {
   const transport = getTransport();
   const queryClient = useQueryClient();

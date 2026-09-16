@@ -19,7 +19,7 @@ const TERMINAL = new Set<DeploymentStatus>(["succeeded", "failed", "aborted"]);
  * Owns one deployment's SSE-backed log stream (via useDeploymentLogStream,
  * untouched) and reports its state up to the run manager. Renders nothing —
  * DeploymentRunsHost mounts one of these per tracked run at the app root, so
- * the stream and any pending MFA event survive regardless of which panel is
+ * the stream survives regardless of which panel is
  * currently open (T-71/T-75).
  */
 export const DeploymentRunController = ({
@@ -30,7 +30,7 @@ export const DeploymentRunController = ({
   onSnapshot,
   onTriggerFailed,
 }: DeploymentRunControllerProps) => {
-  const { status, logs, mfaEvent, deploymentId, abortDeploy, submitMfa, triggerDeploy, attachToDeployment } =
+  const { status, logs, deploymentId, abortDeploy, triggerDeploy, attachToDeployment } =
     useDeploymentLogStream();
 
   const hasStartedRef = useRef(false);
@@ -69,8 +69,8 @@ export const DeploymentRunController = ({
 
   useEffect(() => {
     const elapsedMs = endedAt ? endedAt - startedAtRef.current : liveElapsedMs;
-    onSnapshot(runKey, { deploymentId, status, logs, mfaEvent, elapsedMs, abort: abortDeploy, submitMfa });
-  }, [runKey, deploymentId, status, logs, mfaEvent, endedAt, liveElapsedMs, abortDeploy, submitMfa, onSnapshot]);
+    onSnapshot(runKey, { deploymentId, status, logs, elapsedMs, abort: abortDeploy });
+  }, [runKey, deploymentId, status, logs, endedAt, liveElapsedMs, abortDeploy, onSnapshot]);
 
   return null;
 };
