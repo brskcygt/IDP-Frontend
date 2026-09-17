@@ -419,6 +419,17 @@ export interface ArtifactEventsResult {
 
 // --- Transport ---------------------------------------------------------
 
+/**
+ * Server-wide build parameters: the key/value map every project's release build
+ * inherits. A project's own parameters (artifactDeploy.build.parameters) win.
+ * Never secrets — they reach the CI tool as job parameters and land in its log.
+ */
+export interface BuildParametersSettings {
+  parameters: Record<string, string>;
+  updatedAt: string | null;
+  updatedBy: string | null;
+}
+
 export interface Transport {
   auth: {
     login(username: string, password: string): Promise<SessionUser>;
@@ -476,6 +487,10 @@ export interface Transport {
   };
   audit: {
     list(limit?: number): Promise<AuditLog[]>;
+  };
+  settings: {
+    getBuildParameters(): Promise<BuildParametersSettings>;
+    updateBuildParameters(parameters: Record<string, string>): Promise<BuildParametersSettings>;
   };
   runners: {
     list(): Promise<RunnerAgent[]>;

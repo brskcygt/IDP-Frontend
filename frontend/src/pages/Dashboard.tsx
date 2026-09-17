@@ -35,6 +35,7 @@ import { ArtifactDeploySheet } from '@/components/artifacts/ArtifactDeploySheet'
 import { ArtifactReleasesSheet } from '@/components/artifacts/ArtifactReleasesSheet';
 import { DeploymentGuideSheet } from '@/components/guide/DeploymentGuideSheet';
 import { TroubleshootingSheet } from '@/components/guide/TroubleshootingSheet';
+import { GlobalSettingsSheet } from '@/components/settings/GlobalSettingsSheet';
 import { useSession } from '@/hooks/useSession';
 import { can } from '@/lib/permissions';
 
@@ -84,7 +85,7 @@ export const Dashboard = ({ onLogout }: { onLogout?: () => void }) => {
   const [artifactTarget, setArtifactTarget] = useState<Project | null>(null);
   const [settingsInitialTab, setSettingsInitialTab] = useState<SettingsTabId>('general');
   const [openPanel, setOpenPanel] = useState<
-    'trigger' | 'settings' | 'create' | 'stream' | 'sessions' | 'activity' | 'history' | 'transfer' | 'agent-builder' | 'artifact-releases' | 'artifact-deploy' | 'guide' | 'troubleshooting' | null
+    'trigger' | 'settings' | 'create' | 'stream' | 'sessions' | 'activity' | 'history' | 'transfer' | 'agent-builder' | 'artifact-releases' | 'artifact-deploy' | 'guide' | 'troubleshooting' | 'settings-global' | null
   >(null);
 
   // Surfaces the backend's per-project 409 concurrency lock (or any other
@@ -261,7 +262,8 @@ export const Dashboard = ({ onLogout }: { onLogout?: () => void }) => {
         : openPanel === 'troubleshooting' ? 'troubleshooting'
           : openPanel === 'agent-builder' ? 'agent-builder'
             : openPanel === 'transfer' ? 'transfer'
-              : 'projects';
+              : openPanel === 'settings-global' ? 'settings'
+                : 'projects';
 
   return (
     <div className="flex h-screen overflow-hidden bg-background text-foreground">
@@ -275,6 +277,7 @@ export const Dashboard = ({ onLogout }: { onLogout?: () => void }) => {
         onOpenAgentBuilder={() => setOpenPanel('agent-builder')}
         onOpenGuide={() => setOpenPanel('guide')}
         onOpenTroubleshooting={() => setOpenPanel('troubleshooting')}
+        onOpenSettings={() => setOpenPanel('settings-global')}
         onLogout={onLogout}
       />
 
@@ -406,6 +409,12 @@ export const Dashboard = ({ onLogout }: { onLogout?: () => void }) => {
         onOpenAgentBuilder={() => setOpenPanel('agent-builder')}
       />
       <TroubleshootingSheet isOpen={openPanel === 'troubleshooting'} onOpenChange={(open) => setOpenPanel(open ? 'troubleshooting' : null)} />
+
+      <GlobalSettingsSheet
+        isOpen={openPanel === 'settings-global'}
+        onOpenChange={(open) => setOpenPanel(open ? 'settings-global' : null)}
+        canEdit={can(session?.role, 'settings:write')}
+      />
       <ArtifactDeploySheet
         project={artifactTarget}
         isOpen={openPanel === 'artifact-deploy'}

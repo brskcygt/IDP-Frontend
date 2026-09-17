@@ -557,6 +557,24 @@ export function createHttpTransport(baseUrl: string = ''): Transport {
     },
   },
 
+  settings: {
+    async getBuildParameters() {
+      const response = await fetch(`${baseUrl}/api/settings/build-parameters`, { credentials: 'include' });
+      if (!response.ok) throw new Error(await readErrorMessage(response, 'Build parametreleri okunamadı'));
+      return response.json();
+    },
+    async updateBuildParameters(parameters: Record<string, string>) {
+      const response = await fetch(`${baseUrl}/api/settings/build-parameters`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ parameters }),
+      });
+      if (!response.ok) throw new Error(await readErrorMessage(response, 'Build parametreleri kaydedilemedi'));
+      return response.json();
+    },
+  },
+
   runners: {
     async list(): Promise<RunnerAgent[]> {
       throw new Error('Cloudflare runner discovery is available in the desktop application only.');

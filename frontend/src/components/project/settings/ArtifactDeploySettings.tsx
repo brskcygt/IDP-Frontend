@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import type { ArtifactComponentConfig, ArtifactDeployConfig, ProjectConfig } from '@/types/project';
+import { KeyValueEditor } from '@/components/settings/KeyValueEditor';
 import { needsNewArtifactToken } from './artifactDeployValidation';
 
 type Props = {
@@ -93,6 +94,27 @@ export const ArtifactDeploySettings = ({ config, original, onChange }: Props) =>
             <div><Label>Artifact name</Label><Input className={fieldClass} value={artifact.artifactName ?? ''} onChange={(event) => update({ artifactName: event.target.value })} placeholder="payment-api" /></div>
             <div><Label>Version variable</Label><Input className={fieldClass} value={artifact.versionVariable ?? ''} onChange={(event) => update({ versionVariable: event.target.value })} placeholder="VERSION" /></div>
           </div>
+
+          {artifact.build?.provider !== 'none' && (
+            <div className="border-t border-border/60 pt-4">
+              <Label>Build parameters</Label>
+              <p className="mb-2.5 mt-1 text-xs text-muted-foreground">
+                Sent to the build with the version. Values set here beat the server-wide defaults in
+                Settings, and a declarative Jenkins pipeline resets its own defaults on every run —
+                which is why they belong here rather than in the job.
+              </p>
+              <KeyValueEditor
+                value={artifact.build?.parameters}
+                onChange={(parameters) => update({ build: { ...artifact.build, parameters } })}
+                noun="Parameter"
+                emptyHint="No parameters yet, e.g. IDP_PROJECT_ID or TENANT_SLUG."
+                footnote={
+                  'Parameters are not secret: they reach the CI tool as job parameters and appear in its ' +
+                  'build log. For a credential, pass its id and let the CI tool resolve it.'
+                }
+              />
+            </div>
+          )}
         </section>
 
         <section className="space-y-4 rounded-lg border border-border/60 p-4">

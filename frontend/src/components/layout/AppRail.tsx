@@ -9,6 +9,7 @@ import {
   PackagePlus,
   PanelLeftClose,
   PanelLeftOpen,
+  Settings2,
   Terminal,
   type LucideIcon,
 } from "lucide-react";
@@ -21,7 +22,8 @@ export type AppRailItem =
   | "guide"
   | "troubleshooting"
   | "agent-builder"
-  | "transfer";
+  | "transfer"
+  | "settings";
 
 type AppRailProps = {
   onOpenActivityLog: () => void;
@@ -29,6 +31,7 @@ type AppRailProps = {
   onOpenAgentBuilder: () => void;
   onOpenGuide: () => void;
   onOpenTroubleshooting: () => void;
+  onOpenSettings: () => void;
   onLogout?: () => void;
   canManageProjects: boolean;
   activeItem?: AppRailItem;
@@ -109,6 +112,7 @@ export const AppRail = ({
   onOpenAgentBuilder,
   onOpenGuide,
   onOpenTroubleshooting,
+  onOpenSettings,
   onLogout,
   canManageProjects,
   activeItem = "projects",
@@ -175,6 +179,7 @@ export const AppRail = ({
           <>
             <RailButton icon={PackagePlus} label="Create IDP agent" expanded={expanded} active={activeItem === "agent-builder"} onClick={onOpenAgentBuilder} />
             <RailButton icon={PackageOpen} label="Import / export" expanded={expanded} active={activeItem === "transfer"} onClick={onOpenTransfer} />
+            <RailButton icon={Settings2} label="Settings" expanded={expanded} active={activeItem === "settings"} onClick={onOpenSettings} />
           </>
         )}
 

@@ -120,7 +120,15 @@ export interface ArtifactDeployConfig {
     /** True when the backend already has a dedicated artifact source token. */
     hasToken?: boolean;
   };
-  build?: { provider?: ArtifactBuildProvider };
+  build?: {
+    provider?: ArtifactBuildProvider;
+    /**
+     * Sent to the CI job together with the version when a release is built.
+     * Never secrets: they travel as job parameters and land in the build log —
+     * pass the id of a CI credential instead.
+     */
+    parameters?: Record<string, string>;
+  };
   versionVariable?: string;
   artifactName?: string;
   components?: ArtifactComponentConfig[];

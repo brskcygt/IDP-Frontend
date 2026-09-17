@@ -14,6 +14,8 @@ export type Role = 'admin' | 'deployer' | 'viewer';
 export type Action =
   | 'project:read'
   | 'project:write'
+  | 'settings:read'
+  | 'settings:write'
   | 'project:delete'
   | 'deploy:trigger'
   | 'deploy:abort'
@@ -34,12 +36,14 @@ const ROLE_RANK: Readonly<Record<Role, number>> = {
 const ACTION_MIN_ROLE: Readonly<Record<Action, Role>> = {
   'project:read': 'viewer',
   'audit:read': 'viewer',
+  'settings:read': 'viewer',
   'deploy:trigger': 'deployer',
   'deploy:abort': 'deployer',
   'release:create': 'deployer',
   'release:delete': 'admin',
   'project:write': 'admin',
   'project:delete': 'admin',
+  'settings:write': 'admin',
   'vpn:manage': 'admin',
   'user:manage': 'admin',
 };
