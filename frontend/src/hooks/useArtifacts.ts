@@ -33,7 +33,7 @@ export const useArtifactActions = (projectId: string) => {
   };
 
   return {
-    createRelease: useMutation({ mutationFn: (input: { version: string; ref?: string }) => getTransport().artifacts.createRelease(projectId, input), onSuccess: (result) => { void invalidateReleases(); afterRun(result); } }),
+    createRelease: useMutation({ mutationFn: (input: { version: string; ref?: string; components?: string[] }) => getTransport().artifacts.createRelease(projectId, input), onSuccess: (result) => { void invalidateReleases(); afterRun(result); } }),
     importRelease: useMutation({ mutationFn: (version: string) => getTransport().artifacts.importRelease(projectId, version), onSuccess: () => { void invalidateReleases(); } }),
     deleteRelease: useMutation({ mutationFn: (id: string) => getTransport().artifacts.deleteRelease(id), onSuccess: () => { void invalidateReleases(); } }),
     createTarget: useMutation({ mutationFn: (input: DeployTargetInput) => getTransport().artifacts.createTarget(projectId, input), onSuccess: () => { void invalidateTargets(); } }),

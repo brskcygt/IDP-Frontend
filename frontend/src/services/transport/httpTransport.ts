@@ -356,7 +356,7 @@ export function createHttpTransport(baseUrl: string = ''): Transport {
 
     async createRelease(
       projectId: string,
-      input: { version: string; ref?: string },
+      input: { version: string; ref?: string; components?: string[] },
     ): Promise<ArtifactBuildRunResult> {
       const response = await fetch(`${baseUrl}/api/projects/${encodeURIComponent(projectId)}/releases`, {
         method: 'POST',

@@ -462,7 +462,8 @@ export interface Transport {
   artifacts: {
     listReleases(projectId: string): Promise<ArtifactRelease[]>;
     getRelease(id: string): Promise<ArtifactReleaseDetails>;
-    createRelease(projectId: string, input: { version: string; ref?: string }): Promise<ArtifactBuildRunResult>;
+    /** `components` builds only part of the project; omitted, everything is built. */
+    createRelease(projectId: string, input: { version: string; ref?: string; components?: string[] }): Promise<ArtifactBuildRunResult>;
     importRelease(projectId: string, version: string): Promise<ArtifactReleaseDetails>;
     deleteRelease(id: string): Promise<void>;
     listTargets(projectId: string): Promise<DeployTarget[]>;
