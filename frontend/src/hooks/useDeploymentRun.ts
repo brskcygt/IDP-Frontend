@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from 'react';
 import type { Project } from './useProjects';
-import type { DeploymentStatus } from './useDeploymentLogStream';
+import type { DeployProgress, DeploymentStatus } from './useDeploymentLogStream';
 
 /** Static identity for a tracked run — set once at creation, never mutated. */
 export type DeploymentRunRecord = {
@@ -18,6 +18,8 @@ export type DeploymentRunSnapshot = {
   deploymentId: string | null;
   status: DeploymentStatus;
   logs: string[];
+  /** Stage/percentage when the run reports it; null for adapters that don't. */
+  progress: DeployProgress | null;
   elapsedMs: number;
   abort: () => void;
 };
@@ -31,6 +33,7 @@ const IDLE_SNAPSHOT: DeploymentRunSnapshot = {
   deploymentId: null,
   status: 'connecting',
   logs: [],
+  progress: null,
   elapsedMs: 0,
   abort: () => {},
 };

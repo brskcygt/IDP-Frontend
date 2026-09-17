@@ -1,8 +1,9 @@
 import { Terminal, Square } from "lucide-react";
 import type { Project } from "@/hooks/useProjects";
-import type { DeploymentStatus } from "@/hooks/useDeploymentLogStream";
+import type { DeployProgress, DeploymentStatus } from "@/hooks/useDeploymentLogStream";
 import { useSession } from "@/hooks/useSession";
 import { formatDuration } from "@/lib/format";
+import { progressLabel } from "@/lib/deployProgress";
 import { providerClass } from "@/lib/projectMeta";
 import { DeployProgressBar } from "./DeployProgressBar";
 import { MetaChip } from "./MetaChip";
@@ -15,6 +16,7 @@ type LiveDeploymentPanelProps = {
   project: Project | null;
   status: DeploymentStatus;
   logs: string[];
+  progress: DeployProgress | null;
   elapsedMs: number;
   onOpenStream: () => void;
   onAbort: () => void;
@@ -57,6 +59,7 @@ export const LiveDeploymentPanel = ({
   project,
   status,
   logs,
+  progress,
   elapsedMs,
   onOpenStream,
   onAbort,
@@ -124,11 +127,21 @@ export const LiveDeploymentPanel = ({
         </div>
       </div>
 
-      <DeployProgressBar status={status} className="relative my-3" />
+      <DeployProgressBar status={status} value={progress?.percent} className="relative my-3" />
 
       <div className="relative mb-3 flex items-center justify-between font-mono text-[11px] text-muted-foreground">
-        <span>{logs.length} lines streamed</span>
-        {session?.username && <span className="text-faint">triggered by {session.username}</span>}
+        <span className="truncate">
+          {progress ? (
+            <>
+              <span className="tabular font-semibold text-foreground">{Math.round(progress.percent)}%</span>
+              <span className="mx-1.5 text-faint" aria-hidden="true">·</span>
+              {progressLabel(progress)}
+            </>
+          ) : (
+            `${logs.length} lines streamed`
+          )}
+        </span>
+        {session?.username && <span className="shrink-0 pl-3 text-faint">triggered by {session.username}</span>}
       </div>
 
       {isActive && <div className="relative mb-2"><TerminalActivityIndicator elapsedMs={elapsedMs} compact /></div>}

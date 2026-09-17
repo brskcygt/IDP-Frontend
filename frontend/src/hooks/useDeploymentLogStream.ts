@@ -1,13 +1,18 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { getTransport } from '../services/transport';
+import { advanceProgress, isDeploymentEventLine, type DeployProgress } from '../lib/deployProgress';
+import { sanitizeLogLine } from '../lib/logParser';
 import type { DeploymentStatus } from '../services/transport/types';
 
 export type { DeploymentStatus } from '../services/transport/types';
+export type { DeployProgress } from '../lib/deployProgress';
 
 type UseDeploymentLogStreamReturn = {
-  /** All log lines received so far */
+  /** All log lines received so far, without the structured event lines */
   logs: string[];
+  /** Latest stage/percentage reported by the run, null when it reports none */
+  progress: DeployProgress | null;
   /** Current deployment status */
   status: DeploymentStatus;
   /** Whether the deployment is actively running */
@@ -46,6 +51,7 @@ type UseDeploymentLogStreamReturn = {
  */
 export function useDeploymentLogStream(): UseDeploymentLogStreamReturn {
   const [logs, setLogs] = useState<string[]>([]);
+  const [progress, setProgress] = useState<DeployProgress | null>(null);
   const [status, setStatus] = useState<DeploymentStatus>('idle');
   const [deploymentId, setDeploymentId] = useState<string | null>(null);
   const queryClient = useQueryClient();
@@ -64,7 +70,17 @@ export function useDeploymentLogStream(): UseDeploymentLogStreamReturn {
 
     unsubscribeRef.current = transportRef.current.deploy.subscribeLogs(depId, {
       onLog: (line) => {
-        setLogs((prev) => [...prev, line]);
+        // Structured events ride the log stream (see lib/deployProgress.ts).
+        // They feed the progress bar and must not reach the terminal as text.
+        if (isDeploymentEventLine(line)) {
+          setProgress((prev) => advanceProgress(prev, line));
+          return;
+        }
+        // Lines that are pure noise (Jenkins ConsoleNote markers) never enter
+        // the buffer, so the terminal, the tail and the copy/download all agree.
+        const clean = sanitizeLogLine(line);
+        if (clean === null) return;
+        setLogs((prev) => [...prev, clean]);
       },
 
       onStatus: (nextStatusValue) => {
@@ -102,6 +118,7 @@ export function useDeploymentLogStream(): UseDeploymentLogStreamReturn {
   const triggerDeploy = useCallback(async (projectId: string, params: Record<string, unknown>) => {
     // Clear previous state
     setLogs([`Triggering deployment for project ${projectId}...`]);
+    setProgress(null);
     setStatus('connecting');
     setDeploymentId(null);
 
@@ -125,6 +142,7 @@ export function useDeploymentLogStream(): UseDeploymentLogStreamReturn {
    */
   const attachToDeployment = useCallback((depId: string) => {
     setLogs([`Attaching to existing deployment session: ${depId}...`]);
+    setProgress(null);
     setStatus('connecting');
     setDeploymentId(depId);
     connectToStream(depId);
@@ -150,6 +168,7 @@ export function useDeploymentLogStream(): UseDeploymentLogStreamReturn {
    */
   const clearLogs = useCallback(() => {
     setLogs([]);
+    setProgress(null);
     setStatus('idle');
     setDeploymentId(null);
   }, []);
@@ -168,6 +187,7 @@ export function useDeploymentLogStream(): UseDeploymentLogStreamReturn {
 
   return {
     logs,
+    progress,
     status,
     isDeploying: status === 'running' || status === 'connecting',
     deploymentId,

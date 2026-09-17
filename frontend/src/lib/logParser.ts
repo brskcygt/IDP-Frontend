@@ -23,6 +23,26 @@ const ERROR_PATTERN = /✗|\bERROR\b|\bstderr\b|\bfailed\b/i;
 const WARN_PATTERN = /⚠|\bWARNING\b|\bwarn\b/i;
 const SUCCESS_PATTERN = /✓/;
 const ANSI_PATTERN = new RegExp(`${String.fromCharCode(27)}\\[[0-?]*[ -/]*[@-~]`, 'g');
+/**
+ * Jenkins ConsoleNote markers — base64 blobs its own UI hides behind the ANSI
+ * conceal sequence. The backend strips them at the source now
+ * (backend/src/adapters/jenkinsConsole.js), but sessions that were archived
+ * before that still carry them, and stripping ANSI codes here would otherwise
+ * leave the blob in front of the real text.
+ */
+const JENKINS_NOTE_PATTERN = /ha:\/\/\/\/[A-Za-z0-9+/]+={0,2}/g;
+
+/**
+ * Drops the noise a line may consist entirely of, and cleans the rest.
+ *
+ * Returns null for a line that carries nothing for the operator, so callers can
+ * keep it out of the buffer altogether instead of filtering at every render
+ * site (terminal, log tail, copy and download all read the same buffer).
+ */
+export const sanitizeLogLine = (raw: string): string | null => {
+  const cleaned = raw.replace(JENKINS_NOTE_PATTERN, '');
+  return cleaned.replace(ANSI_PATTERN, '').trim() === '' ? null : cleaned;
+};
 
 /** Small, dependency-free string hash — good enough to disambiguate duplicate lines. */
 const hashText = (value: string): string => {

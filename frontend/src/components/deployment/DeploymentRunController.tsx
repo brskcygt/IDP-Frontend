@@ -30,7 +30,7 @@ export const DeploymentRunController = ({
   onSnapshot,
   onTriggerFailed,
 }: DeploymentRunControllerProps) => {
-  const { status, logs, deploymentId, abortDeploy, triggerDeploy, attachToDeployment } =
+  const { status, logs, progress, deploymentId, abortDeploy, triggerDeploy, attachToDeployment } =
     useDeploymentLogStream();
 
   const hasStartedRef = useRef(false);
@@ -69,8 +69,8 @@ export const DeploymentRunController = ({
 
   useEffect(() => {
     const elapsedMs = endedAt ? endedAt - startedAtRef.current : liveElapsedMs;
-    onSnapshot(runKey, { deploymentId, status, logs, elapsedMs, abort: abortDeploy });
-  }, [runKey, deploymentId, status, logs, endedAt, liveElapsedMs, abortDeploy, onSnapshot]);
+    onSnapshot(runKey, { deploymentId, status, logs, progress, elapsedMs, abort: abortDeploy });
+  }, [runKey, deploymentId, status, logs, progress, endedAt, liveElapsedMs, abortDeploy, onSnapshot]);
 
   return null;
 };

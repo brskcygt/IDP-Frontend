@@ -113,10 +113,13 @@ export const Dashboard = ({ onLogout }: { onLogout?: () => void }) => {
     setOpenPanel('artifact-releases');
   };
 
+  // The terminal is not opened here on purpose: the live panel above the table
+  // already shows the stage and percentage, and the operator opens the stream
+  // when they want the log lines behind it.
   const attachArtifactRun = (deploymentId: string) => {
     if (!artifactTarget) return;
     attach(deploymentId, artifactTarget.id, artifactTarget);
-    setOpenPanel('stream');
+    setOpenPanel(null);
   };
 
   const openSettings = (project: Project) => {
@@ -139,7 +142,7 @@ export const Dashboard = ({ onLogout }: { onLogout?: () => void }) => {
   const confirmDeploy = (_projectId: string) => {
     if (!triggerTarget) return;
     const { isDuplicate } = start(triggerTarget, {});
-    setOpenPanel('stream');
+    setOpenPanel(null);
     toast(
       isDuplicate
         ? {
@@ -287,6 +290,7 @@ export const Dashboard = ({ onLogout }: { onLogout?: () => void }) => {
             project={activeRun?.project ?? null}
             status={activeRun?.status ?? 'idle'}
             logs={activeRun?.logs ?? EMPTY_LOGS}
+            progress={activeRun?.progress ?? null}
             elapsedMs={activeRun?.elapsedMs ?? 0}
             onOpenStream={() => setOpenPanel('stream')}
             // This panel always reflects the focused run, so it aborts that
@@ -354,7 +358,7 @@ export const Dashboard = ({ onLogout }: { onLogout?: () => void }) => {
           if (!settingsTarget) return;
           setArtifactTarget(settingsTarget);
           attach(deploymentId, settingsTarget.id, settingsTarget);
-          setOpenPanel('stream');
+          setOpenPanel(null);
         }}
       />
 
