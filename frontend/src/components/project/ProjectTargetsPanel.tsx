@@ -1,4 +1,12 @@
-import { GitBranch, Loader2, Rocket, Server } from "lucide-react";
+import { GitBranch, Loader2, MoreHorizontal, Rocket, Server } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import type { Project } from "@/hooks/useProjects";
 import { useArtifactActions, useArtifactAgents, useArtifactTargets } from "@/hooks/useArtifacts";
 import { useToast } from "@/hooks/use-toast";
@@ -110,6 +118,7 @@ export const ProjectTargetsPanel = ({ project, onDeploy, onAddTarget, onRunStart
         // deliberately have none: there you install a release someone named
         // rather than whatever the branch holds right now.
         const isTest = Boolean(target.ref);
+        const pending = actions.buildAndDeploy.isPending;
 
         return (
           <div key={target.id} className="px-12 py-2">
@@ -134,77 +143,97 @@ export const ProjectTargetsPanel = ({ project, onDeploy, onAddTarget, onRunStart
                 </span>
               )}
 
-              <div className="ml-auto flex items-center gap-1.5">
-                {/* One primary action per target, and it says what it does. A
-                    branch turns "deploy" into "rebuild it and install that",
-                    which needs no release chosen; without one the release has to
-                    be picked, and the ellipsis is the promise that it will be. */}
+              <div className="ml-auto flex items-center gap-1">
+                {/* One primary action per target, plus a menu for the rest. The
+                    per-component buttons that used to sit in every card made a
+                    three-customer project a wall of identical "Deploy"s; the
+                    component rows now only report state, and acting on a single
+                    component is one step further in, where it belongs. */}
                 {isTest && canRelease ? (
                   <button
                     type="button"
-                    disabled={actions.buildAndDeploy.isPending}
+                    disabled={pending}
                     onClick={() => void buildAndDeploy(target.id, target.name)}
-                    className={cn(ACTION_CLASS, "bg-primary font-semibold text-primary-foreground hover:bg-primary/90")}
+                    className={cn(ACTION_CLASS, "bg-primary font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-60")}
                     title={`Rebuild ${target.ref} and install every component on ${target.name}`}
                   >
-                    <GitBranch className="h-3 w-3" aria-hidden="true" />
+                    {pending ? <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" /> : <GitBranch className="h-3 w-3" aria-hidden="true" />}
                     Build &amp; deploy
                   </button>
-                ) : null}
-                {canDeploy && (
+                ) : canDeploy ? (
                   <button
                     type="button"
                     onClick={() => onDeploy(project, { targetId: target.id })}
-                    className={cn(
-                      ACTION_CLASS,
-                      isTest
-                        ? "text-muted-foreground hover:bg-accent hover:text-foreground"
-                        : "bg-primary font-semibold text-primary-foreground hover:bg-primary/90",
-                    )}
+                    className={cn(ACTION_CLASS, "bg-primary font-semibold text-primary-foreground hover:bg-primary/90")}
                     title={`Choose a release to install on ${target.name}`}
                   >
-                    {!isTest && <Rocket className="h-3 w-3" aria-hidden="true" />}
+                    <Rocket className="h-3 w-3" aria-hidden="true" />
                     Deploy…
                   </button>
+                ) : null}
+
+                {(canDeploy || canRelease) && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button
+                        type="button"
+                        aria-label={`More actions for ${target.name}`}
+                        className={cn(ACTION_CLASS, "px-1.5 text-muted-foreground hover:bg-accent hover:text-foreground data-[state=open]:bg-accent")}
+                      >
+                        <MoreHorizontal className="h-3.5 w-3.5" aria-hidden="true" />
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      {isTest && canRelease && (
+                        <>
+                          <DropdownMenuLabel>Build {target.ref} · one component</DropdownMenuLabel>
+                          {hosted.map((name) => (
+                            <DropdownMenuItem
+                              key={name}
+                              disabled={pending}
+                              onSelect={() => void buildAndDeploy(target.id, target.name, name)}
+                            >
+                              <GitBranch className="h-3 w-3 text-primary" aria-hidden="true" />
+                              <span className="font-mono">{name}</span>
+                            </DropdownMenuItem>
+                          ))}
+                          <DropdownMenuSeparator />
+                        </>
+                      )}
+                      {canDeploy && (
+                        <>
+                          <DropdownMenuItem onSelect={() => onDeploy(project, { targetId: target.id })}>
+                            <Rocket className="h-3 w-3" aria-hidden="true" />
+                            Deploy a release…
+                          </DropdownMenuItem>
+                          {hosted.map((name) => (
+                            <DropdownMenuItem
+                              key={`deploy-${name}`}
+                              onSelect={() => onDeploy(project, { targetId: target.id, component: name })}
+                            >
+                              <Rocket className="h-3 w-3 opacity-50" aria-hidden="true" />
+                              <span>Deploy a release · <span className="font-mono">{name}</span></span>
+                            </DropdownMenuItem>
+                          ))}
+                        </>
+                      )}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 )}
               </div>
             </div>
 
-            <div className="mt-1.5 grid gap-1.5 sm:grid-cols-2">
+            <div className="mt-1.5 grid gap-1.5 sm:grid-cols-2 lg:grid-cols-3">
               {hosted.map((name) => {
                 const installed = target.currentVersions?.[name];
                 const deployedAt = formatDate(installed?.deployedAt);
                 return (
-                  <div key={name} className="flex items-center justify-between gap-2 rounded-md bg-background/60 px-2.5 py-1.5">
-                    <div className="min-w-0">
-                      <p className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground">{name}</p>
-                      <p className="truncate font-mono text-xs font-semibold">
-                        {installed?.version ?? <span className="text-muted-foreground">not installed</span>}
-                      </p>
-                      {deployedAt && <p className="text-[10px] text-muted-foreground">{deployedAt}</p>}
-                    </div>
-                    {isTest && canRelease ? (
-                      <button
-                        type="button"
-                        disabled={actions.buildAndDeploy.isPending}
-                        onClick={() => void buildAndDeploy(target.id, target.name, name)}
-                        aria-label={`Rebuild ${target.ref} and install ${name} on ${target.name}`}
-                        title={`Rebuild ${target.ref} and install only ${name}`}
-                        className={cn(ACTION_CLASS, "shrink-0 border border-primary/40 text-primary hover:bg-primary/10")}
-                      >
-                        <GitBranch className="h-3 w-3" aria-hidden="true" />
-                        Build
-                      </button>
-                    ) : canDeploy ? (
-                      <button
-                        type="button"
-                        onClick={() => onDeploy(project, { targetId: target.id, component: name })}
-                        aria-label={`Choose a release to install ${name} on ${target.name}`}
-                        className={cn(ACTION_CLASS, "shrink-0 border border-line-strong hover:bg-accent")}
-                      >
-                        Deploy…
-                      </button>
-                    ) : null}
+                  <div key={name} className="min-w-0 rounded-md bg-background/60 px-2.5 py-1.5">
+                    <p className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground">{name}</p>
+                    <p className="truncate font-mono text-xs font-semibold">
+                      {installed?.version ?? <span className="text-muted-foreground">not installed</span>}
+                    </p>
+                    {deployedAt && <p className="text-[10px] text-muted-foreground">{deployedAt}</p>}
                   </div>
                 );
               })}
