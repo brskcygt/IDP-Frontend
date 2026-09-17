@@ -1,4 +1,4 @@
-import { Package, RotateCcw, Square } from "lucide-react";
+import { ChevronRight, Package, RotateCcw, Square } from "lucide-react";
 import type { Project } from "@/hooks/useProjects";
 import { providerClass } from "@/lib/projectMeta";
 import { StatusMark } from "./StatusMark";
@@ -6,6 +6,7 @@ import { RunSparkline, type RunOutcome } from "./RunSparkline";
 import { HostLoadCell } from "./HostLoadCell";
 import { LastDeployCell } from "./LastDeployCell";
 import { PROJECT_CELL, PROJECT_GRID } from "./tableLayout";
+import { ProjectTargetsPanel, type DeploySelection } from "./ProjectTargetsPanel";
 import { useSession } from "@/hooks/useSession";
 import { can } from "@/lib/permissions";
 import { cn } from "@/lib/utils";
@@ -15,11 +16,15 @@ type ProjectRowProps = {
   /** Absent until the platform exposes run history; the sparkline degrades. */
   runs?: ReadonlyArray<RunOutcome>;
   elapsedLabel?: string;
-  onDeploy: (project: Project) => void;
+  onDeploy: (project: Project, selection?: DeploySelection) => void;
   onReleases: (project: Project) => void;
   onAbort: (projectId: string) => void;
   onSettings: (project: Project) => void;
   onOpenHistory: (project: Project) => void;
+  onAddTarget: (project: Project) => void;
+  /** Customers stay collapsed until asked for: the list costs a request per project. */
+  expanded: boolean;
+  onToggleExpanded: (projectId: string) => void;
 };
 
 const ACTION_CLASS =
@@ -34,6 +39,9 @@ export const ProjectRow = ({
   onAbort,
   onSettings,
   onOpenHistory,
+  onAddTarget,
+  expanded,
+  onToggleExpanded,
 }: ProjectRowProps) => {
   const { data: session } = useSession();
   // The backend is what actually blocks these actions (403); this only keeps the
@@ -47,6 +55,7 @@ export const ProjectRow = ({
   const isArtifactProject = Boolean(project.config?.artifactDeploy);
 
   return (
+    <>
     <div
       role="row"
       className={cn(
@@ -63,15 +72,30 @@ export const ProjectRow = ({
         )}
       />
 
-      <button
-        type="button"
-        onClick={() => onSettings(project)}
-        title={`Open settings for ${project.name}`}
-        className={cn(PROJECT_CELL, "flex items-center gap-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset")}
-      >
-        <StatusMark status={project.status} />
-        <span className="truncate font-semibold">{project.name}</span>
-      </button>
+      <div className={cn(PROJECT_CELL, "flex min-w-0 items-center gap-1")}>
+        {isArtifactProject ? (
+          <button
+            type="button"
+            onClick={() => onToggleExpanded(project.id)}
+            aria-expanded={expanded}
+            aria-label={`${expanded ? "Hide" : "Show"} customers of ${project.name}`}
+            className="-ml-1 rounded p-0.5 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <ChevronRight className={cn("h-3.5 w-3.5 transition-transform motion-reduce:transition-none", expanded && "rotate-90")} />
+          </button>
+        ) : (
+          <span className="w-[18px]" aria-hidden="true" />
+        )}
+        <button
+          type="button"
+          onClick={() => onSettings(project)}
+          title={`Open settings for ${project.name}`}
+          className="flex min-w-0 items-center gap-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+        >
+          <StatusMark status={project.status} />
+          <span className="truncate font-semibold">{project.name}</span>
+        </button>
+      </div>
 
       <div className={cn(PROJECT_CELL, "truncate text-muted-foreground")}>{project.tenant}</div>
 
@@ -154,5 +178,9 @@ export const ProjectRow = ({
         ) : null}
       </div>
     </div>
+    {expanded && isArtifactProject && (
+      <ProjectTargetsPanel project={project} onDeploy={onDeploy} onAddTarget={onAddTarget} />
+    )}
+    </>
   );
 };

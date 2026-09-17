@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowRight, Loader2, Package, RefreshCw, Rocket, RotateCcw, Server, Settings } from 'lucide-react';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
@@ -15,6 +15,13 @@ import type { Project } from '@/hooks/useProjects';
 
 type Props = {
   project: Project | null;
+  /**
+   * Target (and optionally one component) picked in the project table, so the
+   * sheet opens on the customer that was clicked instead of making the operator
+   * find it again. The release is still chosen here, as is the confirmation for
+   * a production target.
+   */
+  preselect?: { targetId: string; component?: string } | null;
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   onRunStarted: (deploymentId: string) => void;
@@ -24,7 +31,7 @@ type Props = {
 
 const formatDate = (value: string | null) => value ? new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value)) : '—';
 
-export const ArtifactDeploySheet = ({ project, isOpen, onOpenChange, onRunStarted, onOpenReleases, onOpenTargets }: Props) => {
+export const ArtifactDeploySheet = ({ project, preselect, isOpen, onOpenChange, onRunStarted, onOpenReleases, onOpenTargets }: Props) => {
   const projectId = project?.id;
   const { data: session } = useSession();
   const canDeploy = can(session?.role, 'deploy:trigger');
@@ -66,11 +73,27 @@ export const ArtifactDeploySheet = ({ project, isOpen, onOpenChange, onRunStarte
     if (!readyReleases.some((release) => release.id === releaseId)) setReleaseId(readyReleases[0].id);
   }, [isOpen, readyReleases, releaseId]);
 
+  // What the table asked for, frozen at open time. Held in a ref because the
+  // reset below also runs when that target is applied, and would otherwise wipe
+  // the component the operator clicked.
+  const openedWith = useRef<{ targetId: string; component?: string } | null>(null);
+
+  useEffect(() => {
+    if (!isOpen) {
+      openedWith.current = null;
+      return;
+    }
+    openedWith.current = preselect ?? null;
+    if (preselect) setTargetId(preselect.targetId);
+  }, [isOpen, preselect]);
+
   useEffect(() => {
     setConfirmation('');
     // Components differ per target, so a selection made for another one would
-    // silently carry over and deploy the wrong set.
-    setSelected(null);
+    // silently carry over and deploy the wrong set — except the one the table
+    // sent us in, which is the whole point of arriving here.
+    const opened = openedWith.current;
+    setSelected(opened && opened.targetId === targetId && opened.component ? new Set([opened.component]) : null);
   }, [targetId]);
 
   if (!project) return null;

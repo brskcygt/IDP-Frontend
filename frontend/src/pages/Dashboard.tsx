@@ -32,6 +32,7 @@ import { Toaster } from '@/components/ui/toaster';
 import { WorkspaceTransferSheet } from '@/components/transfer/WorkspaceTransferSheet';
 import { AgentBuilderSheet } from '@/components/agents/AgentBuilderSheet';
 import { ArtifactDeploySheet } from '@/components/artifacts/ArtifactDeploySheet';
+import type { DeploySelection } from '@/components/project/ProjectTargetsPanel';
 import { ArtifactReleasesSheet } from '@/components/artifacts/ArtifactReleasesSheet';
 import { DeploymentGuideSheet } from '@/components/guide/DeploymentGuideSheet';
 import { TroubleshootingSheet } from '@/components/guide/TroubleshootingSheet';
@@ -84,6 +85,7 @@ export const Dashboard = ({ onLogout }: { onLogout?: () => void }) => {
   const [historyTarget, setHistoryTarget] = useState<Project | null>(null);
   const [artifactTarget, setArtifactTarget] = useState<Project | null>(null);
   const [settingsInitialTab, setSettingsInitialTab] = useState<SettingsTabId>('general');
+  const [deployPreselect, setDeployPreselect] = useState<DeploySelection | null>(null);
   const [openPanel, setOpenPanel] = useState<
     'trigger' | 'settings' | 'create' | 'stream' | 'sessions' | 'activity' | 'history' | 'transfer' | 'agent-builder' | 'artifact-releases' | 'artifact-deploy' | 'guide' | 'troubleshooting' | 'settings-global' | null
   >(null);
@@ -99,9 +101,11 @@ export const Dashboard = ({ onLogout }: { onLogout?: () => void }) => {
 
   if (isError) return <DashboardError />;
 
-  const openTrigger = (project: Project) => {
+  const openTrigger = (project: Project, selection?: DeploySelection) => {
     if (project.config?.artifactDeploy) {
       setArtifactTarget(project);
+      // Set before the sheet opens: it reads this once, at open time.
+      setDeployPreselect(selection ?? null);
       setOpenPanel('artifact-deploy');
       return;
     }
@@ -324,6 +328,7 @@ export const Dashboard = ({ onLogout }: { onLogout?: () => void }) => {
           onAbort={abortDeploy}
           onSettings={openSettings}
           onOpenHistory={openHistory}
+          onAddTarget={openTargetSettings}
           onClearFilters={clearFilters}
           onCreateProject={canCreateProject ? () => setOpenPanel('create') : undefined}
         />
@@ -417,6 +422,7 @@ export const Dashboard = ({ onLogout }: { onLogout?: () => void }) => {
       />
       <ArtifactDeploySheet
         project={artifactTarget}
+        preselect={deployPreselect}
         isOpen={openPanel === 'artifact-deploy'}
         onOpenChange={(open) => setOpenPanel(open ? 'artifact-deploy' : null)}
         onRunStarted={attachArtifactRun}
