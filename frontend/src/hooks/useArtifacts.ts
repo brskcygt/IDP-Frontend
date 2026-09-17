@@ -45,7 +45,9 @@ export const useArtifactActions = (projectId: string) => {
         getTransport().artifacts.applyConfig(targetId, { confirmation }),
       onSuccess: afterRun,
     }),
-    deploy: useMutation({ mutationFn: ({ targetId, releaseId, confirmation }: { targetId: string; releaseId: string; confirmation?: string }) => getTransport().artifacts.deploy(targetId, { releaseId, confirmation }), onSuccess: afterRun }),
-    rollback: useMutation({ mutationFn: ({ targetId, confirmation }: { targetId: string; confirmation?: string }) => getTransport().artifacts.rollback(targetId, { confirmation }), onSuccess: afterRun }),
+    // `components` narrows the run to part of the target (e.g. frontend only);
+    // omitted, the target's whole component set is deployed as before.
+    deploy: useMutation({ mutationFn: ({ targetId, releaseId, components, confirmation }: { targetId: string; releaseId: string; components?: string[]; confirmation?: string }) => getTransport().artifacts.deploy(targetId, { releaseId, components, confirmation }), onSuccess: afterRun }),
+    rollback: useMutation({ mutationFn: ({ targetId, components, confirmation }: { targetId: string; components?: string[]; confirmation?: string }) => getTransport().artifacts.rollback(targetId, { components, confirmation }), onSuccess: afterRun }),
   };
 };
