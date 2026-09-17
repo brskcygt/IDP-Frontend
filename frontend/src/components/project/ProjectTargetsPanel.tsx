@@ -106,6 +106,10 @@ export const ProjectTargetsPanel = ({ project, onDeploy, onAddTarget, onRunStart
         const components = (target.components ?? []).map((component) => component.name);
         const hosted = components.length > 0 ? components : projectComponents;
         const online = onlineAgents.get(target.agentId);
+        // A branch is what makes a rebuild meaningful, and production targets
+        // deliberately have none: there you install a release someone named
+        // rather than whatever the branch holds right now.
+        const isTest = Boolean(target.ref);
 
         return (
           <div key={target.id} className="px-12 py-2">
@@ -123,36 +127,50 @@ export const ProjectTargetsPanel = ({ project, onDeploy, onAddTarget, onRunStart
                 <span aria-hidden="true" className={cn("h-[6px] w-[6px] rounded-full", online ? "bg-status-ok" : "bg-status-fail")} />
                 {online ? "agent online" : "agent offline"}
               </span>
+              {target.ref && (
+                <span className="inline-flex items-center gap-1 rounded border border-primary/30 bg-primary/5 px-1.5 py-0.5 font-mono text-[10px] text-primary">
+                  <GitBranch className="h-2.5 w-2.5" aria-hidden="true" />
+                  {target.ref}
+                </span>
+              )}
+
               <div className="ml-auto flex items-center gap-1.5">
-                {/* A branch is what makes a rebuild meaningful, and production
-                    targets deliberately have none: there you install a release
-                    someone named rather than whatever the branch holds now. */}
-                {canRelease && target.ref && (
+                {/* One primary action per target, and it says what it does. A
+                    branch turns "deploy" into "rebuild it and install that",
+                    which needs no release chosen; without one the release has to
+                    be picked, and the ellipsis is the promise that it will be. */}
+                {isTest && canRelease ? (
                   <button
                     type="button"
                     disabled={actions.buildAndDeploy.isPending}
                     onClick={() => void buildAndDeploy(target.id, target.name)}
-                    className={cn(ACTION_CLASS, "border border-primary/40 bg-primary/10 text-primary hover:bg-primary/20")}
-                    title={`Rebuild ${target.ref} and install it on ${target.name}`}
+                    className={cn(ACTION_CLASS, "bg-primary font-semibold text-primary-foreground hover:bg-primary/90")}
+                    title={`Rebuild ${target.ref} and install every component on ${target.name}`}
                   >
                     <GitBranch className="h-3 w-3" aria-hidden="true" />
-                    Build &amp; deploy · {target.ref}
+                    Build &amp; deploy
                   </button>
-                )}
+                ) : null}
                 {canDeploy && (
                   <button
                     type="button"
                     onClick={() => onDeploy(project, { targetId: target.id })}
-                    className={cn(ACTION_CLASS, "border border-line-strong hover:bg-accent")}
+                    className={cn(
+                      ACTION_CLASS,
+                      isTest
+                        ? "text-muted-foreground hover:bg-accent hover:text-foreground"
+                        : "bg-primary font-semibold text-primary-foreground hover:bg-primary/90",
+                    )}
+                    title={`Choose a release to install on ${target.name}`}
                   >
-                    <Rocket className="h-3 w-3" aria-hidden="true" />
-                    Deploy all
+                    {!isTest && <Rocket className="h-3 w-3" aria-hidden="true" />}
+                    Deploy…
                   </button>
                 )}
               </div>
             </div>
 
-            <div className="mt-1.5 grid gap-1.5 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="mt-1.5 grid gap-1.5 sm:grid-cols-2">
               {hosted.map((name) => {
                 const installed = target.currentVersions?.[name];
                 const deployedAt = formatDate(installed?.deployedAt);
@@ -165,16 +183,28 @@ export const ProjectTargetsPanel = ({ project, onDeploy, onAddTarget, onRunStart
                       </p>
                       {deployedAt && <p className="text-[10px] text-muted-foreground">{deployedAt}</p>}
                     </div>
-                    {canDeploy && (
+                    {isTest && canRelease ? (
+                      <button
+                        type="button"
+                        disabled={actions.buildAndDeploy.isPending}
+                        onClick={() => void buildAndDeploy(target.id, target.name, name)}
+                        aria-label={`Rebuild ${target.ref} and install ${name} on ${target.name}`}
+                        title={`Rebuild ${target.ref} and install only ${name}`}
+                        className={cn(ACTION_CLASS, "shrink-0 border border-primary/40 text-primary hover:bg-primary/10")}
+                      >
+                        <GitBranch className="h-3 w-3" aria-hidden="true" />
+                        Build
+                      </button>
+                    ) : canDeploy ? (
                       <button
                         type="button"
                         onClick={() => onDeploy(project, { targetId: target.id, component: name })}
-                        aria-label={`Deploy ${name} to ${target.name}`}
-                        className={cn(ACTION_CLASS, "shrink-0 bg-primary font-semibold text-primary-foreground hover:bg-primary/90")}
+                        aria-label={`Choose a release to install ${name} on ${target.name}`}
+                        className={cn(ACTION_CLASS, "shrink-0 border border-line-strong hover:bg-accent")}
                       >
-                        Deploy
+                        Deploy…
                       </button>
-                    )}
+                    ) : null}
                   </div>
                 );
               })}

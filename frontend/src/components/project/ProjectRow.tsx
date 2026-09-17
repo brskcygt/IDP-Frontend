@@ -145,13 +145,16 @@ export const ProjectRow = ({
               <Package className="h-3 w-3" aria-hidden="true" />
               Releases
             </button>
+            {/* The ellipsis is a promise: this opens a screen where the release
+                and the customer are chosen. Actions that deploy on the spot
+                (the customer breakdown below) deliberately read differently. */}
             {canDeploy && <button
               type="button"
               onClick={() => onDeploy(project)}
-              aria-label={`Deploy ${project.name}`}
+              aria-label={`Choose a release and customer to deploy ${project.name}`}
               className={cn(ACTION_CLASS, "bg-primary font-semibold text-primary-foreground hover:bg-primary/90")}
             >
-              Deploy
+              Deploy…
             </button>}
           </div>
         ) : !isDeploying && hasFailed && canDeploy ? (
@@ -175,7 +178,7 @@ export const ProjectRow = ({
               "border border-line-strong hover:bg-accent",
             )}
           >
-            Deploy
+            Deploy…
           </button>
         ) : null}
       </div>
