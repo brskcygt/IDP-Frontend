@@ -236,6 +236,8 @@ export interface AgentBuildInput {
   workingDirectory: string;
   /** Outbound HTTP proxy of the target machine, `host:port`; empty = direct. */
   proxy?: string;
+  /** Absolute path of `nssm.exe` on the target; empty = the agent's default (`nssm` on PATH). */
+  nssmPath?: string;
   logLevel: 'TRACE' | 'DEBUG' | 'INFO' | 'WARN' | 'ERROR';
 }
 

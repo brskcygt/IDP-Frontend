@@ -8,16 +8,17 @@ import type { AgentBuildInput } from '@/services/transport/types';
 
 type Props = { isOpen: boolean; onOpenChange: (open: boolean) => void };
 type FormValue = Required<AgentBuildInput>;
-type FieldKey = 'agentId' | 'proxy' | 'workingDirectory';
+type FieldKey = 'agentId' | 'proxy' | 'workingDirectory' | 'nssmPath';
 /** Building for an ID that already has credentials rotates them — ask first. */
 type RotationPrompt = { agentId: string; reason: 'exists' | 'unknown'; detail?: string };
 
-const initialValue: FormValue = { agentId: '', proxy: '', workingDirectory: '', logLevel: 'INFO' };
+const initialValue: FormValue = { agentId: '', proxy: '', workingDirectory: '', nssmPath: '', logLevel: 'INFO' };
 
 const fields: Array<{ key: FieldKey; label: string; placeholder: string; hint: string; optional?: boolean }> = [
   { key: 'agentId', label: 'Agent kimliği', placeholder: 'WIN-PROD-01', hint: 'IDP içinde bu makineyi tanımlayan benzersiz ad. Bu ID’ye özel gizli anahtar IDP sunucusunda üretilir.' },
   { key: 'proxy', label: 'HTTP proxy (opsiyonel)', placeholder: 'proxy.sirket.local:8080', hint: 'Hedef makine dışarıya proxy üzerinden çıkıyorsa host:port. Gerekmiyorsa boş bırakın.', optional: true },
   { key: 'workingDirectory', label: 'Repository dizini', placeholder: 'C:\\Apps\\PaymentApi', hint: 'Git repository’nin hedef sunucudaki tam dizini. Deployment komutu burada çalışır.' },
+  { key: 'nssmPath', label: 'NSSM yolu (opsiyonel)', placeholder: 'C:\\tools\\nssm\\win64\\nssm.exe', hint: 'NSSM ile yönetilen servisleri deploy sırasında durdurup başlatmak için nssm.exe’nin hedefteki tam yolu. Boş bırakılırsa agent PATH’teki “nssm” komutunu dener.', optional: true },
 ];
 
 export const AgentBuilderSheet = ({ isOpen, onOpenChange }: Props) => {
@@ -32,7 +33,7 @@ export const AgentBuilderSheet = ({ isOpen, onOpenChange }: Props) => {
   const build = async (agentId: string) => {
     setBusy(true); setError(null); setResult(null); setRotation(null);
     try {
-      const output = await getTransport().agentBuilder.build({ ...value, agentId, proxy: value.proxy.trim() });
+      const output = await getTransport().agentBuilder.build({ ...value, agentId, proxy: value.proxy.trim(), nssmPath: value.nssmPath.trim() });
       if (!output.canceled && output.filePath && output.sha256) setResult({ filePath: output.filePath, sha256: output.sha256, agentId, gatewayUrl: output.gatewayUrl ?? null });
     } catch (cause) { setError(cause instanceof Error ? cause.message : 'Agent kurulum paketi oluşturulamadı.'); }
     finally { setBusy(false); }

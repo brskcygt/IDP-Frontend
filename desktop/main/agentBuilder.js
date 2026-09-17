@@ -111,6 +111,29 @@ function parseDeployBasePath(raw) {
   return value.replace(/[\\/]+$/, '');
 }
 
+/**
+ * Optional `deploy.nssm-path`: absolute path of `nssm.exe` on the target. The
+ * agent otherwise calls a bare `nssm`, which fails with "CreateProcess error=2"
+ * on machines where NSSM is not on the service account's PATH. Empty = leave the
+ * key out and keep the agent's default.
+ * @returns {string | null}
+ */
+function parseNssmPath(raw) {
+  const value = String(raw ?? '').trim();
+  if (!value) return null;
+  if (value.length > 260) throw new Error('NSSM yolu en fazla 260 karakter olabilir.');
+  if (CONTROL_CHARS.test(value)) throw new Error('NSSM yolu kontrol karakteri içeremez.');
+  if (/["*?<>|]/.test(value)) throw new Error('NSSM yolu geçersiz karakter içeriyor.');
+  if (!/^[A-Za-z]:[\\/]/.test(value)) {
+    throw new Error('NSSM yolu mutlak bir Windows yolu olmalıdır (ör. C:\\tools\\nssm\\win64\\nssm.exe).');
+  }
+  if (!/\.exe$/i.test(value)) throw new Error('NSSM yolu nssm.exe dosyasını göstermelidir.');
+  if (value.slice(3).split(/[\\/]/).some((segment) => segment === '.' || segment === '..')) {
+    throw new Error("NSSM yolu '.' veya '..' içeremez.");
+  }
+  return value;
+}
+
 /** `deploy.keep-releases`: integer 1-20, default 3. */
 function parseKeepReleases(raw) {
   if (raw === undefined || raw === null || String(raw).trim() === '') return KEEP_RELEASES_DEFAULT;
@@ -151,6 +174,7 @@ function validateInput(input) {
     logLevel: LOG_LEVELS.includes(input.logLevel) ? input.logLevel : 'INFO',
     deployBasePath,
     keepReleases: parseKeepReleases(input.keepReleases),
+    nssmPath: parseNssmPath(input.nssmPath),
   };
 }
 
@@ -227,8 +251,9 @@ function createConfig(value, credentials) {
     'deploy:',
     `  base-path: ${yamlString(value.deployBasePath)}`,
     `  keep-releases: ${value.keepReleases || KEEP_RELEASES_DEFAULT}`,
-    '',
   );
+  if (value.nssmPath) lines.push(`  nssm-path: ${yamlString(value.nssmPath)}`);
+  lines.push('');
   return lines.join('\n');
 }
 

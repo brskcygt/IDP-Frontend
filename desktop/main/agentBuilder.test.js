@@ -89,7 +89,7 @@ test('yamlString escapes controls and YAML 1.1 line breaks; output is JSON-compa
 
 test('validateInput: contract ID format, optional proxy, legacy token/serverUrl ignored', () => {
   const ok = validateInput({ ...baseInput, gatewayToken: 'legacy', serverUrl: 'ws://legacy' });
-  assert.deepEqual(Object.keys(ok).sort(), ['agentId', 'deployBasePath', 'keepReleases', 'logLevel', 'proxy', 'workingDirectory']);
+  assert.deepEqual(Object.keys(ok).sort(), ['agentId', 'deployBasePath', 'keepReleases', 'logLevel', 'nssmPath', 'proxy', 'workingDirectory']);
   assert.equal(ok.proxy, null);
   assert.equal(ok.deployBasePath, 'C:\\inetpub\\wwwroot\\jetsrm');
   assert.equal(ok.keepReleases, 3);
@@ -103,6 +103,21 @@ test('validateInput: contract ID format, optional proxy, legacy token/serverUrl 
   for (const proxy of ['http://proxy:8080', 'proxy', 'proxy:0', 'proxy:70000', 'a..b:80', 'proxy:80 x']) {
     assert.throws(() => validateInput({ ...baseInput, proxy }), /host:port/, proxy);
   }
+});
+
+test('validateInput: optional nssm path must be an absolute Windows path to an .exe', () => {
+  assert.equal(validateInput(baseInput).nssmPath, null);
+  assert.equal(validateInput({ ...baseInput, nssmPath: '   ' }).nssmPath, null);
+  assert.equal(
+    validateInput({ ...baseInput, nssmPath: ' C:\\tools\\nssm\\win64\\nssm.exe ' }).nssmPath,
+    'C:\\tools\\nssm\\win64\\nssm.exe',
+  );
+  assert.equal(validateInput({ ...baseInput, nssmPath: 'D:/ops/NSSM.EXE' }).nssmPath, 'D:/ops/NSSM.EXE');
+  assert.throws(() => validateInput({ ...baseInput, nssmPath: 'nssm' }), /mutlak bir Windows yolu/);
+  assert.throws(() => validateInput({ ...baseInput, nssmPath: '/usr/bin/nssm' }), /mutlak bir Windows yolu/);
+  assert.throws(() => validateInput({ ...baseInput, nssmPath: 'C:\\tools\\nssm' }), /nssm\.exe/);
+  assert.throws(() => validateInput({ ...baseInput, nssmPath: 'C:\\tools\\..\\nssm.exe' }), /'\.' veya '\.\.'/);
+  assert.throws(() => validateInput({ ...baseInput, nssmPath: 'C:\\tools\\ns\nsm.exe' }), /kontrol karakteri/);
 });
 
 test('validateInput: deploy base path must be absolute (Windows drive or POSIX), keep-releases 1-20', () => {
@@ -152,6 +167,20 @@ test('application.yml: required deploy base path is preserved for Windows and Li
   const linuxConfig = createConfig(validateInput({ ...baseInput, deployBasePath: '/var/www/başka-proje' }), credentials);
   assert.match(linuxConfig, /^deploy:\n {2}base-path: "\/var\/www\/başka-proje"$/m);
   if (yaml) assert.equal(yaml.load(linuxConfig).deploy['base-path'], '/var/www/başka-proje');
+});
+
+test('application.yml: nssm-path is written only when given', () => {
+  const credentials = validateCredentials(response(), AGENT_ID);
+  // Without it the agent falls back to a bare `nssm` on PATH, which is exactly
+  // the "CreateProcess error=2" failure this field exists to prevent.
+  assert.equal(/nssm-path/.test(createConfig(validateInput(baseInput), credentials)), false);
+
+  const config = createConfig(
+    validateInput({ ...baseInput, nssmPath: 'C:\\tools\\nssm\\win64\\nssm.exe' }),
+    credentials,
+  );
+  assert.match(config, /^ {2}nssm-path: "C:\\\\tools\\\\nssm\\\\win64\\\\nssm\.exe"$/m);
+  if (yaml) assert.equal(yaml.load(config).deploy['nssm-path'], 'C:\\tools\\nssm\\win64\\nssm.exe');
 });
 
 test('validateCredentials rejects bad responses without echoing their values', () => {
