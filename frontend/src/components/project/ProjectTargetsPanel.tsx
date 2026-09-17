@@ -1,6 +1,7 @@
-import { Loader2, Rocket, Server } from "lucide-react";
+import { GitBranch, Loader2, Rocket, Server } from "lucide-react";
 import type { Project } from "@/hooks/useProjects";
-import { useArtifactAgents, useArtifactTargets } from "@/hooks/useArtifacts";
+import { useArtifactActions, useArtifactAgents, useArtifactTargets } from "@/hooks/useArtifacts";
+import { useToast } from "@/hooks/use-toast";
 import { useSession } from "@/hooks/useSession";
 import { can } from "@/lib/permissions";
 import { cn } from "@/lib/utils";
@@ -11,6 +12,12 @@ type Props = {
   project: Project;
   onDeploy: (project: Project, selection: DeploySelection) => void;
   onAddTarget: (project: Project) => void;
+  /**
+   * A build-and-deploy run streams like any other. The project travels with it
+   * because this panel can start a run for a project that is not the one any
+   * sheet happens to have open.
+   */
+  onRunStarted: (project: Project, deploymentId: string) => void;
 };
 
 const formatDate = (value: string | null | undefined) =>
@@ -34,9 +41,26 @@ const ACTION_CLASS =
  * and a second, shorter path around them is exactly how a wrong version reaches
  * a customer.
  */
-export const ProjectTargetsPanel = ({ project, onDeploy, onAddTarget }: Props) => {
+export const ProjectTargetsPanel = ({ project, onDeploy, onAddTarget, onRunStarted }: Props) => {
   const { data: session } = useSession();
+  const { toast } = useToast();
+  const actions = useArtifactActions(project.id);
   const canDeploy = can(session?.role, "deploy:trigger");
+  const canRelease = can(session?.role, "release:create");
+
+  const buildAndDeploy = async (targetId: string, targetName: string, component?: string) => {
+    try {
+      const result = await actions.buildAndDeploy.mutateAsync({ targetId, components: component ? [component] : undefined });
+      toast({ title: "Build started", description: `${targetName}${component ? ` · ${component}` : ""} — installs when the build finishes` });
+      onRunStarted(project, result.deploymentId);
+    } catch (cause) {
+      toast({
+        title: "Build could not be started",
+        description: cause instanceof Error ? cause.message : "Unknown error.",
+        variant: "destructive",
+      });
+    }
+  };
   const targets = useArtifactTargets(project.id);
   const agents = useArtifactAgents(true);
   const onlineAgents = new Map((agents.data ?? []).map((agent) => [agent.id, agent.online]));
@@ -99,16 +123,33 @@ export const ProjectTargetsPanel = ({ project, onDeploy, onAddTarget }: Props) =
                 <span aria-hidden="true" className={cn("h-[6px] w-[6px] rounded-full", online ? "bg-status-ok" : "bg-status-fail")} />
                 {online ? "agent online" : "agent offline"}
               </span>
-              {canDeploy && (
-                <button
-                  type="button"
-                  onClick={() => onDeploy(project, { targetId: target.id })}
-                  className={cn(ACTION_CLASS, "ml-auto border border-line-strong hover:bg-accent")}
-                >
-                  <Rocket className="h-3 w-3" aria-hidden="true" />
-                  Deploy all
-                </button>
-              )}
+              <div className="ml-auto flex items-center gap-1.5">
+                {/* A branch is what makes a rebuild meaningful, and production
+                    targets deliberately have none: there you install a release
+                    someone named rather than whatever the branch holds now. */}
+                {canRelease && target.ref && (
+                  <button
+                    type="button"
+                    disabled={actions.buildAndDeploy.isPending}
+                    onClick={() => void buildAndDeploy(target.id, target.name)}
+                    className={cn(ACTION_CLASS, "border border-primary/40 bg-primary/10 text-primary hover:bg-primary/20")}
+                    title={`Rebuild ${target.ref} and install it on ${target.name}`}
+                  >
+                    <GitBranch className="h-3 w-3" aria-hidden="true" />
+                    Build &amp; deploy · {target.ref}
+                  </button>
+                )}
+                {canDeploy && (
+                  <button
+                    type="button"
+                    onClick={() => onDeploy(project, { targetId: target.id })}
+                    className={cn(ACTION_CLASS, "border border-line-strong hover:bg-accent")}
+                  >
+                    <Rocket className="h-3 w-3" aria-hidden="true" />
+                    Deploy all
+                  </button>
+                )}
+              </div>
             </div>
 
             <div className="mt-1.5 grid gap-1.5 sm:grid-cols-2 lg:grid-cols-3">

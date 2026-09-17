@@ -48,6 +48,8 @@ export const useArtifactActions = (projectId: string) => {
     // `components` narrows the run to part of the target (e.g. frontend only);
     // omitted, the target's whole component set is deployed as before.
     deploy: useMutation({ mutationFn: ({ targetId, releaseId, components, confirmation }: { targetId: string; releaseId: string; components?: string[]; confirmation?: string }) => getTransport().artifacts.deploy(targetId, { releaseId, components, confirmation }), onSuccess: afterRun }),
+    // Test targets: rebuild the branch and install it, no version to invent.
+    buildAndDeploy: useMutation({ mutationFn: ({ targetId, components }: { targetId: string; components?: string[] }) => getTransport().artifacts.buildAndDeploy(targetId, { components }), onSuccess: (result) => { void invalidateReleases(); void invalidateTargets(); afterRun(result); } }),
     rollback: useMutation({ mutationFn: ({ targetId, components, confirmation }: { targetId: string; components?: string[]; confirmation?: string }) => getTransport().artifacts.rollback(targetId, { components, confirmation }), onSuccess: afterRun }),
   };
 };

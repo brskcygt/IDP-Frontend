@@ -18,6 +18,7 @@ type ProjectTableProps = {
   onSettings: (project: Project) => void;
   onOpenHistory: (project: Project) => void;
   onAddTarget: (project: Project) => void;
+  onRunStarted: (project: Project, deploymentId: string) => void;
   onClearFilters: () => void;
   onCreateProject?: () => void;
 };
@@ -33,6 +34,7 @@ export const ProjectTable = ({
   onSettings,
   onOpenHistory,
   onAddTarget,
+  onRunStarted,
   onClearFilters,
   onCreateProject,
 }: ProjectTableProps) => {
@@ -70,6 +72,7 @@ export const ProjectTable = ({
             onSettings={onSettings}
             onOpenHistory={onOpenHistory}
             onAddTarget={onAddTarget}
+            onRunStarted={onRunStarted}
             expanded={expanded.has(project.id)}
             onToggleExpanded={toggle}
           />

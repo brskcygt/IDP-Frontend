@@ -462,6 +462,17 @@ export function createHttpTransport(baseUrl: string = ''): Transport {
       return response.json();
     },
 
+    async buildAndDeploy(targetId: string, input: { components?: string[] }): Promise<ArtifactBuildRunResult> {
+      const response = await fetch(`${baseUrl}/api/targets/${encodeURIComponent(targetId)}/build-and-deploy`, {
+        method: 'POST',
+        headers: JSON_HEADERS,
+        credentials: 'include',
+        body: JSON.stringify(input),
+      });
+      if (!response.ok) throw new Error(await readErrorMessage(response, 'Build and deploy could not be started'));
+      return response.json();
+    },
+
     async rollback(
       targetId: string,
       input: { components?: string[]; confirmation?: string },

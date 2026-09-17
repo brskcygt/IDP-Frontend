@@ -364,6 +364,12 @@ export interface DeployTarget {
   os: DeployTargetOs;
   environment: DeployTargetEnvironment | null;
   basePath: string | null;
+  /**
+   * Branch a non-production target rebuilds from. Its presence is what makes
+   * "build and deploy" possible for that target; production targets install a
+   * release someone named, so they leave it empty.
+   */
+  ref: string | null;
   components: TargetComponentOverride[] | null;
   runtimeConfig: TargetRuntimeConfig | null;
   currentReleaseId: string | null;
@@ -378,6 +384,7 @@ export interface DeployTargetInput {
   os: DeployTargetOs;
   environment?: DeployTargetEnvironment | null;
   basePath?: string | null;
+  ref?: string | null;
   components?: TargetComponentOverride[] | null;
   runtimeConfig?: ComponentTargetRuntimeConfig | null;
 }
@@ -474,6 +481,8 @@ export interface Transport {
     applyConfig(id: string, input?: { confirmation?: string }): Promise<TriggerDeployResult>;
     deploy(targetId: string, input: { releaseId: string; components?: string[]; confirmation?: string }): Promise<ArtifactDeployRunResult>;
     rollback(targetId: string, input: { components?: string[]; confirmation?: string }): Promise<ArtifactDeployRunResult>;
+    /** Rebuilds the target's branch and installs the result on it (non-production only). */
+    buildAndDeploy(targetId: string, input: { components?: string[] }): Promise<ArtifactBuildRunResult>;
     events(deploymentId: string): Promise<ArtifactEventsResult>;
   };
   hostKeys: {

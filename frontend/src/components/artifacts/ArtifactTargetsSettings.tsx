@@ -24,7 +24,7 @@ type Props = {
   onRunStarted?: (deploymentId: string) => void;
 };
 
-const initialTarget: DeployTargetInput = { name: '', agentId: '', os: 'windows', environment: 'Dev', basePath: '' };
+const initialTarget: DeployTargetInput = { name: '', agentId: '', os: 'windows', environment: 'Dev', basePath: '', ref: '' };
 const formatDate = (value: string | null) => value ? new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value)) : '—';
 
 export const ArtifactTargetsSettings = ({ project, onRunStarted }: Props) => {
@@ -62,7 +62,7 @@ export const ArtifactTargetsSettings = ({ project, onRunStarted }: Props) => {
   const saveTarget = async () => {
     try {
       const runtimeConfig = parseRuntimeConfigEditors(components, runtimeEditors);
-      const normalized = { ...input, name: input.name.trim(), basePath: input.basePath?.trim() || null, runtimeConfig };
+      const normalized = { ...input, name: input.name.trim(), basePath: input.basePath?.trim() || null, ref: input.ref?.trim() || null, runtimeConfig };
       if (editingId) await actions.updateTarget.mutateAsync({ id: editingId, input: normalized });
       else await actions.createTarget.mutateAsync(normalized);
       toast({ title: editingId ? 'Target updated' : 'Target created', description: normalized.name });
@@ -72,7 +72,7 @@ export const ArtifactTargetsSettings = ({ project, onRunStarted }: Props) => {
 
   const editTarget = (target: DeployTarget) => {
     setEditingId(target.id);
-    setInput({ name: target.name, agentId: target.agentId, os: target.os, environment: target.environment, basePath: target.basePath, components: target.components });
+    setInput({ name: target.name, agentId: target.agentId, os: target.os, environment: target.environment, basePath: target.basePath, ref: target.ref, components: target.components });
     setRuntimeEditors(createRuntimeConfigEditors(components, target.runtimeConfig));
   };
 
@@ -93,6 +93,20 @@ export const ArtifactTargetsSettings = ({ project, onRunStarted }: Props) => {
         <div><Label>Agent</Label><Select value={input.agentId} onValueChange={(agentId) => setInput((current) => ({ ...current, agentId }))}><SelectTrigger className="mt-1.5"><SelectValue placeholder="Select agent" /></SelectTrigger><SelectContent>{(agents.data ?? []).map((agent) => <SelectItem key={agent.id} value={agent.id}>{agent.id} · {agent.online ? 'online' : 'offline'}</SelectItem>)}</SelectContent></Select>{agents.isError && <p className="mt-1 text-[11px] text-destructive">{agents.error.message}</p>}</div>
         <div><Label>Operating system</Label><Select value={input.os} onValueChange={(os: 'windows' | 'linux') => setInput((current) => ({ ...current, os }))}><SelectTrigger className="mt-1.5"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="windows">Windows</SelectItem><SelectItem value="linux">Linux</SelectItem></SelectContent></Select></div>
         <div><Label>Environment</Label><Select value={input.environment ?? 'none'} onValueChange={(environment) => setInput((current) => ({ ...current, environment: environment === 'none' ? null : environment as 'Dev' | 'Stage' | 'Prod' }))}><SelectTrigger className="mt-1.5"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="none">Project default</SelectItem><SelectItem value="Dev">Dev</SelectItem><SelectItem value="Stage">Stage</SelectItem><SelectItem value="Prod">Prod</SelectItem></SelectContent></Select></div>
+        {input.environment !== 'Prod' && <div className="sm:col-span-2">
+          <Label>Branch (optional)</Label>
+          <Input
+            className="mt-1.5 font-mono"
+            value={input.ref ?? ''}
+            onChange={(event) => setInput((current) => ({ ...current, ref: event.target.value }))}
+            placeholder="test"
+          />
+          <p className="mt-1 text-[11px] text-muted-foreground">
+            Set it and this target gets a "Build &amp; deploy" button: it rebuilds this branch and installs
+            the result, with a generated version. Production targets install a release you named instead,
+            which is why the field is hidden for them.
+          </p>
+        </div>}
         <div className="sm:col-span-2"><Label>Base path (optional)</Label><Input className="mt-1.5 font-mono" value={input.basePath ?? ''} onChange={(event) => setInput((current) => ({ ...current, basePath: event.target.value }))} placeholder={input.os === 'windows' ? 'C:\\Apps\\PaymentApi' : '/opt/payment-api'} /></div>
         <div className="space-y-3 sm:col-span-2">
           <div><Label>Component runtime config</Label><p className="mt-1 text-[11px] text-muted-foreground">Saved encrypted when server secret storage is enabled. Apply config restarts and health-checks an existing runtime.</p></div>

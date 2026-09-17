@@ -329,6 +329,12 @@ export const Dashboard = ({ onLogout }: { onLogout?: () => void }) => {
           onSettings={openSettings}
           onOpenHistory={openHistory}
           onAddTarget={openTargetSettings}
+          onRunStarted={(project, deploymentId) => {
+            // The run belongs to the project whose row started it, not to
+            // whichever project a sheet was last opened for.
+            setArtifactTarget(project);
+            attach(deploymentId, project.id, project);
+          }}
           onClearFilters={clearFilters}
           onCreateProject={canCreateProject ? () => setOpenPanel('create') : undefined}
         />

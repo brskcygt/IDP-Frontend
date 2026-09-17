@@ -22,6 +22,7 @@ type ProjectRowProps = {
   onSettings: (project: Project) => void;
   onOpenHistory: (project: Project) => void;
   onAddTarget: (project: Project) => void;
+  onRunStarted: (project: Project, deploymentId: string) => void;
   /** Customers stay collapsed until asked for: the list costs a request per project. */
   expanded: boolean;
   onToggleExpanded: (projectId: string) => void;
@@ -40,6 +41,7 @@ export const ProjectRow = ({
   onSettings,
   onOpenHistory,
   onAddTarget,
+  onRunStarted,
   expanded,
   onToggleExpanded,
 }: ProjectRowProps) => {
@@ -179,7 +181,7 @@ export const ProjectRow = ({
       </div>
     </div>
     {expanded && isArtifactProject && (
-      <ProjectTargetsPanel project={project} onDeploy={onDeploy} onAddTarget={onAddTarget} />
+      <ProjectTargetsPanel project={project} onDeploy={onDeploy} onAddTarget={onAddTarget} onRunStarted={onRunStarted} />
     )}
     </>
   );
