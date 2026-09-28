@@ -9,6 +9,7 @@ import {
   PackagePlus,
   PanelLeftClose,
   PanelLeftOpen,
+  Server,
   Settings2,
   Terminal,
   type LucideIcon,
@@ -21,6 +22,7 @@ export type AppRailItem =
   | "activity"
   | "guide"
   | "troubleshooting"
+  | "agents"
   | "agent-builder"
   | "transfer"
   | "settings";
@@ -28,6 +30,7 @@ export type AppRailItem =
 type AppRailProps = {
   onOpenActivityLog: () => void;
   onOpenTransfer: () => void;
+  onOpenAgents: () => void;
   onOpenAgentBuilder: () => void;
   onOpenGuide: () => void;
   onOpenTroubleshooting: () => void;
@@ -109,6 +112,7 @@ const RailSectionLabel = ({ label, expanded }: { label: string; expanded: boolea
 export const AppRail = ({
   onOpenActivityLog,
   onOpenTransfer,
+  onOpenAgents,
   onOpenAgentBuilder,
   onOpenGuide,
   onOpenTroubleshooting,
@@ -177,6 +181,7 @@ export const AppRail = ({
         <RailSectionLabel label="Operations" expanded={expanded} />
         {canManageProjects && (
           <>
+            <RailButton icon={Server} label="Agents" expanded={expanded} active={activeItem === "agents"} onClick={onOpenAgents} />
             <RailButton icon={PackagePlus} label="Create IDP agent" expanded={expanded} active={activeItem === "agent-builder"} onClick={onOpenAgentBuilder} />
             <RailButton icon={PackageOpen} label="Import / export" expanded={expanded} active={activeItem === "transfer"} onClick={onOpenTransfer} />
             <RailButton icon={Settings2} label="Settings" expanded={expanded} active={activeItem === "settings"} onClick={onOpenSettings} />

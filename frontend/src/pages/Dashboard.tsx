@@ -31,6 +31,7 @@ import { Toaster } from '@/components/ui/toaster';
 // import { RunnerManagementSheet } from '@/components/runners/RunnerManagementSheet';
 import { WorkspaceTransferSheet } from '@/components/transfer/WorkspaceTransferSheet';
 import { AgentBuilderSheet } from '@/components/agents/AgentBuilderSheet';
+import { AgentsSheet } from '@/components/agents/AgentsSheet';
 import { ArtifactDeploySheet } from '@/components/artifacts/ArtifactDeploySheet';
 import type { DeploySelection } from '@/components/project/ProjectTargetsPanel';
 import { ArtifactReleasesSheet } from '@/components/artifacts/ArtifactReleasesSheet';
@@ -87,7 +88,7 @@ export const Dashboard = ({ onLogout }: { onLogout?: () => void }) => {
   const [settingsInitialTab, setSettingsInitialTab] = useState<SettingsTabId>('general');
   const [deployPreselect, setDeployPreselect] = useState<DeploySelection | null>(null);
   const [openPanel, setOpenPanel] = useState<
-    'trigger' | 'settings' | 'create' | 'stream' | 'sessions' | 'activity' | 'history' | 'transfer' | 'agent-builder' | 'artifact-releases' | 'artifact-deploy' | 'guide' | 'troubleshooting' | 'settings-global' | null
+    'trigger' | 'settings' | 'create' | 'stream' | 'sessions' | 'activity' | 'history' | 'transfer' | 'agents' | 'agent-builder' | 'artifact-releases' | 'artifact-deploy' | 'guide' | 'troubleshooting' | 'settings-global' | null
   >(null);
 
   // Surfaces the backend's per-project 409 concurrency lock (or any other
@@ -264,10 +265,11 @@ export const Dashboard = ({ onLogout }: { onLogout?: () => void }) => {
     openPanel === 'activity' ? 'activity'
       : openPanel === 'guide' ? 'guide'
         : openPanel === 'troubleshooting' ? 'troubleshooting'
-          : openPanel === 'agent-builder' ? 'agent-builder'
-            : openPanel === 'transfer' ? 'transfer'
-              : openPanel === 'settings-global' ? 'settings'
-                : 'projects';
+          : openPanel === 'agents' ? 'agents'
+            : openPanel === 'agent-builder' ? 'agent-builder'
+              : openPanel === 'transfer' ? 'transfer'
+                : openPanel === 'settings-global' ? 'settings'
+                  : 'projects';
 
   return (
     <div className="flex h-screen overflow-hidden bg-background text-foreground">
@@ -278,6 +280,7 @@ export const Dashboard = ({ onLogout }: { onLogout?: () => void }) => {
         canManageProjects={canCreateProject}
         onOpenActivityLog={() => setOpenPanel('activity')}
         onOpenTransfer={() => setOpenPanel('transfer')}
+        onOpenAgents={() => setOpenPanel('agents')}
         onOpenAgentBuilder={() => setOpenPanel('agent-builder')}
         onOpenGuide={() => setOpenPanel('guide')}
         onOpenTroubleshooting={() => setOpenPanel('troubleshooting')}
@@ -413,6 +416,7 @@ export const Dashboard = ({ onLogout }: { onLogout?: () => void }) => {
 
       {/* Legacy Cloudflare runner management sheet intentionally hidden. */}
       <WorkspaceTransferSheet isOpen={openPanel === 'transfer'} onOpenChange={(open) => setOpenPanel(open ? 'transfer' : null)} projects={projects ?? []} />
+      <AgentsSheet isOpen={openPanel === 'agents'} onOpenChange={(open) => setOpenPanel(open ? 'agents' : null)} />
       <AgentBuilderSheet isOpen={openPanel === 'agent-builder'} onOpenChange={(open) => setOpenPanel(open ? 'agent-builder' : null)} />
       <DeploymentGuideSheet
         isOpen={openPanel === 'guide'}
