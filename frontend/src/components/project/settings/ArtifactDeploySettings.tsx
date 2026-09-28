@@ -1,3 +1,4 @@
+import { useRef } from 'react';
 import { Package, Plus, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -29,6 +30,16 @@ const fieldClass = 'mt-1.5 bg-accent/50 border-border/50';
 export const ArtifactDeploySettings = ({ config, original, onChange }: Props) => {
   const artifact = config.artifactDeploy;
   const tokenRequired = needsNewArtifactToken(original, artifact);
+
+  // Component cards need a key that survives typing. Keying on component.name
+  // changed the key on every keystroke in the Name field, so React rebuilt the card
+  // and the input lost focus. These ids live only here — the saved config is untouched.
+  const cardIds = useRef<string[]>([]);
+  const nextCardId = useRef(0);
+  const componentKeys = (artifact?.components ?? []).map((_, index) => {
+    cardIds.current[index] ??= `component-${nextCardId.current++}`;
+    return cardIds.current[index];
+  });
 
   const setEnabled = (enabled: boolean) => {
     if (enabled) {
@@ -120,8 +131,8 @@ export const ArtifactDeploySettings = ({ config, original, onChange }: Props) =>
         <section className="space-y-4 rounded-lg border border-border/60 p-4">
           <div className="flex items-center justify-between"><div><h3 className="text-sm font-semibold">Components</h3><p className="text-xs text-muted-foreground">Each archive installs into its own folder.</p></div><Button type="button" size="sm" variant="outline" onClick={() => update({ components: [...(artifact.components ?? []), { ...EMPTY_COMPONENT, runtime: { ...EMPTY_COMPONENT.runtime } }] })}><Plus className="mr-1.5 h-3.5 w-3.5" />Add</Button></div>
           {(artifact.components ?? []).length === 0 && <p className="rounded-md border border-dashed border-border p-4 text-center text-xs text-muted-foreground">No components configured.</p>}
-          {(artifact.components ?? []).map((component, index) => <div key={`${index}-${component.name}`} className="space-y-3 rounded-md border border-border/60 bg-accent/10 p-3">
-            <div className="flex justify-between gap-3"><p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Component {index + 1}</p><Button type="button" size="sm" variant="ghost" onClick={() => update({ components: (artifact.components ?? []).filter((_, itemIndex) => itemIndex !== index) })}><Trash2 className="h-3.5 w-3.5" /></Button></div>
+          {(artifact.components ?? []).map((component, index) => <div key={componentKeys[index]} className="space-y-3 rounded-md border border-border/60 bg-accent/10 p-3">
+            <div className="flex justify-between gap-3"><p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Component {index + 1}</p><Button type="button" size="sm" variant="ghost" onClick={() => { cardIds.current.splice(index, 1); update({ components: (artifact.components ?? []).filter((_, itemIndex) => itemIndex !== index) }); }}><Trash2 className="h-3.5 w-3.5" /></Button></div>
             <div className="grid gap-3 sm:grid-cols-3">
               <div><Label>Name</Label><Input className={fieldClass} value={component.name} onChange={(event) => updateComponent(index, { name: event.target.value })} placeholder="backend" /></div>
               <div><Label>Subdirectory</Label><Input className={fieldClass} value={component.subdir} onChange={(event) => updateComponent(index, { subdir: event.target.value })} placeholder="backend" /></div>

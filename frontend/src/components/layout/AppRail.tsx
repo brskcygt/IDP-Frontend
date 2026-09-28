@@ -156,7 +156,7 @@ export const AppRail = ({
           }}
           aria-expanded={expanded}
           aria-label={pinned ? "Unpin navigation" : "Pin navigation open"}
-          title={expanded ? undefined : "Internal Developer Platform"}
+          title={expanded ? undefined : "Internal Deployment Platform"}
           className="mb-3 flex h-10 w-full shrink-0 items-center rounded-md text-left text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
         >
           <span className="flex h-10 w-14 shrink-0 items-center justify-center">

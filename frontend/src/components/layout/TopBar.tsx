@@ -33,7 +33,7 @@ export const TopBar = ({
     <header className="flex h-12 shrink-0 items-center justify-between border-b border-line bg-bar px-5">
       <div className="flex items-center gap-2.5">
         <span className="font-mono text-xs tracking-[0.04em] text-muted-foreground">
-          INTERNAL DEVELOPER PLATFORM
+          INTERNAL DEPLOYMENT PLATFORM
         </span>
         <span aria-hidden="true" className="text-faint">/</span>
         <h1 className="text-[13px] font-semibold">Projects</h1>

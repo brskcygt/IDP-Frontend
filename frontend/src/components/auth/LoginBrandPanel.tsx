@@ -27,7 +27,7 @@ export const LoginBrandPanel = () => (
       <h1 className="mb-6 text-[clamp(2.5rem,4vw,3.6rem)] font-bold leading-[1.02] tracking-[-0.03em]">
         Internal
         <br />
-        Developer
+        Deployment
         <br />
         Platform
       </h1>
