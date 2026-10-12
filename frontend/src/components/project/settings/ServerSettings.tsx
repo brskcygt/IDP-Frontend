@@ -205,6 +205,8 @@ export const ServerSettings = ({ config, onChange, provider }: ServerSettingsPro
     <>
       <div className="flex items-center gap-4 bg-accent/30 p-1 rounded-md border border-border/50">
         <button
+          type="button"
+          aria-pressed={isWindows}
           onClick={() => onChange({ ...config, targetOS: 'windows', port: '5985' })}
           className={`flex-1 py-1.5 text-xs font-medium rounded-sm transition-colors ${
             isWindows
@@ -212,9 +214,11 @@ export const ServerSettings = ({ config, onChange, provider }: ServerSettingsPro
               : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'
           }`}
         >
-          🪟 Windows (WinRM)
+          Windows (WinRM)
         </button>
         <button
+          type="button"
+          aria-pressed={!isWindows}
           onClick={() => onChange({ ...config, targetOS: 'linux', port: '22' })}
           className={`flex-1 py-1.5 text-xs font-medium rounded-sm transition-colors ${
             !isWindows
@@ -222,7 +226,7 @@ export const ServerSettings = ({ config, onChange, provider }: ServerSettingsPro
               : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'
           }`}
         >
-          🐧 Linux (SSH)
+          Linux (SSH)
         </button>
       </div>
 
@@ -280,7 +284,7 @@ export const ServerSettings = ({ config, onChange, provider }: ServerSettingsPro
 
       {usesRunner && (
         <>
-          <SettingsField icon={<Server className="h-3.5 w-3.5" />} label="Runner Agent ID">
+          <SettingsField icon={<Server className="h-3.5 w-3.5" />} label="Runner agent">
             <div className="space-y-2">
               <div className="flex gap-2">
                 <Select
@@ -329,7 +333,7 @@ export const ServerSettings = ({ config, onChange, provider }: ServerSettingsPro
               {wizardOpen && (
                 <div className="overflow-hidden rounded-lg border border-primary/25 bg-primary/[0.035] shadow-[inset_3px_0_0_hsl(var(--primary))]">
                   <div className="border-b border-border/40 px-4 py-3">
-                    <p className="text-xs font-semibold text-foreground">Windows runner enrollment</p>
+                    <p className="text-xs font-semibold text-foreground">Windows runner kaydı</p>
                     <p className="mt-0.5 text-[10px] text-muted-foreground">PowerShell’i hedef makinede yönetici olarak çalıştırın.</p>
                   </div>
                   <div className="space-y-3 p-4">
@@ -351,7 +355,7 @@ export const ServerSettings = ({ config, onChange, provider }: ServerSettingsPro
                     {!installReady ? (
                       <>
                         <label className="block space-y-1.5">
-                          <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Bilgisayar / agent adı</span>
+                          <span className="text-[11px] font-medium text-muted-foreground">Bilgisayar / agent adı</span>
                           <Input
                             value={newAgentName}
                             onChange={(event) => setNewAgentName(event.target.value)}
@@ -373,7 +377,7 @@ export const ServerSettings = ({ config, onChange, provider }: ServerSettingsPro
                     ) : (
                       <>
                         <div className="space-y-1.5">
-                          <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">1 · Kurulum komutunu çalıştırın</span>
+                          <span className="text-[11px] font-medium text-muted-foreground">1 · Kurulum komutunu çalıştırın</span>
                           <div className="relative rounded-md border border-border/50 bg-zinc-950 p-3 pr-10">
                             <pre className="max-h-36 overflow-auto whitespace-pre-wrap break-all font-mono text-[9px] leading-relaxed text-zinc-300">{installCommand}</pre>
                             <button className="absolute right-2 top-2" type="button" onClick={() => void copyText('command', installCommand)} aria-label="Kurulum komutunu kopyala">
@@ -382,7 +386,7 @@ export const ServerSettings = ({ config, onChange, provider }: ServerSettingsPro
                           </div>
                         </div>
                         <div className="space-y-1.5">
-                          <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">2 · PowerShell’de görünen 8 karakterli kodu onaylayın</span>
+                          <span className="text-[11px] font-medium text-muted-foreground">2 · PowerShell’de görünen 8 karakterli kodu onaylayın</span>
                           <div className="flex gap-2"><Input value={approvalCode} onChange={(event) => setApprovalCode(event.target.value.toUpperCase())} maxLength={8} placeholder="ABCD2345" className="h-9 bg-background/70 font-mono uppercase tracking-widest" /><button type="button" disabled={enrollmentBusy || !/^[A-Z2-9]{8}$/.test(approvalCode)} onClick={() => void approveBootstrap()} className="rounded bg-primary px-3 text-[10px] font-semibold text-primary-foreground disabled:opacity-50">Kodu onayla</button></div>
                         </div>
                         {enrollmentError && <p className="text-[10px] text-destructive">{enrollmentError}</p>}
@@ -446,7 +450,7 @@ export const ServerSettings = ({ config, onChange, provider }: ServerSettingsPro
         </>
       )}
 
-      {!usesRunner && !usesAgent && <SettingsField icon={<Monitor className="h-3.5 w-3.5" />} label="Server IP / Host">
+      {!usesRunner && !usesAgent && <SettingsField icon={<Monitor className="h-3.5 w-3.5" />} label="Sunucu IP / host">
         <Input
           value={config.host || ''}
           onChange={(e) => onChange({ ...config, host: e.target.value })}
@@ -454,7 +458,7 @@ export const ServerSettings = ({ config, onChange, provider }: ServerSettingsPro
           className="bg-accent/50 border-border/50"
         />
       </SettingsField>}
-      {!usesRunner && !usesAgent && <SettingsField icon={<Server className="h-3.5 w-3.5" />} label={isWindows ? "WinRM HTTP / HTTPS" : "SSH (Secure Shell)"}>
+      {!usesRunner && !usesAgent && <SettingsField icon={<Server className="h-3.5 w-3.5" />} label={isWindows ? "WinRM portu (HTTP / HTTPS)" : "SSH portu"}>
         <Input
           value={config.port || (isWindows ? '5985' : '22')}
           onChange={(e) => onChange({ ...config, port: e.target.value })}
@@ -468,9 +472,11 @@ export const ServerSettings = ({ config, onChange, provider }: ServerSettingsPro
       <TelemetryToggleField config={config} onChange={onChange} />
 
       {!usesRunner && !usesAgent && <div className="border-t border-border/50 pt-4 mt-2">
-        <h5 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Authentication (Kimlik Doğrulama)</h5>
+        <h5 className="mb-3 text-sm font-semibold">Kimlik doğrulama</h5>
         <div className="flex items-center gap-4 bg-accent/30 p-1 rounded-md border border-border/50 mb-4">
           <button
+            type="button"
+            aria-pressed={!config.authType || config.authType === 'manual'}
             onClick={() => onChange({ ...config, authType: 'manual' })}
             className={`flex-1 py-1.5 text-xs font-medium rounded-sm transition-colors ${
               (!config.authType || config.authType === 'manual')
@@ -478,9 +484,11 @@ export const ServerSettings = ({ config, onChange, provider }: ServerSettingsPro
                 : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'
             }`}
           >
-            Manual Password / Key
+            Parola / anahtar
           </button>
           <button
+            type="button"
+            aria-pressed={config.authType === 'pmp'}
             onClick={() => onChange({ ...config, authType: 'pmp' })}
             className={`flex-1 py-1.5 text-xs font-medium rounded-sm transition-colors ${
               config.authType === 'pmp'
@@ -494,7 +502,7 @@ export const ServerSettings = ({ config, onChange, provider }: ServerSettingsPro
 
         {(!config.authType || config.authType === 'manual') && (
           <>
-            <SettingsField icon={<User className="h-3.5 w-3.5" />} label="Username">
+            <SettingsField icon={<User className="h-3.5 w-3.5" />} label="Kullanıcı adı">
               <Input
                 value={config.username || ''}
                 onChange={(e) => onChange({ ...config, username: e.target.value })}
@@ -502,7 +510,7 @@ export const ServerSettings = ({ config, onChange, provider }: ServerSettingsPro
                 className="bg-accent/50 border-border/50"
               />
             </SettingsField>
-            <SettingsField icon={<KeyRound className="h-3.5 w-3.5" />} label="Password">
+            <SettingsField icon={<KeyRound className="h-3.5 w-3.5" />} label="Parola">
               <Input
                 type="password"
                 value={config.password || ''}

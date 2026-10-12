@@ -12,7 +12,7 @@ interface JenkinsSettingsProps {
 export const JenkinsSettings = ({ config, onChange }: JenkinsSettingsProps) => {
   return (
     <>
-      <SettingsField icon={<Link className="h-3.5 w-3.5" />} label="Jenkins URL">
+      <SettingsField icon={<Link className="h-3.5 w-3.5" />} label="Jenkins adresi">
         <Input
           value={config.url || ''}
           onChange={(e) => onChange({ ...config, url: e.target.value })}
@@ -20,7 +20,7 @@ export const JenkinsSettings = ({ config, onChange }: JenkinsSettingsProps) => {
           className="bg-accent/50 border-border/50"
         />
       </SettingsField>
-      <SettingsField icon={<Server className="h-3.5 w-3.5" />} label="Jenkins Job Name">
+      <SettingsField icon={<Server className="h-3.5 w-3.5" />} label="Jenkins job adı">
         <Input
           value={config.jobName || ''}
           onChange={(e) => onChange({ ...config, jobName: e.target.value })}
@@ -28,7 +28,7 @@ export const JenkinsSettings = ({ config, onChange }: JenkinsSettingsProps) => {
           className="bg-accent/50 border-border/50"
         />
       </SettingsField>
-      <SettingsField icon={<User className="h-3.5 w-3.5" />} label="Username">
+      <SettingsField icon={<User className="h-3.5 w-3.5" />} label="Kullanıcı adı">
         <Input
           value={config.username || ''}
           onChange={(e) => onChange({ ...config, username: e.target.value })}
@@ -36,7 +36,7 @@ export const JenkinsSettings = ({ config, onChange }: JenkinsSettingsProps) => {
           className="bg-accent/50 border-border/50"
         />
       </SettingsField>
-      <SettingsField icon={<KeyRound className="h-3.5 w-3.5" />} label="API Token">
+      <SettingsField icon={<KeyRound className="h-3.5 w-3.5" />} label="API token">
         <Input
           type="password"
           value={config.apiToken || ''}

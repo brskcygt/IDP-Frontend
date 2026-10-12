@@ -24,7 +24,7 @@ export const CI_REF_TYPE_OPTIONS: ReadonlyArray<CiOption<CiRefType>> = [
 
 export const CI_AUTH_TYPE_OPTIONS: ReadonlyArray<CiOption<CiAuthType>> = [
   { value: 'bearer', label: 'Access token (Bearer)' },
-  { value: 'basic', label: 'API token + Atlassian email' },
+  { value: 'basic', label: 'API token + Atlassian e-postası' },
 ];
 
 /** Narrow a Radix Select string back to one of the known option values. */
@@ -50,22 +50,22 @@ const PLATFORM_COPY: Readonly<Record<CiPlatform, CiPlatformCopy>> = {
   bitbucket: {
     ownerLabel: 'Workspace',
     ownerPlaceholder: 'my-workspace',
-    pipelineLabel: 'Custom pipeline name',
+    pipelineLabel: 'Custom pipeline adı',
     pipelinePlaceholder: 'deploy-customer',
   },
   github: {
-    ownerLabel: 'Owner / Organization',
+    ownerLabel: 'Sahip / organizasyon',
     ownerPlaceholder: 'my-org',
-    pipelineLabel: 'Workflow file (e.g. deploy.yml)',
+    pipelineLabel: 'Workflow dosyası (örn. deploy.yml)',
     pipelinePlaceholder: 'deploy.yml',
   },
 };
 
 const UNSET_PLATFORM_COPY: CiPlatformCopy = {
-  ownerLabel: 'Owner',
-  ownerPlaceholder: 'workspace or organization',
+  ownerLabel: 'Sahip',
+  ownerPlaceholder: 'workspace ya da organizasyon',
   pipelineLabel: 'Pipeline',
-  pipelinePlaceholder: 'pipeline or workflow',
+  pipelinePlaceholder: 'pipeline ya da workflow',
 };
 
 export const getCiPlatformCopy = (platform: CiPlatform | undefined): CiPlatformCopy =>
@@ -87,15 +87,15 @@ export const getPlatformChangePatch = (
 /** One-line reminder of the token scopes the CI adapter needs. */
 export const getCiTokenScopeHint = (platform: CiPlatform | undefined, authType: CiAuthType): string => {
   if (platform === 'github') {
-    return 'Fine-grained PAT with "Actions: Read and write" + "Contents: Read" (or a classic token with repo scope).';
+    return '"Actions: Read and write" + "Contents: Read" yetkili fine-grained PAT (ya da repo scope\'lu klasik token).';
   }
   if (platform === 'bitbucket' && authType === 'basic') {
-    return 'Atlassian API token with read:pipeline:bitbucket + write:pipeline:bitbucket (+ read:repository:bitbucket). App passwords no longer work.';
+    return 'read:pipeline:bitbucket + write:pipeline:bitbucket (+ read:repository:bitbucket) yetkili Atlassian API token. App password artık çalışmıyor.';
   }
   if (platform === 'bitbucket') {
-    return 'Repository / Project / Workspace access token with the pipeline + pipeline:write scopes.';
+    return 'pipeline + pipeline:write scope\'lu repository / project / workspace access token.';
   }
-  return 'Select a CI platform to see which token scopes are required.';
+  return 'Gereken token yetkilerini görmek için bir CI platformu seçin.';
 };
 
 /** A cleared number input means "use the default", not 0. */

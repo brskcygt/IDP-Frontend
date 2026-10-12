@@ -41,17 +41,17 @@ export const PipelineSettings = ({ config, onChange }: PipelineSettingsProps) =>
 
   const updateCi = (patch: Partial<CiConfig>) => onChange({ ...config, ciConfig: { ...ci, ...patch } });
 
-  const refLabel = isBitbucket ? (refType === "tag" ? "Tag" : "Branch") : "Ref (branch or tag)";
+  const refLabel = isBitbucket ? (refType === "tag" ? "Tag" : "Branch") : "Ref (branch ya da tag)";
 
   return (
     <>
-      <SettingsField icon={<Workflow className={ICON_CLASS} />} label="CI Platform">
+      <SettingsField icon={<Workflow className={ICON_CLASS} />} label="CI platformu">
         <Select
           value={platform}
           onValueChange={(value) => updateCi(getPlatformChangePatch(platform, pickOption(CI_PLATFORM_OPTIONS, value)))}
         >
           <SelectTrigger className={INPUT_CLASS}>
-            <SelectValue placeholder="Select a CI platform" />
+            <SelectValue placeholder="CI platformu seçin" />
           </SelectTrigger>
           <SelectContent>
             {CI_PLATFORM_OPTIONS.map((option) => (
@@ -72,7 +72,7 @@ export const PipelineSettings = ({ config, onChange }: PipelineSettingsProps) =>
             className={INPUT_CLASS}
           />
         </SettingsField>
-        <SettingsField icon={<FolderGit2 className={ICON_CLASS} />} label="Repository">
+        <SettingsField icon={<FolderGit2 className={ICON_CLASS} />} label="Depo">
           <Input
             value={ci.repo || ""}
             onChange={(e) => updateCi({ repo: e.target.value })}
@@ -84,7 +84,7 @@ export const PipelineSettings = ({ config, onChange }: PipelineSettingsProps) =>
 
       <div className={isBitbucket ? "grid gap-4 sm:grid-cols-2" : undefined}>
         {isBitbucket && (
-          <SettingsField icon={<Tag className={ICON_CLASS} />} label="Ref Type">
+          <SettingsField icon={<Tag className={ICON_CLASS} />} label="Ref türü">
             <Select value={refType} onValueChange={(value) => updateCi({ refType: pickOption(CI_REF_TYPE_OPTIONS, value) })}>
               <SelectTrigger className={INPUT_CLASS}>
                 <SelectValue />
@@ -120,18 +120,18 @@ export const PipelineSettings = ({ config, onChange }: PipelineSettingsProps) =>
 
       <PipelineAuthFields config={config} onChange={onChange} />
 
-      <SettingsField icon={<Link className={ICON_CLASS} />} label="API Base URL (optional)">
+      <SettingsField icon={<Link className={ICON_CLASS} />} label="API adresi (isteğe bağlı)">
         <Input
           value={ci.baseUrl || ""}
           onChange={(e) => updateCi({ baseUrl: e.target.value })}
           placeholder={CI_DEFAULT_BASE_URL[platform ?? "bitbucket"]}
           className={INPUT_CLASS}
         />
-        <p className={HINT_CLASS}>Leave empty for the default. https:// only. GitHub Enterprise: https://HOST/api/v3</p>
+        <p className={HINT_CLASS}>Boş bırakılırsa varsayılan kullanılır. Yalnız https://. GitHub Enterprise: https://HOST/api/v3</p>
       </SettingsField>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <SettingsField icon={<Timer className={ICON_CLASS} />} label="Poll Interval (s)">
+        <SettingsField icon={<Timer className={ICON_CLASS} />} label="Sorgulama aralığı (saniye)">
           <Input
             type="number"
             min={CI_POLL_INTERVAL_SECONDS.min}
@@ -143,7 +143,7 @@ export const PipelineSettings = ({ config, onChange }: PipelineSettingsProps) =>
             className={INPUT_CLASS}
           />
         </SettingsField>
-        <SettingsField icon={<Hourglass className={ICON_CLASS} />} label="Timeout (min)">
+        <SettingsField icon={<Hourglass className={ICON_CLASS} />} label="Zaman aşımı (dakika)">
           <Input
             type="number"
             min={CI_TIMEOUT_MINUTES.min}
@@ -154,12 +154,12 @@ export const PipelineSettings = ({ config, onChange }: PipelineSettingsProps) =>
             placeholder={String(CI_TIMEOUT_MINUTES.fallback)}
             className={INPUT_CLASS}
           />
-          <p className={HINT_CLASS}>IDP stops watching after this, but does not cancel the run.</p>
+          <p className={HINT_CLASS}>Bu süreden sonra IDP çalışmayı izlemeyi bırakır ama iptal etmez.</p>
         </SettingsField>
       </div>
 
       {platform === "github" && (
-        <SettingsField icon={<Hash className={ICON_CLASS} />} label="Correlation input name (optional)">
+        <SettingsField icon={<Hash className={ICON_CLASS} />} label="Eşleştirme input adı (isteğe bağlı)">
           <Input
             value={ci.correlationInput || ""}
             onChange={(e) => updateCi({ correlationInput: e.target.value })}
@@ -167,13 +167,13 @@ export const PipelineSettings = ({ config, onChange }: PipelineSettingsProps) =>
             className={`${INPUT_CLASS} font-mono`}
           />
           <p className={HINT_CLASS}>
-            For GitHub Enterprise versions that don't return the run id: a workflow input that receives IDP's
-            correlation id. Include it in the workflow's run-name.
+            Çalışma id'sini döndürmeyen GitHub Enterprise sürümleri için: IDP'nin eşleştirme id'sini alan
+            workflow input'u. Workflow'un run-name alanına ekleyin.
           </p>
         </SettingsField>
       )}
 
-      <SettingsField icon={<Variable className={ICON_CLASS} />} label="Pipeline Variables">
+      <SettingsField icon={<Variable className={ICON_CLASS} />} label="Pipeline değişkenleri">
         <PipelineVariablesEditor value={ci.variables} onChange={(variables) => updateCi({ variables })} />
       </SettingsField>
     </>

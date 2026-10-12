@@ -32,7 +32,7 @@ export const PipelineAuthFields = ({ config, onChange }: PipelineAuthFieldsProps
   return (
     <>
       {isBitbucket && (
-        <SettingsField icon={<ShieldCheck className="h-3.5 w-3.5" />} label="Authentication">
+        <SettingsField icon={<ShieldCheck className="h-3.5 w-3.5" />} label="Kimlik doğrulama">
           <Select
             value={authType}
             onValueChange={(value) =>
@@ -54,19 +54,19 @@ export const PipelineAuthFields = ({ config, onChange }: PipelineAuthFieldsProps
       )}
 
       {usesAtlassianEmail && (
-        <SettingsField icon={<User className="h-3.5 w-3.5" />} label="Atlassian Account Email">
+        <SettingsField icon={<User className="h-3.5 w-3.5" />} label="Atlassian hesap e-postası">
           <Input
             type="email"
             value={config.username || ""}
             onChange={(e) => onChange({ ...config, username: e.target.value })}
-            placeholder="you@company.com"
+            placeholder="ad.soyad@sirket.com"
             autoComplete="off"
             className={INPUT_CLASS}
           />
         </SettingsField>
       )}
 
-      <SettingsField icon={<KeyRound className="h-3.5 w-3.5" />} label="API Token">
+      <SettingsField icon={<KeyRound className="h-3.5 w-3.5" />} label="API token">
         <Input
           type="password"
           value={config.apiToken || ""}

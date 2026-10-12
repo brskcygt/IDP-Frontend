@@ -5,6 +5,7 @@ import { SettingsField } from "@/components/project/settings/SettingsField";
 import { SecretHint, SAVED_SECRET_PLACEHOLDER } from "@/components/project/settings/SecretHint";
 import { useToast } from "@/hooks/use-toast";
 import { testPmpConnection } from "@/services/api";
+import { errorMessage, NO_RESPONSE_MESSAGE } from "@/lib/errors";
 import type { ProjectConfig } from "@/types/project";
 
 interface PmpAuthFieldsProps {
@@ -20,19 +21,18 @@ export const PmpAuthFields = ({ config, onChange }: PmpAuthFieldsProps) => {
     try {
       const data = await testPmpConnection(config.pmpConfig || {});
       if (data.success) {
-        toast({ title: '✅ Connection Verified', description: data.message });
+        toast({ title: 'PMP bağlantısı doğrulandı', description: data.message });
       } else {
-        toast({ title: '❌ Error', description: data.message || data.error, variant: 'destructive' });
+        toast({ title: 'PMP bağlantısı kurulamadı', description: data.message || data.error || NO_RESPONSE_MESSAGE, variant: 'destructive' });
       }
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Unexpected error';
-      toast({ title: '❌ Error', description: message, variant: 'destructive' });
+      toast({ title: 'PMP bağlantısı kurulamadı', description: errorMessage(err), variant: 'destructive' });
     }
   };
 
   return (
     <div className="space-y-3 bg-accent/20 p-3 rounded border border-border/50">
-      <SettingsField icon={<Globe className="h-3.5 w-3.5" />} label="PMP Base URL">
+      <SettingsField icon={<Globe className="h-3.5 w-3.5" />} label="PMP adresi">
         <Input
           value={config.pmpConfig?.baseUrl || ''}
           onChange={(e) => onChange({ ...config, pmpConfig: { ...config.pmpConfig, baseUrl: e.target.value } })}
@@ -40,7 +40,7 @@ export const PmpAuthFields = ({ config, onChange }: PmpAuthFieldsProps) => {
           className="bg-accent/50 border-border/50"
         />
       </SettingsField>
-      <SettingsField icon={<Server className="h-3.5 w-3.5" />} label="Resource Name (Kaynak Adı)">
+      <SettingsField icon={<Server className="h-3.5 w-3.5" />} label="Kaynak adı (resource)">
         <Input
           value={config.pmpConfig?.resourceName || ''}
           onChange={(e) => onChange({ ...config, pmpConfig: { ...config.pmpConfig, resourceName: e.target.value } })}
@@ -48,7 +48,7 @@ export const PmpAuthFields = ({ config, onChange }: PmpAuthFieldsProps) => {
           className="bg-accent/50 border-border/50"
         />
       </SettingsField>
-      <SettingsField icon={<User className="h-3.5 w-3.5" />} label="Account Name (Kullanıcı Hesabı)">
+      <SettingsField icon={<User className="h-3.5 w-3.5" />} label="Hesap adı (account)">
         <Input
           value={config.pmpConfig?.accountName || ''}
           onChange={(e) => onChange({
@@ -60,7 +60,7 @@ export const PmpAuthFields = ({ config, onChange }: PmpAuthFieldsProps) => {
           className="bg-accent/50 border-border/50"
         />
       </SettingsField>
-      <SettingsField icon={<KeyRound className="h-3.5 w-3.5" />} label="PMP API AuthToken">
+      <SettingsField icon={<KeyRound className="h-3.5 w-3.5" />} label="PMP API token">
         <Input
           type="password"
           value={config.pmpConfig?.authToken || ''}
@@ -85,11 +85,11 @@ export const PmpAuthFields = ({ config, onChange }: PmpAuthFieldsProps) => {
           })}
         />
         <span>
-          Allow Self-Signed SSL
+          Kendinden imzalı SSL sertifikasına izin ver
           {config.pmpConfig?.allowSelfSigned && (
             <span className="block text-amber-500 mt-0.5">
-              ⚠ Certificate verification is disabled for this vault connection.
-              Prefer trusting your internal CA via NODE_EXTRA_CA_CERTS.
+              Bu vault bağlantısında sertifika doğrulanmıyor. Mümkünse şirket CA'sını
+              NODE_EXTRA_CA_CERTS ile güvenilir yapın.
             </span>
           )}
         </span>
@@ -102,7 +102,7 @@ export const PmpAuthFields = ({ config, onChange }: PmpAuthFieldsProps) => {
         onClick={handleTestConnection}
         className="w-full mt-2"
       >
-        Test PMP Connection
+        PMP bağlantısını test et
       </Button>
     </div>
   );

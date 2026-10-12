@@ -25,7 +25,7 @@ export const PmpSettings = ({ config, onChange }: PmpSettingsProps) => {
 
   return (
     <>
-      <SettingsField icon={<Link className="h-3.5 w-3.5" />} label="Script Name">
+      <SettingsField icon={<Link className="h-3.5 w-3.5" />} label="Script adı">
         <Input
           value={config.script || ''}
           onChange={(e) => onChange({ ...config, script: e.target.value })}
@@ -38,7 +38,7 @@ export const PmpSettings = ({ config, onChange }: PmpSettingsProps) => {
         <div className="space-y-2">
           <div className="flex items-center gap-2 text-xs font-medium text-destructive">
             <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
-            Bu format güvenlik nedeniyle kaldırıldı, adımlara dönüştürün
+            Bu biçim güvenlik nedeniyle kaldırıldı; adımlara dönüştürün.
           </div>
           <Textarea
             value={config.scriptContent || ''}
@@ -48,23 +48,21 @@ export const PmpSettings = ({ config, onChange }: PmpSettingsProps) => {
           />
           <p className="text-[10px] text-muted-foreground/80">
             Bu serbest metin script sunucuda artık çalıştırılmıyor (yalnızca referans için gösteriliyor).
-            Aynı otomasyonu aşağıdaki adım listesiyle yeniden oluşturun — adım listesi doluysa deploy
-            sırasında o kullanılır.
+            Aynı otomasyonu aşağıdaki adım listesiyle yeniden oluşturun; adım listesi doluysa dağıtımda
+            o kullanılır.
           </p>
         </div>
       )}
 
       <div className="space-y-2">
-        <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-          PMP Automation Steps
-        </Label>
+        <Label>PMP otomasyon adımları</Label>
         <PmpStepList
           steps={config.steps || []}
           onChange={(steps) => onChange({ ...config, steps })}
         />
       </div>
 
-      <SettingsField icon={<Link className="h-3.5 w-3.5" />} label="Portal URL">
+      <SettingsField icon={<Link className="h-3.5 w-3.5" />} label="Portal adresi">
         <Input
           value={config.url || ''}
           onChange={(e) => onChange({ ...config, url: e.target.value })}
@@ -72,7 +70,7 @@ export const PmpSettings = ({ config, onChange }: PmpSettingsProps) => {
           className="bg-accent/50 border-border/50"
         />
       </SettingsField>
-      <SettingsField icon={<User className="h-3.5 w-3.5" />} label="Portal Username">
+      <SettingsField icon={<User className="h-3.5 w-3.5" />} label="Portal kullanıcı adı">
         <Input
           value={config.username || ''}
           onChange={(e) => onChange({ ...config, username: e.target.value })}
@@ -80,7 +78,7 @@ export const PmpSettings = ({ config, onChange }: PmpSettingsProps) => {
           className="bg-accent/50 border-border/50"
         />
       </SettingsField>
-      <SettingsField icon={<KeyRound className="h-3.5 w-3.5" />} label="Portal Password">
+      <SettingsField icon={<KeyRound className="h-3.5 w-3.5" />} label="Portal parolası">
         <Input
           type="password"
           value={config.password || ''}

@@ -57,7 +57,7 @@ export const PmpStepList = ({ steps, onChange }: PmpStepListProps) => {
     <div className="space-y-2">
       {steps.length === 0 && (
         <p className="text-xs text-muted-foreground/80 italic">
-          Henüz adım eklenmedi. Başlamak için "Adım Ekle" butonunu kullanın.
+          Henüz adım yok. Başlamak için "Adım ekle"yi kullanın.
         </p>
       )}
 
@@ -83,7 +83,7 @@ export const PmpStepList = ({ steps, onChange }: PmpStepListProps) => {
         className="w-full"
       >
         <Plus className="h-3.5 w-3.5" />
-        Adım Ekle {steps.length > 0 ? `(${steps.length}/${MAX_PMP_STEPS})` : ''}
+        Adım ekle {steps.length > 0 ? `(${steps.length}/${MAX_PMP_STEPS})` : ''}
       </Button>
     </div>
   );

@@ -18,7 +18,7 @@ import type { CiVariableRow } from "@/components/project/settings/ciPipelineVari
 type KeyValueEditorProps = {
   value: Record<string, string> | undefined;
   onChange: (next: Record<string, string>) => void;
-  /** What one row is called, e.g. "Variable" or "Parameter". */
+  /** What one row is called, e.g. "Değişken" or "Parametre". */
   noun: string;
   /** Shown when there are no rows yet. */
   emptyHint: string;
@@ -52,9 +52,9 @@ export const KeyValueEditor = ({ value, onChange, noun, emptyHint, footnote, dis
 
   const issueMessage = {
     invalid:
-      `Invalid key: letters, digits and _ only, not starting with a digit, at most ${MAX_CI_VARIABLE_KEY_LENGTH} ` +
-      "characters; __proto__, constructor and prototype are reserved. This row will not be saved.",
-    duplicate: "Duplicate key: only the first row with this key is saved.",
+      `Geçersiz anahtar: yalnız harf, rakam ve _; rakamla başlayamaz, en çok ${MAX_CI_VARIABLE_KEY_LENGTH} ` +
+      "karakter; __proto__, constructor ve prototype ayrılmış adlardır. Bu satır kaydedilmez.",
+    duplicate: "Yinelenen anahtar: bu anahtarla yalnız ilk satır kaydedilir.",
   } as const;
 
   const commit = (nextRows: CiVariableRow[]) => {
@@ -89,8 +89,8 @@ export const KeyValueEditor = ({ value, onChange, noun, emptyHint, footnote, dis
               <Input
                 value={row.key}
                 onChange={(e) => updateRow(row.id, { key: e.target.value })}
-                placeholder="KEY"
-                aria-label={`${noun} ${index + 1} key`}
+                placeholder="ANAHTAR"
+                aria-label={`${noun} ${index + 1} anahtarı`}
                 aria-invalid={issue !== null}
                 disabled={disabled}
                 className={cn(INPUT_CLASS, "w-2/5 shrink-0 font-mono", issue && "border-destructive")}
@@ -99,8 +99,8 @@ export const KeyValueEditor = ({ value, onChange, noun, emptyHint, footnote, dis
                 value={row.value}
                 onChange={(e) => updateRow(row.id, { value: e.target.value })}
                 maxLength={MAX_CI_VARIABLE_VALUE_LENGTH}
-                placeholder="value"
-                aria-label={`${noun} ${index + 1} value`}
+                placeholder="değer"
+                aria-label={`${noun} ${index + 1} değeri`}
                 disabled={disabled}
                 className={INPUT_CLASS}
               />
@@ -111,7 +111,7 @@ export const KeyValueEditor = ({ value, onChange, noun, emptyHint, footnote, dis
                 className="h-8 w-8 shrink-0 text-destructive hover:text-destructive"
                 onClick={() => removeRow(row.id)}
                 disabled={disabled}
-                aria-label={`Remove ${noun.toLowerCase()} ${row.key || index + 1}`}
+                aria-label={`${noun} ${row.key || index + 1} kaldır`}
               >
                 <Trash2 className="h-3.5 w-3.5" />
               </Button>
@@ -130,7 +130,7 @@ export const KeyValueEditor = ({ value, onChange, noun, emptyHint, footnote, dis
         className="w-full"
       >
         <Plus className="h-3.5 w-3.5" />
-        Add {noun} {rows.length > 0 ? `(${rows.length}/${MAX_CI_VARIABLES})` : ""}
+        {noun} ekle {rows.length > 0 ? `(${rows.length}/${MAX_CI_VARIABLES})` : ""}
       </Button>
       <p className="text-[10px] text-muted-foreground/80">{footnote}</p>
     </div>

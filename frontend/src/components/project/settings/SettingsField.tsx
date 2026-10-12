@@ -11,7 +11,7 @@ interface SettingsFieldProps {
 export const SettingsField = ({ icon, label, children }: SettingsFieldProps) => {
   return (
     <div className="space-y-2">
-      <Label className="flex items-center gap-2 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+      <Label className="flex items-center gap-2 [&>svg]:text-muted-foreground">
         {icon}
         {label}
       </Label>

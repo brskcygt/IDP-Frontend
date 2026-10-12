@@ -17,7 +17,7 @@ export const PmpStepFields = ({ step, onChange }: PmpStepFieldsProps) => {
         <Input
           value={step.url}
           onChange={(e) => onChange({ ...step, url: e.target.value })}
-          placeholder="https://portal.example.com/deploy"
+          placeholder="https://portal.ornek.com/deploy"
           className={fieldClass}
         />
       );
@@ -29,13 +29,13 @@ export const PmpStepFields = ({ step, onChange }: PmpStepFieldsProps) => {
           <Input
             value={step.selector}
             onChange={(e) => onChange({ ...step, selector: e.target.value })}
-            placeholder="CSS selector"
+            placeholder="CSS seçici"
             className={selectorFieldClass}
           />
           <Input
             value={step.value}
             onChange={(e) => onChange({ ...step, value: e.target.value })}
-            placeholder="value, or {{username}} / {{password}} / {{environment}}"
+            placeholder="değer ya da {{username}} / {{password}} / {{environment}}"
             className={fieldClass}
           />
         </div>
@@ -46,7 +46,7 @@ export const PmpStepFields = ({ step, onChange }: PmpStepFieldsProps) => {
         <Input
           value={step.selector}
           onChange={(e) => onChange({ ...step, selector: e.target.value })}
-          placeholder="CSS selector"
+          placeholder="CSS seçici"
           className={selectorFieldClass}
         />
       );
@@ -57,7 +57,7 @@ export const PmpStepFields = ({ step, onChange }: PmpStepFieldsProps) => {
           <Input
             value={step.selector}
             onChange={(e) => onChange({ ...step, selector: e.target.value })}
-            placeholder="CSS selector"
+            placeholder="CSS seçici"
             className={selectorFieldClass}
           />
           <Input
@@ -67,7 +67,7 @@ export const PmpStepFields = ({ step, onChange }: PmpStepFieldsProps) => {
               ...step,
               timeoutMs: e.target.value ? Number(e.target.value) : undefined,
             })}
-            placeholder="timeout ms (optional, max 30000)"
+            placeholder="zaman aşımı ms (isteğe bağlı, en çok 30000)"
             className={fieldClass}
           />
         </div>
@@ -82,7 +82,7 @@ export const PmpStepFields = ({ step, onChange }: PmpStepFieldsProps) => {
             ...step,
             timeoutMs: e.target.value ? Number(e.target.value) : undefined,
           })}
-          placeholder="timeout ms (optional, max 30000)"
+          placeholder="zaman aşımı ms (isteğe bağlı, en çok 30000)"
           className={fieldClass}
         />
       );
@@ -93,13 +93,13 @@ export const PmpStepFields = ({ step, onChange }: PmpStepFieldsProps) => {
           <Input
             value={step.selector}
             onChange={(e) => onChange({ ...step, selector: e.target.value })}
-            placeholder="CSS selector"
+            placeholder="CSS seçici"
             className={selectorFieldClass}
           />
           <Input
             value={step.contains}
             onChange={(e) => onChange({ ...step, contains: e.target.value })}
-            placeholder="expected text"
+            placeholder="beklenen metin"
             className={fieldClass}
           />
         </div>
@@ -110,7 +110,7 @@ export const PmpStepFields = ({ step, onChange }: PmpStepFieldsProps) => {
         <Input
           value={step.name}
           onChange={(e) => onChange({ ...step, name: e.target.value })}
-          placeholder="screenshot name"
+          placeholder="ekran görüntüsü adı"
           className={fieldClass}
         />
       );
@@ -121,7 +121,7 @@ export const PmpStepFields = ({ step, onChange }: PmpStepFieldsProps) => {
           type="number"
           value={step.ms}
           onChange={(e) => onChange({ ...step, ms: Number(e.target.value) || 0 })}
-          placeholder="milliseconds (max 30000)"
+          placeholder="milisaniye (en çok 30000)"
           className={fieldClass}
         />
       );

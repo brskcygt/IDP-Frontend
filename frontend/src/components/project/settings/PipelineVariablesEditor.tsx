@@ -15,11 +15,11 @@ export const PipelineVariablesEditor = ({ value, onChange }: PipelineVariablesEd
   <KeyValueEditor
     value={value}
     onChange={onChange}
-    noun="Variable"
-    emptyHint="No variables yet. Each one is passed to the pipeline run, e.g. CUSTOMER or VERSION."
+    noun="Değişken"
+    emptyHint="Henüz değişken yok. Her biri pipeline çalışmasına gönderilir; örn. CUSTOMER ya da VERSION."
     footnote={
-      "Variables are not secret: anyone who can view this project sees them. Keep credentials in " +
-      "Bitbucket / GitHub secured variables or secrets."
+      "Değişkenler gizli değildir: projeyi görebilen herkes görür. Kimlik bilgilerini " +
+      "Bitbucket / GitHub secured variable ya da secret olarak tutun."
     }
   />
 );

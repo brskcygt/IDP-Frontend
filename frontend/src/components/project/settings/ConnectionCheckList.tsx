@@ -6,7 +6,7 @@ interface ConnectionCheckListProps {
   checks: ConnectionCheckResult[];
 }
 
-const statusLabel = (ok: boolean | null): string => (ok === true ? "Passed" : ok === false ? "Failed" : "Not tested");
+const statusLabel = (ok: boolean | null): string => (ok === true ? "Başarılı" : ok === false ? "Başarısız" : "Denenmedi");
 
 /**
  * Renders the per-check results from `POST /api/projects/:id/test-connection`
@@ -16,7 +16,7 @@ export const ConnectionCheckList = ({ checks }: ConnectionCheckListProps) => {
   if (checks.length === 0) return null;
 
   return (
-    <ul className="space-y-2" aria-label="Connection test results">
+    <ul className="space-y-2" aria-label="Bağlantı testi sonuçları">
       {checks.map((check) => (
         <li
           key={check.name}
@@ -29,6 +29,7 @@ export const ConnectionCheckList = ({ checks }: ConnectionCheckListProps) => {
         >
           <span className="mt-0.5" title={statusLabel(check.ok)}>
             <ConnectionCheckStatusIcon ok={check.ok} />
+            <span className="sr-only">{statusLabel(check.ok)}:</span>
           </span>
           <span className="min-w-0">
             <span className="block font-medium text-foreground">{check.name}</span>

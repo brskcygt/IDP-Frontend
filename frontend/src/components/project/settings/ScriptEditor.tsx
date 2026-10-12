@@ -13,14 +13,14 @@ const STORAGE_KEY = "idp.quick-script-templates.v1";
 const BUILT_INS: Record<QuickTemplate["platform"], QuickTemplate[]> = {
   windows: [
     { id: "win-git-build", name: "Git Pull + NPM Build", platform: "windows", script: "git pull origin main\nnpm install\nnpm run build" },
-    { id: "win-service", name: "Windows Service Restart", platform: "windows", script: 'Restart-Service -Name "W3SVC" -Force' },
-    { id: "win-iis", name: "IIS AppPool Restart", platform: "windows", script: 'Stop-WebAppPool -Name "DefaultAppPool"\nStart-WebAppPool -Name "DefaultAppPool"' },
+    { id: "win-service", name: "Windows servisini yeniden başlat", platform: "windows", script: 'Restart-Service -Name "W3SVC" -Force' },
+    { id: "win-iis", name: "IIS AppPool'u yeniden başlat", platform: "windows", script: 'Stop-WebAppPool -Name "DefaultAppPool"\nStart-WebAppPool -Name "DefaultAppPool"' },
   ],
   linux: [
     { id: "linux-node", name: "Git Pull + NPM Build", platform: "linux", script: "git pull origin main\nnpm install\nnpm run build" },
     { id: "linux-pm2", name: "PM2 Node Deploy", platform: "linux", script: "git pull origin main\nnpm install\nnpm run build\npm2 restart all" },
     { id: "linux-docker", name: "Docker Compose Deploy", platform: "linux", script: "docker compose pull\ndocker compose up -d" },
-    { id: "linux-systemd", name: "Systemd Restart", platform: "linux", script: "sudo systemctl restart app\nsudo systemctl status app --no-pager" },
+    { id: "linux-systemd", name: "systemd servisini yeniden başlat", platform: "linux", script: "sudo systemctl restart app\nsudo systemctl status app --no-pager" },
   ],
 };
 
@@ -58,23 +58,23 @@ export const ScriptEditor = ({ config, onChange, isWindows }: ScriptEditorProps)
 
   return <div className="space-y-2.5">
     <div className="flex flex-wrap items-center justify-between gap-2">
-      <Label className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground"><Braces className="h-3.5 w-3.5 text-primary" />Deployment script</Label>
+      <Label className="flex items-center gap-2"><Braces className="h-3.5 w-3.5 text-primary" />Dağıtım script'i</Label>
       <div className="flex items-center gap-2">
         <Select onValueChange={(id) => { const template = allTemplates.find((item) => item.id === id); if (template) updateScript(template.script); }}>
-          <SelectTrigger className="h-8 w-[210px] border-border/60 bg-accent/40 font-mono text-[10px]"><SelectValue placeholder="Quick Template uygula" /></SelectTrigger>
+          <SelectTrigger aria-label="Hazır şablon uygula" className="h-8 w-[210px] border-border/60 bg-accent/40 font-mono text-[10px]"><SelectValue placeholder="Hazır şablon uygula" /></SelectTrigger>
           <SelectContent>
             {BUILT_INS[platform].map((item) => <SelectItem key={item.id} value={item.id}>{item.name}</SelectItem>)}
             {visibleCustom.map((item) => <SelectItem key={item.id} value={item.id}>★ {item.name}</SelectItem>)}
           </SelectContent>
         </Select>
         <button type="button" disabled={!script.trim()} onClick={() => setIsNaming((current) => !current)} className="inline-flex h-8 items-center gap-1.5 rounded-md border border-primary/35 bg-primary/[0.06] px-3 text-[10px] font-semibold text-primary hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-35">
-          {saved ? <Check className="h-3.5 w-3.5" /> : <BookmarkPlus className="h-3.5 w-3.5" />}{saved ? "Kaydedildi" : "Quick Template olarak kaydet"}
+          {saved ? <Check className="h-3.5 w-3.5" /> : <BookmarkPlus className="h-3.5 w-3.5" />}{saved ? "Kaydedildi" : "Şablon olarak kaydet"}
         </button>
       </div>
     </div>
 
     {isNaming && <div className="flex items-center gap-2 rounded-md border border-primary/25 bg-primary/[0.035] p-2">
-      <Input autoFocus value={templateName} onChange={(event) => setTemplateName(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); saveTemplate(); } }} placeholder="Şablon adı — örn. Turtly Build" className="h-8 border-border/60 bg-background text-xs" />
+      <Input autoFocus value={templateName} onChange={(event) => setTemplateName(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); saveTemplate(); } }} placeholder="Şablon adı, örn. Turtly derleme" className="h-8 border-border/60 bg-background text-xs" />
       <button type="button" onClick={saveTemplate} disabled={!templateName.trim()} className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md bg-primary px-3 text-[10px] font-bold text-primary-foreground disabled:opacity-40"><Plus className="h-3.5 w-3.5" />Ekle</button>
     </div>}
 
@@ -86,7 +86,7 @@ export const ScriptEditor = ({ config, onChange, isWindows }: ScriptEditorProps)
     <div className="overflow-hidden rounded-lg border border-zinc-700/80 bg-[#090b0d] shadow-[inset_0_1px_0_rgba(255,255,255,0.025),0_12px_30px_rgba(0,0,0,0.18)] focus-within:border-primary/70 focus-within:ring-1 focus-within:ring-primary/20">
       <div className="flex h-9 items-center justify-between border-b border-zinc-800 bg-[#101316] px-3.5">
         <div className="flex items-center gap-2 font-mono text-[9px] uppercase tracking-[0.12em] text-zinc-500"><span className="h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />{isWindows ? "PowerShell" : "Bash"}<span className="rounded border border-zinc-700 px-1.5 py-0.5 text-zinc-400">{isWindows ? "PS1" : "SH"}</span></div>
-        <span className="font-mono text-[9px] text-zinc-600">{lineCount} lines · {script.length} chars</span>
+        <span className="font-mono text-[9px] text-zinc-600">{lineCount} satır · {script.length} karakter</span>
       </div>
       <div className="flex min-h-[230px] max-h-[420px] overflow-hidden">
         <div ref={gutterRef} aria-hidden="true" className="w-12 shrink-0 overflow-hidden border-r border-zinc-800/90 bg-[#0c0e10] py-3 text-right font-mono text-[12px] leading-5 text-zinc-700 select-none">{Array.from({ length: lineCount }, (_, index) => <div key={index} className="pr-3">{index + 1}</div>)}</div>
@@ -97,8 +97,8 @@ export const ScriptEditor = ({ config, onChange, isWindows }: ScriptEditorProps)
           updateScript(next); window.requestAnimationFrame(() => target.setSelectionRange(caret, caret));
         }} spellCheck={false} wrap="off" placeholder="git pull origin main\nnpm install\nnpm run build" className="min-h-[230px] flex-1 resize-y rounded-none border-0 bg-transparent px-4 py-3 font-mono text-[12px] leading-5 text-zinc-200 caret-amber-400 shadow-none outline-none placeholder:text-zinc-700 focus-visible:ring-0" />
       </div>
-      <div className="flex h-8 items-center justify-between border-t border-zinc-800 bg-[#0d1012] px-3.5 font-mono text-[9px] text-zinc-600"><span>UTF-8 · LF · Tab = 2 spaces</span><span>Her satır sırayla çalıştırılır</span></div>
+      <div className="flex h-8 items-center justify-between border-t border-zinc-800 bg-[#0d1012] px-3.5 font-mono text-[9px] text-zinc-600"><span>UTF-8 · LF · Tab = 2 boşluk</span><span>Her satır sırayla çalıştırılır</span></div>
     </div>
-    <p className="text-[10px] leading-relaxed text-muted-foreground">Şablonlar yalnızca bu IDP uygulamasında saklanır. Parola veya token içeren scriptleri Quick Template olarak kaydetmeyin.</p>
+    <p className="text-[10px] leading-relaxed text-muted-foreground">Şablonlar yalnızca bu IDP uygulamasında saklanır. Parola ya da token içeren script'leri şablon olarak kaydetmeyin.</p>
   </div>;
 };

@@ -18,17 +18,17 @@ const POLICY_OPTIONS: { value: HostKeyPolicy; label: string; description: string
   {
     value: 'tofu',
     label: 'TOFU (önerilen)',
-    description: 'İlk bağlantıda öğren, sonra değişirse durdur (önerilen)',
+    description: 'İlk bağlantıda anahtarı öğrenir, sonra değişirse dağıtımı durdurur.',
   },
   {
     value: 'strict',
-    label: 'Strict',
-    description: 'Sadece daha önce kaydedilmiş anahtarı kabul et',
+    label: 'Katı',
+    description: 'Yalnız daha önce kaydedilmiş anahtarı kabul eder.',
   },
   {
     value: 'insecure',
-    label: 'Insecure',
-    description: 'Doğrulama yok',
+    label: 'Güvensiz',
+    description: 'Sunucu anahtarı doğrulanmaz.',
   },
 ];
 
@@ -42,7 +42,7 @@ export const HostKeyPolicyField = ({ config, onChange }: HostKeyPolicyFieldProps
   const selected = POLICY_OPTIONS.find((option) => option.value === policy);
 
   return (
-    <SettingsField icon={<ShieldQuestion className="h-3.5 w-3.5" />} label="Host Key Politikası">
+    <SettingsField icon={<ShieldQuestion className="h-3.5 w-3.5" />} label="Host anahtarı politikası">
       <Select
         value={policy}
         onValueChange={(value) => onChange({ ...config, hostKeyPolicy: value as HostKeyPolicy })}
