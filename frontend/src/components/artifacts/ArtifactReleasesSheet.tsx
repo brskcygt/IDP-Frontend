@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { CloudDownload, GitBranch, Loader2, Package, PackagePlus, Trash2 } from 'lucide-react';
+import { CloudDownload, GitBranch, GitMerge, Loader2, Package, PackagePlus, Tag, Trash2 } from 'lucide-react';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -22,6 +22,36 @@ type Props = {
 
 const statusVariant = (status: ArtifactRelease['status']) => status === 'ready' ? 'default' : status === 'failed' ? 'destructive' : 'secondary';
 const formatDate = (value: string | null) => value ? new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value)) : '—';
+const shortSha = (sha: string | null | undefined) => sha ? sha.slice(0, 7) : '';
+
+/** Which branch or tag the release was built from; nothing for imports and older rows. */
+const RefChip = ({ release }: { release: ArtifactRelease }) => {
+  if (!release.ref) return null;
+  const Icon = release.refType === 'tag' ? Tag : GitBranch;
+  return <span className="inline-flex max-w-full items-center gap-1 rounded border border-border/60 px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
+    <Icon className="h-3 w-3 shrink-0" aria-hidden="true" />
+    <span className="truncate">{release.ref}</span>
+  </span>;
+};
+
+/** A preview's ingredients: collapsed to "base + N branches", opened to names and shas. */
+const CompositionDetail = ({ composition }: { composition: NonNullable<ArtifactRelease['composition']> }) => {
+  const BaseIcon = composition.baseType === 'tag' ? Tag : GitBranch;
+  return <details className="group mt-2 rounded-md bg-accent/20 px-3 py-2 text-xs">
+    <summary className="flex cursor-pointer list-none items-center gap-1.5 text-muted-foreground [&::-webkit-details-marker]:hidden">
+      <GitMerge className="h-3.5 w-3.5 shrink-0 text-primary" aria-hidden="true" />
+      <span className="font-mono text-foreground">{composition.baseRef}</span>
+      <span>+ {composition.branches.length} {composition.branches.length === 1 ? 'branch' : 'branches'}</span>
+      <span className="ml-auto text-[10px] group-open:hidden">show</span>
+      <span className="ml-auto hidden text-[10px] group-open:inline">hide</span>
+    </summary>
+    <ol className="mt-2 space-y-1 font-mono text-[11px]">
+      <li className="flex items-center gap-2"><BaseIcon className="h-3 w-3 shrink-0 text-muted-foreground" aria-hidden="true" /><span className="min-w-0 flex-1 truncate">{composition.baseRef}</span><span className="text-[10px] text-muted-foreground">base · {shortSha(composition.baseSha)}</span></li>
+      {composition.branches.map((branch, index) => <li key={branch.name} className="flex items-center gap-2"><span className="w-3 shrink-0 text-center text-[10px] text-primary">{index + 1}</span><span className="min-w-0 flex-1 truncate">{branch.name}</span><span className="text-[10px] text-muted-foreground">{shortSha(branch.sha)}</span></li>)}
+      <li className="flex items-center gap-2 border-t border-border/60 pt-1 text-muted-foreground"><GitMerge className="h-3 w-3 shrink-0" aria-hidden="true" /><span className="min-w-0 flex-1 truncate">{composition.composeBranch}</span><span className="text-[10px]">{composition.headSha ? shortSha(composition.headSha) : 'pending'}</span></li>
+    </ol>
+  </details>;
+};
 
 export const ArtifactReleasesSheet = ({ project, isOpen, onOpenChange, onRunStarted }: Props) => {
   const projectId = project?.id;
@@ -145,7 +175,8 @@ export const ArtifactReleasesSheet = ({ project, isOpen, onOpenChange, onRunStar
             {(releases.data ?? []).length === 0 && !releases.isLoading && <div className="rounded-md border border-dashed p-6 text-center"><Package className="mx-auto h-5 w-5 text-muted-foreground" /><p className="mt-2 text-sm font-medium">No releases yet</p><p className="mt-1 text-xs text-muted-foreground">Create a version above to start the build.</p></div>}
             <div className="space-y-2">
               {(releases.data ?? []).map((release) => <div key={release.id} className="rounded-lg border border-border/60 p-3">
-                <div className="flex items-start justify-between gap-3"><div><p className="font-mono text-sm font-semibold">{release.version}</p><p className="mt-1 text-[11px] text-muted-foreground">{formatDate(release.createdAt)}{release.commitSha ? ` · ${release.commitSha.slice(0, 9)}` : ''}</p></div><div className="flex items-center gap-1.5"><Badge variant={statusVariant(release.status)}>{release.status}</Badge>{canDeleteRelease && release.status !== 'building' && <Button type="button" size="sm" variant="ghost" aria-label={`Delete release ${release.version}`} onClick={() => { if (window.confirm(`Delete release '${release.version}'?`)) void actions.deleteRelease.mutateAsync(release.id).catch((cause) => fail('Release could not be deleted', cause)); }}><Trash2 className="h-3.5 w-3.5" /></Button>}</div></div>
+                <div className="flex items-start justify-between gap-3"><div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><p className="font-mono text-sm font-semibold">{release.version}</p><RefChip release={release} /></div><p className="mt-1 text-[11px] text-muted-foreground">{formatDate(release.createdAt)}{release.commitSha ? ` · ${release.commitSha.slice(0, 9)}` : ''}</p></div><div className="flex shrink-0 items-center gap-1.5">{release.composition && <Badge variant="outline" className="border-status-warn/50 text-status-warn">preview</Badge>}<Badge variant={statusVariant(release.status)}>{release.status}</Badge>{canDeleteRelease && release.status !== 'building' && <Button type="button" size="sm" variant="ghost" aria-label={`Delete release ${release.version}`} onClick={() => { if (window.confirm(`Delete release '${release.version}'?`)) void actions.deleteRelease.mutateAsync(release.id).catch((cause) => fail('Release could not be deleted', cause)); }}><Trash2 className="h-3.5 w-3.5" /></Button>}</div></div>
+                {release.composition && <CompositionDetail composition={release.composition} />}
                 {release.error && <p className="mt-2 text-xs text-destructive">{release.error}</p>}
               </div>)}
             </div>
