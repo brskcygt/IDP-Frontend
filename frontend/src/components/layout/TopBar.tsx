@@ -1,12 +1,8 @@
-import { useState } from "react";
-import { KeyRound, Network, Plus, Search, Users } from "lucide-react";
+import { Plus, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useSession } from "@/hooks/useSession";
-import { can } from "@/lib/permissions";
-import { UserManagementSheet } from "@/components/admin/UserManagementSheet";
-import { KnownHostKeysSheet } from "@/components/admin/KnownHostKeysSheet";
-import { AgentAllowlistSheet } from "@/components/agents/AgentAllowlistSheet";
+import { can, ROLE_LABEL, type Role } from "@/lib/permissions";
 
 type TopBarProps = {
   search: string;
@@ -20,14 +16,7 @@ export const TopBar = ({
   onCreateProject,
 }: TopBarProps) => {
   const { data: session } = useSession();
-  const [isUserManagementOpen, setIsUserManagementOpen] = useState(false);
-  const [isHostKeysOpen, setIsHostKeysOpen] = useState(false);
-  const [isAllowlistOpen, setIsAllowlistOpen] = useState(false);
-  const isAdmin = can(session?.role, 'user:manage');
   const canCreateProject = can(session?.role, 'project:write');
-  const canManageHostKeys = can(session?.role, 'vpn:manage');
-  // Same permission the agent credential endpoints require.
-  const canManageAgents = can(session?.role, 'project:write');
 
   return (
     <header className="flex h-12 shrink-0 items-center justify-between border-b border-line bg-bar px-5">
@@ -69,57 +58,12 @@ export const TopBar = ({
           <div className="flex items-center gap-2 border-l border-line pl-2.5">
             <span className="text-xs font-medium text-foreground">{session.username}</span>
             <span className="rounded-sm border border-line-strong bg-accent px-1.5 py-0.5 font-mono text-[9.5px] uppercase tracking-[0.09em] text-dim">
-              {session.role}
+              {ROLE_LABEL[session.role as Role] ?? session.role}
             </span>
-            {canManageHostKeys && (
-              <Button
-                variant="ghost"
-                size="icon"
-                title="Bilinen host anahtarları"
-                aria-label="Bilinen host anahtarları"
-                className="h-[30px] w-[30px] text-dim hover:bg-accent hover:text-foreground"
-                onClick={() => setIsHostKeysOpen(true)}
-              >
-                <KeyRound className="h-3.5 w-3.5" aria-hidden="true" />
-              </Button>
-            )}
-            {canManageAgents && (
-              <Button
-                variant="ghost"
-                size="icon"
-                title="Agent erişim listesi"
-                aria-label="Agent erişim listesi"
-                className="h-[30px] w-[30px] text-dim hover:bg-accent hover:text-foreground"
-                onClick={() => setIsAllowlistOpen(true)}
-              >
-                <Network className="h-3.5 w-3.5" aria-hidden="true" />
-              </Button>
-            )}
-            {isAdmin && (
-              <Button
-                variant="ghost"
-                size="icon"
-                title="Kullanıcılar"
-                aria-label="Kullanıcılar"
-                className="h-[30px] w-[30px] text-dim hover:bg-accent hover:text-foreground"
-                onClick={() => setIsUserManagementOpen(true)}
-              >
-                <Users className="h-3.5 w-3.5" aria-hidden="true" />
-              </Button>
-            )}
           </div>
         )}
       </div>
 
-      {isAdmin && (
-        <UserManagementSheet isOpen={isUserManagementOpen} onOpenChange={setIsUserManagementOpen} />
-      )}
-      {canManageHostKeys && (
-        <KnownHostKeysSheet isOpen={isHostKeysOpen} onOpenChange={setIsHostKeysOpen} />
-      )}
-      {canManageAgents && (
-        <AgentAllowlistSheet isOpen={isAllowlistOpen} onOpenChange={setIsAllowlistOpen} />
-      )}
     </header>
   );
 };

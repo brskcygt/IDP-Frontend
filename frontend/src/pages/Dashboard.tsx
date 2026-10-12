@@ -32,6 +32,9 @@ import { Toaster } from '@/components/ui/toaster';
 import { WorkspaceTransferSheet } from '@/components/transfer/WorkspaceTransferSheet';
 import { AgentBuilderSheet } from '@/components/agents/AgentBuilderSheet';
 import { AgentsSheet } from '@/components/agents/AgentsSheet';
+import { AgentAllowlistSheet } from '@/components/agents/AgentAllowlistSheet';
+import { KnownHostKeysSheet } from '@/components/admin/KnownHostKeysSheet';
+import { UserManagementSheet } from '@/components/admin/UserManagementSheet';
 import { ProjectWorkspaceSheet, type WorkspaceTabId } from '@/components/workspace/ProjectWorkspaceSheet';
 import { DeploymentGuideSheet } from '@/components/guide/DeploymentGuideSheet';
 import { TroubleshootingSheet } from '@/components/guide/TroubleshootingSheet';
@@ -89,7 +92,7 @@ export const Dashboard = ({ onLogout }: { onLogout?: () => void }) => {
   const [workspace, setWorkspace] = useState<{ projectId: string; tab: WorkspaceTabId } | null>(null);
   const [workspaceOpen, setWorkspaceOpen] = useState(false);
   const [openPanel, setOpenPanel] = useState<
-    'trigger' | 'settings' | 'create' | 'stream' | 'sessions' | 'activity' | 'history' | 'transfer' | 'agents' | 'agent-builder' | 'guide' | 'troubleshooting' | 'settings-global' | null
+    'trigger' | 'settings' | 'create' | 'stream' | 'sessions' | 'activity' | 'history' | 'transfer' | 'agents' | 'agent-builder' | 'guide' | 'troubleshooting' | 'settings-global' | 'allowlist' | 'host-keys' | 'users' | null
   >(null);
 
   // Surfaces the backend's per-project 409 concurrency lock (or any other
@@ -255,15 +258,18 @@ export const Dashboard = ({ onLogout }: { onLogout?: () => void }) => {
 
   const elapsedLabel = formatDuration(activeRun?.elapsedMs ?? 0);
   const activeRailItem: AppRailItem =
-    openPanel === 'activity' ? 'activity'
-      : openPanel === 'guide' ? 'guide'
-        : openPanel === 'troubleshooting' ? 'troubleshooting'
-          : openPanel === 'agents' ? 'agents'
-            : openPanel === 'agent-builder' ? 'agent-builder'
-              : openPanel === 'transfer' ? 'transfer'
-                : openPanel === 'settings-global' ? 'settings'
-                  : openPanel === 'sessions' ? 'deployments'
-                    : 'projects';
+    openPanel === 'sessions' ? 'deployments'
+      : openPanel === 'settings-global' ? 'settings'
+        : openPanel === 'activity' || openPanel === 'guide' || openPanel === 'troubleshooting'
+          || openPanel === 'agents' || openPanel === 'agent-builder' || openPanel === 'transfer'
+          || openPanel === 'allowlist' || openPanel === 'host-keys' || openPanel === 'users'
+          ? openPanel
+          : 'projects';
+
+  const openRailItem = (item: Exclude<AppRailItem, 'projects'>) =>
+    setOpenPanel(item === 'deployments' ? 'sessions' : item === 'settings' ? 'settings-global' : item);
+
+  const panelChange = (panel: NonNullable<typeof openPanel>) => (open: boolean) => setOpenPanel(open ? panel : null);
 
   return (
     <div className="flex h-screen overflow-hidden bg-background text-foreground">
@@ -271,15 +277,14 @@ export const Dashboard = ({ onLogout }: { onLogout?: () => void }) => {
 
       <AppRail
         activeItem={activeRailItem}
-        canManageProjects={canCreateProject}
-        onOpenActivityLog={() => setOpenPanel('activity')}
-        onOpenTransfer={() => setOpenPanel('transfer')}
-        onOpenAgents={() => setOpenPanel('agents')}
-        onOpenAgentBuilder={() => setOpenPanel('agent-builder')}
-        onOpenGuide={() => setOpenPanel('guide')}
-        onOpenTroubleshooting={() => setOpenPanel('troubleshooting')}
-        onOpenSettings={() => setOpenPanel('settings-global')}
-        onOpenDeployments={() => setOpenPanel('sessions')}
+        admin={{
+          agents: canCreateProject,
+          hostKeys: can(session?.role, 'vpn:manage'),
+          users: can(session?.role, 'user:manage'),
+          transfer: canCreateProject,
+          serverSettings: canCreateProject,
+        }}
+        onOpen={openRailItem}
         onLogout={onLogout}
       />
 
@@ -406,6 +411,9 @@ export const Dashboard = ({ onLogout }: { onLogout?: () => void }) => {
         onOpenChange={(open) => setOpenPanel(open ? 'guide' : null)}
         onOpenAgentBuilder={() => setOpenPanel('agent-builder')}
       />
+      {canCreateProject && <AgentAllowlistSheet isOpen={openPanel === 'allowlist'} onOpenChange={panelChange('allowlist')} />}
+      {can(session?.role, 'vpn:manage') && <KnownHostKeysSheet isOpen={openPanel === 'host-keys'} onOpenChange={panelChange('host-keys')} />}
+      {can(session?.role, 'user:manage') && <UserManagementSheet isOpen={openPanel === 'users'} onOpenChange={panelChange('users')} />}
       <TroubleshootingSheet isOpen={openPanel === 'troubleshooting'} onOpenChange={(open) => setOpenPanel(open ? 'troubleshooting' : null)} />
 
       <GlobalSettingsSheet

@@ -61,9 +61,9 @@ export const can = (role: Role | string | null | undefined, action: Action): boo
 };
 
 export const ROLE_LABEL: Readonly<Record<Role, string>> = {
-  admin: 'Admin',
-  deployer: 'Deployer',
-  viewer: 'Viewer',
+  admin: 'Yönetici',
+  deployer: 'Dağıtımcı',
+  viewer: 'İzleyici',
 };
 
 export const ROLE_OPTIONS: ReadonlyArray<Role> = ['admin', 'deployer', 'viewer'];
