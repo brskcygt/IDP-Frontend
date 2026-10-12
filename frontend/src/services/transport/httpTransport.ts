@@ -44,6 +44,7 @@ import type {
   RepoRef,
   RepoRefs,
 } from './types';
+import { TransportError } from './errors';
 
 const JSON_HEADERS = { 'Content-Type': 'application/json' };
 
@@ -74,6 +75,21 @@ async function readErrorMessage(response: Response, fallback: string): Promise<s
   } catch {
     return fallback;
   }
+}
+
+/**
+ * Same message as readErrorMessage, thrown as a TransportError so a caller can
+ * branch on the backend's `code`. Reads the body once: a clone feeds the code.
+ */
+async function readError(response: Response, fallback: string): Promise<TransportError> {
+  let code: string | null = null;
+  try {
+    const body = await response.clone().json();
+    if (typeof body?.code === 'string') code = body.code;
+  } catch {
+    // Not JSON — the message falls back below, the code stays null.
+  }
+  return new TransportError(await readErrorMessage(response, fallback), response.status, code);
 }
 
 const TERMINAL_STATUSES = new Set(['succeeded', 'failed', 'aborted']);
@@ -379,7 +395,7 @@ export function createHttpTransport(baseUrl: string = ''): Transport {
         body: JSON.stringify(input),
       });
       if (!response.ok) {
-        throw new Error(await readErrorMessage(response, 'Failed to start the preview build'));
+        throw await readError(response, 'Failed to start the preview build');
       }
       return response.json();
     },
@@ -394,7 +410,7 @@ export function createHttpTransport(baseUrl: string = ''): Transport {
         { credentials: 'include' },
       );
       if (!response.ok) {
-        throw new Error(await readErrorMessage(response, 'Failed to fetch repository branches and tags'));
+        throw await readError(response, 'Failed to fetch repository branches and tags');
       }
       return response.json();
     },
@@ -407,7 +423,7 @@ export function createHttpTransport(baseUrl: string = ''): Transport {
         body: JSON.stringify(input),
       });
       if (!response.ok) {
-        throw new Error(await readErrorMessage(response, 'Failed to create tag'));
+        throw await readError(response, 'Failed to create tag');
       }
       return response.json();
     },
@@ -500,7 +516,7 @@ export function createHttpTransport(baseUrl: string = ''): Transport {
         body: JSON.stringify(input),
       });
       if (!response.ok) {
-        throw new Error(await readErrorMessage(response, 'Failed to deploy artifact release'));
+        throw await readError(response, 'Failed to deploy artifact release');
       }
       return response.json();
     },

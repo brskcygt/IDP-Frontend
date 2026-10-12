@@ -1,4 +1,4 @@
-import { ChevronRight, Package, RotateCcw, Square } from "lucide-react";
+import { ChevronRight, GitMerge, Package, RotateCcw, Square } from "lucide-react";
 import type { Project } from "@/hooks/useProjects";
 import { providerClass } from "@/lib/projectMeta";
 import { StatusMark } from "./StatusMark";
@@ -18,6 +18,8 @@ type ProjectRowProps = {
   elapsedLabel?: string;
   onDeploy: (project: Project, selection?: DeploySelection) => void;
   onReleases: (project: Project) => void;
+  /** Base + feature branches → one preview release. */
+  onCompose: (project: Project) => void;
   onAbort: (projectId: string) => void;
   onSettings: (project: Project) => void;
   onOpenHistory: (project: Project) => void;
@@ -37,6 +39,7 @@ export const ProjectRow = ({
   elapsedLabel,
   onDeploy,
   onReleases,
+  onCompose,
   onAbort,
   onSettings,
   onOpenHistory,
@@ -51,6 +54,7 @@ export const ProjectRow = ({
   const canDeploy = can(session?.role, 'deploy:trigger');
   const canAbort = can(session?.role, 'deploy:abort');
   const canView = can(session?.role, 'project:read');
+  const canRelease = can(session?.role, 'release:create');
 
   const isDeploying = project.status === "Deploying";
   const hasFailed = project.status === "Failed";
@@ -145,6 +149,15 @@ export const ProjectRow = ({
               <Package className="h-3 w-3" aria-hidden="true" />
               Releases
             </button>
+            {canRelease && <button
+              type="button"
+              onClick={() => onCompose(project)}
+              aria-label={`Compose a preview release from branches of ${project.name}`}
+              className={cn(ACTION_CLASS, "border border-line-strong hover:bg-accent")}
+            >
+              <GitMerge className="h-3 w-3" aria-hidden="true" />
+              Compose…
+            </button>}
             {/* The ellipsis is a promise: this opens a screen where the release
                 and the customer are chosen. Actions that deploy on the spot
                 (the customer breakdown below) deliberately read differently. */}

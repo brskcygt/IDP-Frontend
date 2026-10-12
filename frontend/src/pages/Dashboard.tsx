@@ -35,6 +35,7 @@ import { AgentsSheet } from '@/components/agents/AgentsSheet';
 import { ArtifactDeploySheet } from '@/components/artifacts/ArtifactDeploySheet';
 import type { DeploySelection } from '@/components/project/ProjectTargetsPanel';
 import { ArtifactReleasesSheet } from '@/components/artifacts/ArtifactReleasesSheet';
+import { ReleaseComposerSheet } from '@/components/artifacts/ReleaseComposerSheet';
 import { DeploymentGuideSheet } from '@/components/guide/DeploymentGuideSheet';
 import { TroubleshootingSheet } from '@/components/guide/TroubleshootingSheet';
 import { GlobalSettingsSheet } from '@/components/settings/GlobalSettingsSheet';
@@ -88,7 +89,7 @@ export const Dashboard = ({ onLogout }: { onLogout?: () => void }) => {
   const [settingsInitialTab, setSettingsInitialTab] = useState<SettingsTabId>('general');
   const [deployPreselect, setDeployPreselect] = useState<DeploySelection | null>(null);
   const [openPanel, setOpenPanel] = useState<
-    'trigger' | 'settings' | 'create' | 'stream' | 'sessions' | 'activity' | 'history' | 'transfer' | 'agents' | 'agent-builder' | 'artifact-releases' | 'artifact-deploy' | 'guide' | 'troubleshooting' | 'settings-global' | null
+    'trigger' | 'settings' | 'create' | 'stream' | 'sessions' | 'activity' | 'history' | 'transfer' | 'agents' | 'agent-builder' | 'artifact-releases' | 'artifact-deploy' | 'release-composer' | 'guide' | 'troubleshooting' | 'settings-global' | null
   >(null);
 
   // Surfaces the backend's per-project 409 concurrency lock (or any other
@@ -117,6 +118,11 @@ export const Dashboard = ({ onLogout }: { onLogout?: () => void }) => {
   const openArtifactReleases = (project: Project) => {
     setArtifactTarget(project);
     setOpenPanel('artifact-releases');
+  };
+
+  const openReleaseComposer = (project: Project) => {
+    setArtifactTarget(project);
+    setOpenPanel('release-composer');
   };
 
   // The terminal is not opened here on purpose: the live panel above the table
@@ -328,6 +334,7 @@ export const Dashboard = ({ onLogout }: { onLogout?: () => void }) => {
           deployingElapsed={elapsedLabel}
           onDeploy={openTrigger}
           onReleases={openArtifactReleases}
+          onCompose={openReleaseComposer}
           onAbort={abortDeploy}
           onSettings={openSettings}
           onOpenHistory={openHistory}
@@ -443,6 +450,12 @@ export const Dashboard = ({ onLogout }: { onLogout?: () => void }) => {
         project={artifactTarget}
         isOpen={openPanel === 'artifact-releases'}
         onOpenChange={(open) => setOpenPanel(open ? 'artifact-releases' : null)}
+        onRunStarted={attachArtifactRun}
+      />
+      <ReleaseComposerSheet
+        project={artifactTarget}
+        isOpen={openPanel === 'release-composer'}
+        onOpenChange={(open) => setOpenPanel(open ? 'release-composer' : null)}
         onRunStarted={attachArtifactRun}
       />
 
