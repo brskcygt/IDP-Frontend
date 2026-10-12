@@ -82,3 +82,29 @@ export const formatDeployDuration = (ms: number): string => {
   if (minutes > 0) return `${minutes}m ${seconds}s`;
   return `${seconds}s`;
 };
+
+/**
+ * "12 Eki 2026 14:02" — the one absolute date format of the release and
+ * customer screens; "—" when the value is missing or unparseable.
+ */
+export const formatDateTime = (value: string | Date | null | undefined): string => {
+  if (!value) return '—';
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return '—';
+  return new Intl.DateTimeFormat('tr-TR', { dateStyle: 'medium', timeStyle: 'short' }).format(date);
+};
+
+/** Turkish counterpart of formatRelativeTime(): "az önce" / "12 dk önce" / "3 sa önce" / "2 gün önce". */
+export const formatRelativeTimeTr = (value: string | Date): string => {
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return 'bilinmiyor';
+
+  const diffMs = Date.now() - date.getTime();
+  if (diffMs < MINUTE_MS) return 'az önce';
+  if (diffMs < HOUR_MS) return `${Math.floor(diffMs / MINUTE_MS)} dk önce`;
+  if (diffMs < DAY_MS) return `${Math.floor(diffMs / HOUR_MS)} sa önce`;
+
+  const days = Math.floor(diffMs / DAY_MS);
+  if (days < 30) return `${days} gün önce`;
+  return date.toLocaleDateString('tr-TR');
+};

@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { getTransport } from '@/services/transport';
 import type { ComposeReleaseInput, CreateReleaseInput, CreateTagInput, DeployTargetInput, TriggerDeployResult } from '@/services/transport/types';
@@ -33,6 +34,16 @@ export const useArtifactAgents = (enabled: boolean) => useQuery({
   enabled,
   refetchInterval: enabled ? 10_000 : false,
 });
+
+/**
+ * agent id → online, for every screen that shows an agent dot or refuses to
+ * install on an offline agent. `undefined` for an id means "not known yet".
+ */
+export const useOnlineAgents = (enabled: boolean) => {
+  const agents = useArtifactAgents(enabled);
+  const online = useMemo(() => new Map((agents.data ?? []).map((agent) => [agent.id, agent.online])), [agents.data]);
+  return { ...agents, online };
+};
 
 export const useArtifactActions = (projectId: string) => {
   const queryClient = useQueryClient();
