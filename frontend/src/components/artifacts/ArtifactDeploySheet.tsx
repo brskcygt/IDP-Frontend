@@ -12,6 +12,7 @@ import { can } from '@/lib/permissions';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { isProdTarget } from '@/lib/deployTarget';
+import { errorCode, PREVIEW_NOT_ALLOWED_ON_PROD } from '@/services/transport/errors';
 import type { Project } from '@/hooks/useProjects';
 
 type Props = {
@@ -101,9 +102,13 @@ export const ArtifactDeploySheet = ({ project, preselect, isOpen, onOpenChange, 
 
   const fail = (title: string, cause: unknown) => toast({ title, description: cause instanceof Error ? cause.message : 'Unknown error.', variant: 'destructive' });
   const targetIsProd = Boolean(selectedTarget && isProdTarget(selectedTarget, project));
+  // A composed release is a preview of unmerged branches; the backend refuses it
+  // on production, so those targets are not selectable for it.
+  const isPreview = Boolean(selectedRelease?.composition);
+  const previewBlocked = isPreview && targetIsProd;
   const agentOnline = selectedTarget ? onlineAgents.get(selectedTarget.agentId) : undefined;
   const confirmed = !targetIsProd || confirmation === selectedTarget?.name;
-  const canSubmit = Boolean(canDeploy && selectedRelease && selectedTarget && agentOnline && confirmed && chosen.length > 0 && !actions.deploy.isPending);
+  const canSubmit = Boolean(canDeploy && selectedRelease && selectedTarget && agentOnline && confirmed && !previewBlocked && chosen.length > 0 && !actions.deploy.isPending);
   /** Only sent when it narrows the run — otherwise the request is the whole target. */
   const componentFilter = partial ? chosen : undefined;
 
@@ -123,7 +128,13 @@ export const ArtifactDeploySheet = ({ project, preselect, isOpen, onOpenChange, 
         description: `${selectedRelease.version} → ${selectedTarget.name}${partial ? ` · ${chosen.join(', ')}` : ''}`,
       });
       onRunStarted(result.deploymentId);
-    } catch (cause) { fail('Deployment failed', cause); }
+    } catch (cause) {
+      if (errorCode(cause) === PREVIEW_NOT_ALLOWED_ON_PROD) {
+        toast({ title: 'Preview builds can only go to test customers', description: `${selectedRelease.version} was composed from unmerged branches. Build a release from a tag to deploy to ${selectedTarget.name}.`, variant: 'destructive' });
+        return;
+      }
+      fail('Deployment failed', cause);
+    }
   };
 
   const rollback = async () => {
@@ -162,12 +173,13 @@ export const ArtifactDeploySheet = ({ project, preselect, isOpen, onOpenChange, 
             <section className="grid gap-4 rounded-lg border border-border/60 p-4 sm:grid-cols-2">
               <div>
                 <Label htmlFor="artifact-release">Release</Label>
-                <Select value={releaseId} onValueChange={setReleaseId}><SelectTrigger id="artifact-release" className="mt-1.5"><SelectValue placeholder="Select a Ready release" /></SelectTrigger><SelectContent>{readyReleases.map((release) => <SelectItem key={release.id} value={release.id}><span className="font-mono">{release.version}</span></SelectItem>)}</SelectContent></Select>
+                <Select value={releaseId} onValueChange={setReleaseId}><SelectTrigger id="artifact-release" className="mt-1.5"><SelectValue placeholder="Select a Ready release" /></SelectTrigger><SelectContent>{readyReleases.map((release) => <SelectItem key={release.id} value={release.id}><span className="font-mono">{release.version}</span>{release.composition && <span className="ml-2 text-[10px] uppercase text-status-warn">preview</span>}</SelectItem>)}</SelectContent></Select>
                 {selectedRelease && <p className="mt-2 text-[11px] text-muted-foreground">{formatDate(selectedRelease.createdAt)}{selectedRelease.commitSha ? ` · ${selectedRelease.commitSha.slice(0, 9)}` : ''}</p>}
               </div>
               <div>
                 <Label htmlFor="artifact-target">Target</Label>
-                <Select value={targetId} onValueChange={setTargetId}><SelectTrigger id="artifact-target" className="mt-1.5"><SelectValue placeholder="Select a configured target" /></SelectTrigger><SelectContent>{(targets.data ?? []).map((target) => <SelectItem key={target.id} value={target.id}>{target.name} · {target.environment ?? project.environment}</SelectItem>)}</SelectContent></Select>
+                <Select value={targetId} onValueChange={setTargetId}><SelectTrigger id="artifact-target" className="mt-1.5"><SelectValue placeholder="Select a configured target" /></SelectTrigger><SelectContent>{(targets.data ?? []).map((target) => { const blocked = isPreview && isProdTarget(target, project); return <SelectItem key={target.id} value={target.id} disabled={blocked}>{target.name} · {target.environment ?? project.environment}{blocked ? ' · test only' : ''}</SelectItem>; })}</SelectContent></Select>
+                {isPreview && <p className="mt-2 text-[11px] text-muted-foreground">Preview builds can only go to test customers.</p>}
                 {selectedTarget && <div className="mt-2 flex items-center gap-2"><Badge variant={agentOnline ? 'secondary' : 'destructive'}>{agentOnline ? 'agent online' : 'agent offline'}</Badge><span className="truncate font-mono text-[11px] text-muted-foreground">{selectedTarget.agentId}</span></div>}
               </div>
             </section>
@@ -213,7 +225,8 @@ export const ArtifactDeploySheet = ({ project, preselect, isOpen, onOpenChange, 
               <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-primary">Deployment summary</p>
               <div className="mt-3 flex flex-wrap items-center gap-3 text-sm font-semibold"><span className="rounded-md bg-background px-3 py-2 font-mono">{selectedRelease?.version ?? 'Select release'}</span><ArrowRight className="h-4 w-4 text-primary" aria-hidden="true" /><span className="rounded-md bg-background px-3 py-2">{selectedTarget?.name ?? 'Select target'}</span></div>
               {selectedTarget && partial && <p className="mt-2 text-xs text-muted-foreground">Only <span className="font-mono text-foreground">{chosen.join(', ')}</span> — the rest stays on its current version.</p>}
-              {selectedTarget && targetIsProd && <div className="mt-4"><Label className="text-[11px]">Type <span className="font-mono text-foreground">{selectedTarget.name}</span> to confirm production actions</Label><Input className="mt-1.5" value={confirmation} onChange={(event) => setConfirmation(event.target.value)} /></div>}
+              {previewBlocked && <p className="mt-3 text-xs text-destructive">Preview builds can only go to test customers. Pick a test customer, or build a release from a tag for {selectedTarget?.name}.</p>}
+              {selectedTarget && targetIsProd && !previewBlocked && <div className="mt-4"><Label className="text-[11px]">Type <span className="font-mono text-foreground">{selectedTarget.name}</span> to confirm production actions</Label><Input className="mt-1.5" value={confirmation} onChange={(event) => setConfirmation(event.target.value)} /></div>}
               {selectedTarget && !agentOnline && <p className="mt-3 text-xs text-destructive">The selected agent is offline. Start the agent before deploying.</p>}
               <Button className="mt-4" disabled={!canSubmit} onClick={() => void deploy()}>{actions.deploy.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Rocket className="mr-2 h-4 w-4" />}Deploy {selectedRelease?.version ?? 'release'}</Button>
             </section>
