@@ -98,6 +98,11 @@ export function useDeploymentLogStream(): UseDeploymentLogStreamReturn {
           // project row keeps showing the previous run's outcome and duration
           // until the query goes stale or the window regains focus.
           queryClient.invalidateQueries({ queryKey: ['deployment-history'] });
+          // Artifact runs: a build settles a release's status and a deploy moves
+          // a customer to another version. Prefix keys, so every project's lists
+          // refresh -- the stream does not know which project it belongs to.
+          queryClient.invalidateQueries({ queryKey: ['artifact-releases'] });
+          queryClient.invalidateQueries({ queryKey: ['artifact-targets'] });
         }
       },
 

@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { useArtifactActions, useArtifactAgents, useArtifactReleases, useArtifactTargets } from '@/hooks/useArtifacts';
 import { useToast } from '@/hooks/use-toast';
+import { isProdTarget } from '@/lib/deployTarget';
 import type { Project } from '@/hooks/useProjects';
 import type { DeployTarget, DeployTargetInput } from '@/services/transport/types';
 import {
@@ -157,7 +158,7 @@ export const ArtifactTargetsSettings = ({ project, onRunStarted }: Props) => {
       {(targets.data ?? []).length === 0 && !targets.isLoading && <div className="rounded-md border border-dashed p-6 text-center"><Server className="mx-auto h-5 w-5 text-muted-foreground" /><p className="mt-2 text-sm font-medium">No targets configured</p><p className="mt-1 text-xs text-muted-foreground">Add the first customer destination above.</p></div>}
       {(targets.data ?? []).map((target) => {
         const agentOnline = onlineAgents.get(target.agentId);
-        const isProd = target.environment === 'Prod' || (!target.environment && project.environment === 'Prod') || /(^|[^a-z])prod/i.test(target.name);
+        const isProd = isProdTarget(target, project);
         const confirmation = confirmations[target.id] ?? '';
         return <div key={target.id} className="rounded-lg border border-border/60 p-4">
           <div className="flex items-start justify-between gap-3"><div><div className="flex items-center gap-2"><p className="text-sm font-semibold">{target.name}</p><Badge variant={agentOnline ? 'secondary' : 'outline'}>{agentOnline ? 'agent online' : 'agent offline'}</Badge></div><p className="mt-1 break-words font-mono text-[11px] text-muted-foreground">{target.agentId} · {target.os} · {target.environment ?? project.environment}{target.basePath ? ` · ${target.basePath}` : ''}</p></div><div className="flex gap-1"><Button size="sm" variant="ghost" aria-label={`Edit target ${target.name}`} onClick={() => editTarget(target)}><Pencil className="h-3.5 w-3.5" /></Button><Button size="sm" variant="ghost" aria-label={`Delete target ${target.name}`} onClick={() => { if (window.confirm(`Delete target '${target.name}'?`)) void actions.deleteTarget.mutateAsync(target.id).catch((cause) => fail('Target could not be deleted', cause)); }}><Trash2 className="h-3.5 w-3.5" /></Button></div></div>

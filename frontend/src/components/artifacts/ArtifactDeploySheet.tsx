@@ -11,6 +11,7 @@ import { useSession } from '@/hooks/useSession';
 import { can } from '@/lib/permissions';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { isProdTarget } from '@/lib/deployTarget';
 import type { Project } from '@/hooks/useProjects';
 
 type Props = {
@@ -99,7 +100,7 @@ export const ArtifactDeploySheet = ({ project, preselect, isOpen, onOpenChange, 
   if (!project) return null;
 
   const fail = (title: string, cause: unknown) => toast({ title, description: cause instanceof Error ? cause.message : 'Unknown error.', variant: 'destructive' });
-  const targetIsProd = Boolean(selectedTarget && (selectedTarget.environment === 'Prod' || (!selectedTarget.environment && project.environment === 'Prod') || /(^|[^a-z])prod/i.test(selectedTarget.name)));
+  const targetIsProd = Boolean(selectedTarget && isProdTarget(selectedTarget, project));
   const agentOnline = selectedTarget ? onlineAgents.get(selectedTarget.agentId) : undefined;
   const confirmed = !targetIsProd || confirmation === selectedTarget?.name;
   const canSubmit = Boolean(canDeploy && selectedRelease && selectedTarget && agentOnline && confirmed && chosen.length > 0 && !actions.deploy.isPending);

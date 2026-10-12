@@ -21,6 +21,7 @@ export type Action =
   | 'deploy:abort'
   | 'release:create'
   | 'release:delete'
+  | 'release:tag'
   | 'vpn:manage'
   | 'audit:read'
   | 'user:manage';
@@ -41,6 +42,7 @@ const ACTION_MIN_ROLE: Readonly<Record<Action, Role>> = {
   'deploy:abort': 'deployer',
   'release:create': 'deployer',
   'release:delete': 'admin',
+  'release:tag': 'admin',
   'project:write': 'admin',
   'project:delete': 'admin',
   'settings:write': 'admin',
