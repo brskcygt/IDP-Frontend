@@ -27,7 +27,7 @@ export const KnownHostKeyRow = ({ hostKey }: KnownHostKeyRowProps) => {
 
       <div className="flex items-center justify-between gap-2">
         <p className="font-mono text-[10px] text-faint">
-          first {formatRelativeTimeTr(hostKey.firstSeen)} · last {formatRelativeTimeTr(hostKey.lastSeen)}
+          ilk görülme {formatRelativeTimeTr(hostKey.firstSeen)} · son {formatRelativeTimeTr(hostKey.lastSeen)}
         </p>
         <ForgetHostKeyControl host={hostKey.host} port={hostKey.port} />
       </div>

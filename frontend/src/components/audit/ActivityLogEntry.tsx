@@ -1,18 +1,18 @@
 import type { AuditLog } from "@/hooks/useAuditLogs";
 import { auditMeta, formatMetadata } from "@/lib/auditMeta";
-import { formatClock, formatDuration } from "@/lib/format";
+import { formatClock, formatDeployDuration } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
-/** "ip · 240ms" / "ip" / "240ms" — omitted entirely when neither is known (pre-T-55 rows). */
+/** "ip · 240 ms" / "ip" / "240 ms" — omitted entirely when neither is known (pre-T-55 rows). */
 const formatContext = (log: AuditLog): string => {
   const parts: string[] = [];
   if (log.ip) parts.push(log.ip);
-  if (typeof log.durationMs === 'number') parts.push(formatDuration(log.durationMs));
+  if (typeof log.durationMs === 'number') parts.push(log.durationMs < 1000 ? `${log.durationMs} ms` : formatDeployDuration(log.durationMs));
   return parts.join(' · ');
 };
 
 export const ActivityLogEntry = ({ log }: { log: AuditLog }) => {
-  const { icon: Icon, tone } = auditMeta(log.action);
+  const { icon: Icon, tone, label } = auditMeta(log.action);
   const metadata = formatMetadata(log.metadata);
   const context = formatContext(log);
   const isFailure = log.outcome === 'failure';
@@ -28,20 +28,21 @@ export const ActivityLogEntry = ({ log }: { log: AuditLog }) => {
           <span className="text-[13px] font-semibold">{log.user}</span>
           <span
             className={cn(
-              "rounded-sm bg-accent px-1.5 py-0.5 font-mono text-[9.5px] tracking-[0.09em]",
+              "rounded-sm bg-accent px-1.5 py-0.5 text-[11px]",
               tone,
             )}
+            title={log.action}
           >
-            {log.action}
+            {label ?? log.action}
           </span>
           {log.outcome && (
             <span
               className={cn(
-                "rounded-sm px-1.5 py-0.5 font-mono text-[9.5px] uppercase tracking-[0.09em]",
+                "rounded-sm px-1.5 py-0.5 text-[11px]",
                 isFailure ? "bg-status-fail/10 text-status-fail" : "bg-status-ok/10 text-status-ok",
               )}
             >
-              {log.outcome}
+              {isFailure ? "Başarısız" : log.outcome === "success" ? "Başarılı" : log.outcome}
             </span>
           )}
         </div>

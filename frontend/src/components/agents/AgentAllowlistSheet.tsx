@@ -6,6 +6,9 @@ import { Input } from "@/components/ui/input";
 import { useSession } from "@/hooks/useSession";
 import { useAddAllowlistEntry, useAgentAllowlist, useRemoveAllowlistEntry } from "@/hooks/useAgentAllowlist";
 import { can } from "@/lib/permissions";
+import { errorMessage } from "@/lib/errors";
+import { formatDateTime } from "@/lib/format";
+import { ConfirmActionDialog } from "@/components/artifacts/ConfirmActionDialog";
 
 type AgentAllowlistSheetProps = {
   isOpen: boolean;
@@ -30,7 +33,7 @@ type AgentAllowlistSheetProps = {
 export const AgentAllowlistSheet = ({ isOpen, onOpenChange }: AgentAllowlistSheetProps) => {
   const { data: session } = useSession();
   const isAdmin = can(session?.role, 'project:write');
-  const { data, isLoading, isError } = useAgentAllowlist(isOpen && isAdmin);
+  const { data, isLoading, isError, refetch, isFetching } = useAgentAllowlist(isOpen && isAdmin);
   const addEntry = useAddAllowlistEntry();
   const removeEntry = useRemoveAllowlistEntry();
 
@@ -38,6 +41,7 @@ export const AgentAllowlistSheet = ({ isOpen, onOpenChange }: AgentAllowlistShee
   const [entry, setEntry] = useState('');
   const [note, setNote] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [pendingRemoval, setPendingRemoval] = useState<string | null>(null);
 
   if (!isAdmin) return null;
 
@@ -53,7 +57,7 @@ export const AgentAllowlistSheet = ({ isOpen, onOpenChange }: AgentAllowlistShee
       setNote('');
       setIsAdding(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Adres eklenemedi.');
+      setError(errorMessage(err, 'Adres eklenemedi.'));
     }
   };
 
@@ -61,8 +65,10 @@ export const AgentAllowlistSheet = ({ isOpen, onOpenChange }: AgentAllowlistShee
     setError(null);
     try {
       await removeEntry.mutateAsync(value);
+      setPendingRemoval(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Adres çıkarılamadı.');
+      setPendingRemoval(null);
+      setError(errorMessage(err, 'Adres çıkarılamadı.'));
     }
   };
 
@@ -89,8 +95,8 @@ export const AgentAllowlistSheet = ({ isOpen, onOpenChange }: AgentAllowlistShee
               {isAdding ? 'Vazgeç' : 'Adres ekle'}
             </Button>
           </div>
-          <SheetDescription className="mt-1 font-mono text-[10.5px] tracking-[0.04em] text-dim">
-            AGENT'LARIN BAĞLANABİLECEĞİ KAYNAK ADRESLER
+          <SheetDescription className="mt-1 text-xs text-muted-foreground">
+            Agent'ların bağlanabileceği kaynak adresler.
           </SheetDescription>
         </div>
 
@@ -146,9 +152,12 @@ export const AgentAllowlistSheet = ({ isOpen, onOpenChange }: AgentAllowlistShee
 
         <div className="min-h-0 flex-grow overflow-y-auto">
           {isError ? (
-            <p className="px-5 py-6 text-sm text-status-fail">Erişim listesi alınamadı.</p>
+            <div className="space-y-2 px-5 py-6">
+              <p className="text-sm text-status-fail">Erişim listesi alınamadı.</p>
+              <Button variant="outline" size="sm" onClick={() => void refetch()} disabled={isFetching}>Tekrar dene</Button>
+            </div>
           ) : isLoading ? (
-            <p className="px-5 py-6 font-mono text-[11px] text-dim">Yükleniyor…</p>
+            <p className="px-5 py-6 text-sm text-muted-foreground">Erişim listesi yükleniyor…</p>
           ) : entries.length === 0 ? (
             <p className="px-5 py-6 text-sm text-muted-foreground">Listede adres yok.</p>
           ) : (
@@ -159,7 +168,7 @@ export const AgentAllowlistSheet = ({ isOpen, onOpenChange }: AgentAllowlistShee
                     <p className="truncate font-mono text-xs text-foreground">{item.entry}</p>
                     {item.note && <p className="mt-0.5 truncate text-xs text-muted-foreground">{item.note}</p>}
                     <p className="mt-0.5 font-mono text-[10px] text-dim">
-                      {new Date(item.addedAt).toLocaleString()}
+                      {formatDateTime(item.addedAt)}
                       {item.addedBy ? ` · ${item.addedBy}` : ''}
                     </p>
                   </div>
@@ -170,7 +179,7 @@ export const AgentAllowlistSheet = ({ isOpen, onOpenChange }: AgentAllowlistShee
                     aria-label={`${item.entry} adresini çıkar`}
                     className="h-7 shrink-0 px-2 text-dim hover:text-status-fail"
                     disabled={removeEntry.isPending}
-                    onClick={() => remove(item.entry)}
+                    onClick={() => setPendingRemoval(item.entry)}
                   >
                     <Trash2 className="h-3.5 w-3.5" />
                   </Button>
@@ -182,8 +191,21 @@ export const AgentAllowlistSheet = ({ isOpen, onOpenChange }: AgentAllowlistShee
 
         <div className="tabular flex h-[34px] shrink-0 items-center justify-between border-t border-line-strong bg-bar px-5 font-mono text-[10.5px] text-dim">
           <span>{entries.length} adres</span>
-          <span>{enforcing ? 'KISIT AKTİF' : 'KISIT YOK'}</span>
+          <span>{enforcing ? 'kısıt uygulanıyor' : 'kısıt yok'}</span>
         </div>
+
+        <ConfirmActionDialog
+          open={pendingRemoval !== null}
+          onOpenChange={(open) => !open && setPendingRemoval(null)}
+          title={`${pendingRemoval ?? ''} listeden çıkarılsın mı?`}
+          description={entries.length === 1
+            ? "Bu son adres. Çıkarınca liste boşalır ve agent'lar her kaynaktan bağlanabilir."
+            : "Bu adresten bağlanan agent'lar bir sonraki bağlantıda reddedilir."}
+          confirmLabel="Çıkar"
+          destructive
+          pending={removeEntry.isPending}
+          onConfirm={() => pendingRemoval && void remove(pendingRemoval)}
+        />
       </SheetContent>
     </Sheet>
   );

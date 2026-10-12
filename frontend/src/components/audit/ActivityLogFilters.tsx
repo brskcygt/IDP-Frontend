@@ -15,15 +15,17 @@ export const ActivityLogFilters = ({ active, onChange }: ActivityLogFiltersProps
     <button
       type="button"
       onClick={() => onChange(null)}
+      aria-pressed={active === null}
       className={cn(CHIP, active === null ? "border border-line-strong bg-accent" : "text-muted-foreground hover:bg-accent")}
     >
-      All
+      Tümü
     </button>
     {CATEGORIES.map((category) => (
       <button
         key={category}
         type="button"
         onClick={() => onChange(active === category ? null : category)}
+        aria-pressed={active === category}
         className={cn(
           CHIP,
           active === category

@@ -6,6 +6,7 @@ import { auditMeta, type AuditCategory } from "@/lib/auditMeta";
 import { formatDayLabel, toDayKey } from "@/lib/format";
 import { ActivityLogFilters } from "./ActivityLogFilters";
 import { ActivityLogEntry } from "./ActivityLogEntry";
+import { Button } from "@/components/ui/button";
 
 type ActivityLogSheetProps = {
   isOpen: boolean;
@@ -26,7 +27,7 @@ const groupByDay = (logs: AuditLog[]): DayGroup[] => {
 };
 
 export const ActivityLogSheet = ({ isOpen, onOpenChange }: ActivityLogSheetProps) => {
-  const { data: logs, isLoading, isError } = useAuditLogs();
+  const { data: logs, isLoading, isError, refetch, isFetching } = useAuditLogs();
   const [category, setCategory] = useState<AuditCategory | null>(null);
 
   const groups = useMemo(() => {
@@ -49,8 +50,8 @@ export const ActivityLogSheet = ({ isOpen, onOpenChange }: ActivityLogSheetProps
             <Activity className="h-4 w-4 text-primary" aria-hidden="true" />
             Etkinlik kaydı
           </SheetTitle>
-          <SheetDescription className="mt-1 font-mono text-[10.5px] tracking-[0.04em] text-dim">
-            DENETİM KAYDI · 10 SN'DE BİR YENİLENİR
+          <SheetDescription className="mt-1 text-xs text-muted-foreground">
+            Kim neyi ne zaman yaptı. 10 saniyede bir yenilenir.
           </SheetDescription>
         </div>
 
@@ -58,12 +59,15 @@ export const ActivityLogSheet = ({ isOpen, onOpenChange }: ActivityLogSheetProps
 
         <div className="min-h-0 flex-grow overflow-y-auto">
           {isError ? (
-            <p className="px-5 py-6 text-sm text-status-fail">Could not load the audit trail.</p>
+            <div className="space-y-2 px-5 py-6">
+              <p className="text-sm text-status-fail">Etkinlik kaydı yüklenemedi.</p>
+              <Button variant="outline" size="sm" onClick={() => void refetch()} disabled={isFetching}>Tekrar dene</Button>
+            </div>
           ) : isLoading ? (
-            <p className="px-5 py-6 font-mono text-[11px] text-dim">Loading events…</p>
+            <p className="px-5 py-6 text-sm text-muted-foreground">Etkinlikler yükleniyor…</p>
           ) : groups.length === 0 ? (
             <p className="px-5 py-6 text-sm text-muted-foreground">
-              {category ? "No events in this category yet." : "No activity recorded yet."}
+              {category ? "Bu kategoride henüz etkinlik yok." : "Henüz etkinlik kaydı yok."}
             </p>
           ) : (
             groups.map((group) => (
@@ -83,7 +87,7 @@ export const ActivityLogSheet = ({ isOpen, onOpenChange }: ActivityLogSheetProps
 
         <div className="tabular flex h-[34px] shrink-0 items-center justify-between border-t border-line-strong bg-bar px-5 font-mono text-[10.5px] text-dim">
           <span>
-            {shown} of {logs?.length ?? 0} events
+            {logs?.length ?? 0} etkinlikten {shown} gösteriliyor
           </span>
         </div>
       </SheetContent>

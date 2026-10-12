@@ -16,9 +16,9 @@ const initialValue: FormValue = { agentId: '', proxy: '', workingDirectory: '', 
 
 const fields: Array<{ key: FieldKey; label: string; placeholder: string; hint: string; optional?: boolean }> = [
   { key: 'agentId', label: 'Agent kimliği', placeholder: 'WIN-PROD-01', hint: 'IDP içinde bu makineyi tanımlayan benzersiz ad. Bu ID’ye özel gizli anahtar IDP sunucusunda üretilir.' },
-  { key: 'proxy', label: 'HTTP proxy (opsiyonel)', placeholder: 'proxy.sirket.local:8080', hint: 'Hedef makine dışarıya proxy üzerinden çıkıyorsa host:port. Gerekmiyorsa boş bırakın.', optional: true },
+  { key: 'proxy', label: 'HTTP proxy (isteğe bağlı)', placeholder: 'proxy.sirket.local:8080', hint: 'Hedef makine dışarıya proxy üzerinden çıkıyorsa host:port. Gerekmiyorsa boş bırakın.', optional: true },
   { key: 'workingDirectory', label: 'Repository dizini', placeholder: 'C:\\Apps\\PaymentApi', hint: 'Git repository’nin hedef sunucudaki tam dizini. Deployment komutu burada çalışır.' },
-  { key: 'nssmPath', label: 'NSSM yolu (opsiyonel)', placeholder: 'C:\\tools\\nssm\\win64\\nssm.exe', hint: 'NSSM ile yönetilen servisleri deploy sırasında durdurup başlatmak için nssm.exe’nin hedefteki tam yolu. Boş bırakılırsa agent PATH’teki “nssm” komutunu dener.', optional: true },
+  { key: 'nssmPath', label: 'NSSM yolu (isteğe bağlı)', placeholder: 'C:\\tools\\nssm\\win64\\nssm.exe', hint: 'NSSM ile yönetilen servisleri deploy sırasında durdurup başlatmak için nssm.exe’nin hedefteki tam yolu. Boş bırakılırsa agent PATH’teki “nssm” komutunu dener.', optional: true },
 ];
 
 export const AgentBuilderSheet = ({ isOpen, onOpenChange }: Props) => {
@@ -58,7 +58,7 @@ export const AgentBuilderSheet = ({ isOpen, onOpenChange }: Props) => {
   return <Sheet open={isOpen} onOpenChange={onOpenChange}>
     <SheetContent side="right" className="w-[min(920px,calc(100vw-3.5rem))] max-w-none overflow-y-auto border-l-line-strong bg-background p-0 sm:max-w-none">
       <div className="border-b border-line-strong bg-bar px-7 py-6">
-        <SheetHeader><SheetTitle className="flex items-center gap-3 text-xl"><PackagePlus className="h-5 w-5 text-primary" />IDP Agent oluştur</SheetTitle><SheetDescription>Hedef makineye özel agent kurulum ZIP’ini üretin ve bilgisayarınıza kaydedin.</SheetDescription></SheetHeader>
+        <SheetHeader><SheetTitle className="flex items-center gap-3 text-xl"><PackagePlus className="h-5 w-5 text-primary" />Agent oluştur</SheetTitle><SheetDescription>Hedef makineye özel agent kurulum ZIP’ini üretin ve bilgisayarınıza kaydedin.</SheetDescription></SheetHeader>
       </div>
       <div className="grid gap-6 p-7 lg:grid-cols-[1fr_280px]">
         <section className="grid content-start gap-x-4 gap-y-5 sm:grid-cols-2">

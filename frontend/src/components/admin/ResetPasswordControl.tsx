@@ -26,8 +26,8 @@ export const ResetPasswordControl = ({ userId, username }: ResetPasswordControlP
   const handleSubmit = () => {
     if (password.length < MIN_PASSWORD_LENGTH) {
       toast({
-        title: 'Password too short',
-        description: `Use at least ${MIN_PASSWORD_LENGTH} characters.`,
+        title: 'Parola çok kısa',
+        description: `En az ${MIN_PASSWORD_LENGTH} karakter olmalı.`,
         variant: 'destructive',
       });
       return;
@@ -36,10 +36,10 @@ export const ResetPasswordControl = ({ userId, username }: ResetPasswordControlP
       { id: userId, data: { password } },
       {
         onSuccess: () => {
-          toast({ title: 'Password reset', description: `New password set for ${username}.` });
+          toast({ title: 'Parola değişti', description: `${username} için yeni parola kaydedildi.` });
           close();
         },
-        onError: (err) => toast({ title: 'Password could not be changed', description: formatUserError(err), variant: 'destructive' }),
+        onError: (err) => toast({ title: 'Parola değiştirilemedi', description: formatUserError(err), variant: 'destructive' }),
       },
     );
   };
@@ -54,7 +54,7 @@ export const ResetPasswordControl = ({ userId, username }: ResetPasswordControlP
         onClick={() => setIsOpen(true)}
       >
         <KeyRound className="h-3 w-3" aria-hidden="true" />
-        Reset password
+        Parolayı sıfırla
       </Button>
     );
   }
@@ -67,7 +67,8 @@ export const ResetPasswordControl = ({ userId, username }: ResetPasswordControlP
           autoFocus
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          placeholder={`Min. ${MIN_PASSWORD_LENGTH} characters`}
+          placeholder={`En az ${MIN_PASSWORD_LENGTH} karakter`}
+          aria-label={`${username} için yeni parola`}
           minLength={MIN_PASSWORD_LENGTH}
           className="h-7 w-48 border-line-strong bg-surface pr-12 text-xs"
           onKeyDown={(e) => {
@@ -90,7 +91,7 @@ export const ResetPasswordControl = ({ userId, username }: ResetPasswordControlP
         disabled={updateUser.isPending || password.length < MIN_PASSWORD_LENGTH}
         onClick={handleSubmit}
       >
-        Set
+        Kaydet
       </Button>
       <Button
         type="button"
@@ -98,7 +99,7 @@ export const ResetPasswordControl = ({ userId, username }: ResetPasswordControlP
         size="icon"
         className="h-7 w-7 text-muted-foreground"
         onClick={close}
-        aria-label="Cancel password reset"
+        aria-label="Parola sıfırlamaktan vazgeç"
       >
         <X className="h-3.5 w-3.5" />
       </Button>

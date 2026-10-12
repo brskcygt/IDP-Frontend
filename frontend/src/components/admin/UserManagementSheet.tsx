@@ -15,8 +15,8 @@ type UserManagementSheetProps = {
 
 /**
  * Admin-only user management panel (T-52 / SEC-09): list users, change
- * roles, reset passwords, create/delete accounts. Opened from TopBar's
- * "Manage users" button, which itself only renders for an admin session —
+ * roles, reset passwords, create/delete accounts. Opened from the rail's
+ * Yönetim → Kullanıcılar, which itself only renders for an admin session —
  * this component re-checks independently so a session downgrade mid-use
  * (e.g. another admin just demoted this one) doesn't leave it usable.
  *
@@ -26,7 +26,7 @@ type UserManagementSheetProps = {
 export const UserManagementSheet = ({ isOpen, onOpenChange }: UserManagementSheetProps) => {
   const { data: session } = useSession();
   const isAdmin = can(session?.role, 'user:manage');
-  const { data: users, isLoading, isError } = useUsers(isOpen && isAdmin);
+  const { data: users, isLoading, isError, refetch, isFetching } = useUsers(isOpen && isAdmin);
   const [isCreating, setIsCreating] = useState(false);
 
   if (!isAdmin) return null;
@@ -54,8 +54,8 @@ export const UserManagementSheet = ({ isOpen, onOpenChange }: UserManagementShee
               {isCreating ? 'Vazgeç' : 'Kullanıcı ekle'}
             </Button>
           </div>
-          <SheetDescription className="mt-1 font-mono text-[10.5px] tracking-[0.04em] text-dim">
-            ROLLER · ADMIN &gt; DEPLOYER &gt; VIEWER
+          <SheetDescription className="mt-1 text-xs text-muted-foreground">
+            Yönetici her şeyi yönetir; Dağıtımcı derler, kurar ve durdurur; İzleyici yalnız görür.
           </SheetDescription>
         </div>
 
@@ -63,18 +63,21 @@ export const UserManagementSheet = ({ isOpen, onOpenChange }: UserManagementShee
 
         <div className="min-h-0 flex-grow overflow-y-auto">
           {isError ? (
-            <p className="px-5 py-6 text-sm text-status-fail">Could not load users.</p>
+            <div className="space-y-2 px-5 py-6">
+              <p className="text-sm text-status-fail">Kullanıcılar yüklenemedi.</p>
+              <Button variant="outline" size="sm" onClick={() => void refetch()} disabled={isFetching}>Tekrar dene</Button>
+            </div>
           ) : isLoading ? (
-            <p className="px-5 py-6 font-mono text-[11px] text-dim">Loading users…</p>
+            <p className="px-5 py-6 text-sm text-muted-foreground">Kullanıcılar yükleniyor…</p>
           ) : !users || users.length === 0 ? (
-            <p className="px-5 py-6 text-sm text-muted-foreground">No users yet.</p>
+            <p className="px-5 py-6 text-sm text-muted-foreground">Henüz kullanıcı yok.</p>
           ) : (
             <UserList users={users} currentUsername={session?.username} />
           )}
         </div>
 
         <div className="tabular flex h-[34px] shrink-0 items-center justify-between border-t border-line-strong bg-bar px-5 font-mono text-[10.5px] text-dim">
-          <span>{users?.length ?? 0} user{(users?.length ?? 0) === 1 ? '' : 's'}</span>
+          <span>{users?.length ?? 0} kullanıcı</span>
         </div>
       </SheetContent>
     </Sheet>

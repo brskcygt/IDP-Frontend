@@ -44,10 +44,10 @@ export function UpdateModal() {
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-50" />
                 <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
               </span>
-              Release channel · stable
+              Güncelleme kanalı · kararlı
             </div>
             {!busy && (
-              <button onClick={dismiss} className="rounded-md p-1.5 text-muted-foreground transition hover:bg-muted hover:text-foreground" aria-label="Güncelleme penceresini kapat">
+              <button type="button" onClick={dismiss} className="rounded-md p-1.5 text-muted-foreground transition hover:bg-muted hover:text-foreground" aria-label="Güncelleme penceresini kapat">
                 <X className="h-4 w-4" />
               </button>
             )}
@@ -77,7 +77,7 @@ export function UpdateModal() {
             <div className="space-y-2.5">
               <div className="flex items-center justify-between font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
                 <span>{state.status === "installing" ? "Paket doğrulandı · kurulum hazırlanıyor" : "Şifreli indirme · bütünlük kontrolü"}</span>
-                <span className="text-primary">{progress}%</span>
+                <span className="text-primary">%{progress}</span>
               </div>
               <div className="h-1.5 overflow-hidden rounded-full bg-muted">
                 <div className="h-full rounded-full bg-primary transition-[width] duration-300" style={{ width: `${progress}%` }} />

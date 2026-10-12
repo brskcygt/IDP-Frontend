@@ -1,13 +1,14 @@
 import { Loader2, RefreshCw, Server } from 'lucide-react';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { cn } from '@/lib/utils';
+import { formatDateTime } from '@/lib/format';
+import { errorMessage } from '@/lib/errors';
 import { useAgents } from '@/hooks/useAgents';
 import type { IdpAgent } from '@/services/transport/types';
 
 type Props = { isOpen: boolean; onOpenChange: (open: boolean) => void };
 
-const formatDate = (value: string | null | undefined) =>
-  value ? new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value)) : '—';
+const formatDate = formatDateTime;
 
 const agentHost = (agent: IdpAgent) => agent.details?.os_info?.trim() || '—';
 const agentVersion = (agent: IdpAgent) => agent.details?.agent_version?.trim() || agent.details?.version?.trim() || '—';
@@ -32,13 +33,14 @@ export const AgentsSheet = ({ isOpen, onOpenChange }: Props) => {
     <SheetContent side="right" className="w-[min(860px,calc(100vw-3.5rem))] max-w-none overflow-y-auto border-l-line-strong bg-background p-0 sm:max-w-none">
       <div className="flex items-start justify-between gap-4 border-b border-line-strong bg-bar px-7 py-6">
         <SheetHeader>
-          <SheetTitle className="flex items-center gap-3 text-xl"><Server className="h-5 w-5 text-primary" />Bağlı agent'lar</SheetTitle>
+          <SheetTitle className="flex items-center gap-3 text-xl"><Server className="h-5 w-5 text-primary" />Agent'lar</SheetTitle>
           <SheetDescription>Gateway'e kayıtlı IDP agent'ları ve anlık bağlantı durumları. Panel açıkken otomatik yenilenir.</SheetDescription>
         </SheetHeader>
         <button
           type="button"
           onClick={() => void refetch()}
           className="mt-1 inline-flex h-9 shrink-0 items-center gap-2 rounded-md border border-line-strong px-3 text-xs font-semibold text-muted-foreground hover:text-foreground"
+          aria-label="Agent listesini yenile"
         >
           <RefreshCw className={cn('h-3.5 w-3.5', isFetching && 'animate-spin')} />Yenile
         </button>
@@ -48,9 +50,10 @@ export const AgentsSheet = ({ isOpen, onOpenChange }: Props) => {
         {isLoading ? (
           <div className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" />Agent'lar yükleniyor…</div>
         ) : isError ? (
-          <p className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive">
-            {error instanceof Error ? error.message : 'Agent listesi alınamadı.'}
-          </p>
+          <div className="flex items-center justify-between gap-3 rounded-lg border border-destructive/30 bg-destructive/10 p-3">
+            <p className="text-xs text-destructive">Agent listesi alınamadı: {errorMessage(error)}</p>
+            <button type="button" onClick={() => void refetch()} className="shrink-0 rounded-md border border-line-strong px-3 py-1.5 text-xs font-semibold text-foreground hover:bg-accent">Tekrar dene</button>
+          </div>
         ) : list.length === 0 ? (
           <div className="rounded-lg border border-dashed border-line-strong bg-surface p-10 text-center">
             <Server className="mx-auto h-8 w-8 text-faint" />

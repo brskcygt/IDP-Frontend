@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { useBuildParameters, useUpdateBuildParameters } from '@/hooks/useSettings';
 import { KeyValueEditor } from './KeyValueEditor';
+import { formatDateTime } from '@/lib/format';
+import { errorMessage } from '@/lib/errors';
 
 type Props = {
   isOpen: boolean;
@@ -14,9 +16,9 @@ type Props = {
 };
 
 const formatUpdated = (at: string | null, by: string | null) => {
-  if (!at) return 'Not configured yet.';
-  const when = new Date(at).toLocaleString();
-  return by ? `Last changed ${when} by ${by}.` : `Last changed ${when}.`;
+  if (!at) return 'Henüz ayarlanmadı.';
+  const when = formatDateTime(at);
+  return by ? `Son değişiklik: ${when}, ${by}.` : `Son değişiklik: ${when}.`;
 };
 
 /**
@@ -30,7 +32,7 @@ const formatUpdated = (at: string | null, by: string | null) => {
  */
 export const GlobalSettingsSheet = ({ isOpen, onOpenChange, canEdit }: Props) => {
   const { toast } = useToast();
-  const { data, isLoading, isError, error } = useBuildParameters();
+  const { data, isLoading, isError, error, refetch, isFetching } = useBuildParameters();
   const save = useUpdateBuildParameters();
   const [draft, setDraft] = useState<Record<string, string> | null>(null);
 
@@ -49,13 +51,13 @@ export const GlobalSettingsSheet = ({ isOpen, onOpenChange, canEdit }: Props) =>
       const result = await save.mutateAsync(draft);
       setDraft(null);
       toast({
-        title: 'Build parameters saved',
-        description: `${Object.keys(result.parameters).length} parameter(s) apply to every project.`,
+        title: 'Derleme parametreleri kaydedildi',
+        description: `${Object.keys(result.parameters).length} parametre tüm projelere uygulanır.`,
       });
     } catch (cause) {
       toast({
-        title: 'Could not save the build parameters',
-        description: cause instanceof Error ? cause.message : 'Unknown error.',
+        title: 'Derleme parametreleri kaydedilemedi',
+        description: errorMessage(cause),
         variant: 'destructive',
       });
     }
@@ -63,33 +65,36 @@ export const GlobalSettingsSheet = ({ isOpen, onOpenChange, canEdit }: Props) =>
 
   return (
     <Sheet open={isOpen} onOpenChange={close}>
-      <SheetContent side="right" className="w-[min(640px,calc(100vw-3.5rem))] max-w-none overflow-y-auto border-l-line-strong bg-background">
-        <SheetHeader>
-          <SheetTitle className="flex items-center gap-2.5 text-lg">
-            <Settings2 className="h-5 w-5 text-primary" />
-            Sunucu ayarları
-          </SheetTitle>
-          <SheetDescription>
-            Bu sunucudaki tüm projeler için geçerlidir. Her proje, kendi Ayarlar → Derleme ve kaynak
-            bölümünden bunları ezebilir.
-          </SheetDescription>
-        </SheetHeader>
+      <SheetContent side="right" className="w-[min(640px,calc(100vw-3.5rem))] max-w-none overflow-y-auto border-l-line-strong bg-background p-0 sm:max-w-none">
+        <div className="border-b border-line-strong bg-bar px-7 py-6">
+          <SheetHeader>
+            <SheetTitle className="flex items-center gap-3 text-xl">
+              <Settings2 className="h-5 w-5 text-primary" />
+              Sunucu ayarları
+            </SheetTitle>
+            <SheetDescription>
+              Bu sunucudaki tüm projeler için geçerlidir. Her proje, kendi Ayarlar → Derleme ve kaynak
+              bölümünden bunları ezebilir.
+            </SheetDescription>
+          </SheetHeader>
+        </div>
 
-        <section className="mt-6 space-y-3 rounded-lg border border-border/60 p-4">
+        <div className="p-7">
+        <section className="space-y-3 rounded-lg border border-border/60 p-4">
           <div>
-            <h3 className="text-sm font-semibold">Build parameters</h3>
+            <h3 className="text-sm font-semibold">Derleme parametreleri</h3>
             <p className="mt-1 text-xs text-muted-foreground">
-              Sent to the CI job alongside the version every time a release is built. Useful for the
-              values that are identical everywhere, e.g. POSTHOG_HOST or the id of a shared
-              credential.
+              Her sürüm derlenirken sürüm numarasıyla birlikte CI job'una gönderilir. Her projede aynı
+              olan değerler içindir; örn. POSTHOG_HOST ya da ortak bir kimlik bilgisinin id'si.
             </p>
           </div>
 
-          {isLoading && <p className="text-xs text-muted-foreground">Loading…</p>}
+          {isLoading && <p className="text-xs text-muted-foreground">Derleme parametreleri yükleniyor…</p>}
           {isError && (
-            <p className="text-xs text-destructive">
-              {error instanceof Error ? error.message : 'Could not read the build parameters.'}
-            </p>
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-xs text-destructive">Derleme parametreleri okunamadı: {errorMessage(error)}</p>
+              <Button type="button" variant="outline" size="sm" onClick={() => void refetch()} disabled={isFetching}>Tekrar dene</Button>
+            </div>
           )}
 
           {!isLoading && !isError && (
@@ -97,16 +102,16 @@ export const GlobalSettingsSheet = ({ isOpen, onOpenChange, canEdit }: Props) =>
               <KeyValueEditor
                 value={current}
                 onChange={setDraft}
-                noun="Parameter"
-                emptyHint="No global parameters yet."
+                noun="Parametre"
+                emptyHint="Henüz sunucu geneli parametre yok."
                 footnote={
-                  'Parameters are not secret: they reach the CI tool as job parameters and appear in ' +
-                  'its build log. For a credential, store it in the CI tool and pass only its id here.'
+                  'Parametreler gizli değildir: CI aracına job parametresi olarak gider ve build log\'unda ' +
+                  'görünür. Kimlik bilgisini CI aracında tutun, burada yalnız id\'sini verin.'
                 }
                 disabled={!canEdit}
               />
               <p className="text-[11px] text-muted-foreground">
-                {canEdit ? formatUpdated(data?.updatedAt ?? null, data?.updatedBy ?? null) : 'Read-only — an admin can change these.'}
+                {canEdit ? formatUpdated(data?.updatedAt ?? null, data?.updatedBy ?? null) : 'Salt okunur: bunları yalnız yönetici değiştirebilir.'}
               </p>
             </>
           )}
@@ -115,13 +120,14 @@ export const GlobalSettingsSheet = ({ isOpen, onOpenChange, canEdit }: Props) =>
         {canEdit && (
           <div className="mt-5 flex justify-end gap-2">
             <Button type="button" variant="outline" onClick={() => setDraft(null)} disabled={!isDirty || save.isPending}>
-              Discard
+              Değişiklikleri at
             </Button>
             <Button type="button" onClick={handleSave} disabled={!isDirty || save.isPending}>
-              {save.isPending ? 'Saving…' : 'Save'}
+              {save.isPending ? 'Kaydediliyor…' : 'Kaydet'}
             </Button>
           </div>
         )}
+        </div>
       </SheetContent>
     </Sheet>
   );

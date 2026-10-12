@@ -33,8 +33,8 @@ export const UserRow = ({ user, currentUsername, isLastAdmin }: UserRowProps) =>
     updateUser.mutate(
       { id: user.id, data: { role } },
       {
-        onSuccess: () => toast({ title: 'Role updated', description: `${user.username} is now ${ROLE_LABEL[role as keyof typeof ROLE_LABEL]}.` }),
-        onError: (err) => toast({ title: 'Role could not be updated', description: formatUserError(err), variant: 'destructive' }),
+        onSuccess: () => toast({ title: 'Rol değişti', description: `${user.username} artık ${ROLE_LABEL[role as keyof typeof ROLE_LABEL]}.` }),
+        onError: (err) => toast({ title: 'Rol değiştirilemedi', description: formatUserError(err), variant: 'destructive' }),
       },
     );
   };
@@ -46,20 +46,21 @@ export const UserRow = ({ user, currentUsername, isLastAdmin }: UserRowProps) =>
           <div className="flex items-center gap-2">
             <span className="truncate text-[13px] font-semibold">{user.username}</span>
             {isSelf && (
-              <span className="rounded-sm bg-accent px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.09em] text-dim">
-                you
+              <span className="rounded-sm bg-accent px-1.5 py-0.5 text-[10px] text-dim">
+                siz
               </span>
             )}
           </div>
           <p className="mt-0.5 font-mono text-[10px] text-faint">
-            joined {formatRelativeTimeTr(user.createdAt)}
+            eklendi: {formatRelativeTimeTr(user.createdAt)}
           </p>
         </div>
 
         <Select value={user.role} onValueChange={handleRoleChange} disabled={roleLocked}>
           <SelectTrigger
-            className="h-7 w-[112px] border-line-strong bg-surface text-xs"
-            title={roleLocked ? "Can't change the last admin's or your own role here." : undefined}
+            className="h-7 w-[120px] border-line-strong bg-surface text-xs"
+            aria-label={`${user.username} rolü`}
+            title={roleLocked ? (isLastAdmin ? "Son yöneticinin rolü değiştirilemez." : "Kendi rolünüzü buradan değiştiremezsiniz.") : undefined}
           >
             <SelectValue />
           </SelectTrigger>
@@ -81,8 +82,8 @@ export const UserRow = ({ user, currentUsername, isLastAdmin }: UserRowProps) =>
           disabled={roleLocked}
           disabledReason={
             isLastAdmin
-              ? 'The last remaining admin cannot be deleted.'
-              : "You can't delete your own account here."
+              ? 'Son yönetici silinemez.'
+              : 'Kendi hesabınızı buradan silemezsiniz.'
           }
         />
       </div>

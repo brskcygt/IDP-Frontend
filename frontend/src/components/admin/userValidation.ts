@@ -1,3 +1,5 @@
+import { errorMessage } from '@/lib/errors';
+
 export const MIN_PASSWORD_LENGTH = 8;
 export const MIN_USERNAME_LENGTH = 3;
 
@@ -28,5 +30,5 @@ export function formatUserError(error: unknown): string {
     if (messages.length > 0) return messages.join(' ');
   }
 
-  return error instanceof Error ? error.message : 'Unknown error.';
+  return errorMessage(error);
 }

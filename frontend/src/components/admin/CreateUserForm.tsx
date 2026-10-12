@@ -35,16 +35,16 @@ export const CreateUserForm = ({ onCreated }: CreateUserFormProps) => {
     e.preventDefault();
     if (!isValidUsername(username)) {
       toast({
-        title: 'Invalid username',
-        description: `Use ${MIN_USERNAME_LENGTH}–64 letters, numbers, dots, underscores or hyphens.`,
+        title: 'Geçersiz kullanıcı adı',
+        description: `${MIN_USERNAME_LENGTH}–64 karakter; harf, rakam, nokta, alt çizgi ya da tire kullanın.`,
         variant: 'destructive',
       });
       return;
     }
     if (password.length < MIN_PASSWORD_LENGTH) {
       toast({
-        title: 'Password too short',
-        description: `Use at least ${MIN_PASSWORD_LENGTH} characters.`,
+        title: 'Parola çok kısa',
+        description: `En az ${MIN_PASSWORD_LENGTH} karakter olmalı.`,
         variant: 'destructive',
       });
       return;
@@ -54,13 +54,13 @@ export const CreateUserForm = ({ onCreated }: CreateUserFormProps) => {
       { username: username.trim(), password, role },
       {
         onSuccess: (created) => {
-          toast({ title: 'User created', description: `${created.username} added as ${ROLE_LABEL[created.role]}.` });
+          toast({ title: 'Kullanıcı eklendi', description: `${created.username}, ${ROLE_LABEL[created.role]} rolüyle eklendi.` });
           setUsername('');
           setPassword('');
           setRole('viewer');
           onCreated();
         },
-        onError: (err) => toast({ title: 'User could not be created', description: formatUserError(err), variant: 'destructive' }),
+        onError: (err) => toast({ title: 'Kullanıcı eklenemedi', description: formatUserError(err), variant: 'destructive' }),
       },
     );
   };
@@ -69,11 +69,12 @@ export const CreateUserForm = ({ onCreated }: CreateUserFormProps) => {
     <form onSubmit={handleSubmit} className="flex flex-col gap-2.5 border-b border-line-strong bg-bar px-5 py-4">
       <div className="grid grid-cols-2 gap-2">
         <div className="space-y-1">
-          <Label className="font-mono text-[9.5px] uppercase tracking-[0.09em] text-dim">Username</Label>
+          <Label htmlFor="create-user-username" className="text-xs">Kullanıcı adı</Label>
           <Input
+            id="create-user-username"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
-            placeholder="new.user"
+            placeholder="ad.soyad"
             minLength={MIN_USERNAME_LENGTH}
             maxLength={64}
             pattern="[a-zA-Z0-9._-]+"
@@ -82,13 +83,14 @@ export const CreateUserForm = ({ onCreated }: CreateUserFormProps) => {
           />
         </div>
         <div className="space-y-1">
-          <Label className="font-mono text-[9.5px] uppercase tracking-[0.09em] text-dim">Password</Label>
+          <Label htmlFor="create-user-password" className="text-xs">Parola</Label>
           <div className="relative">
             <Input
+              id="create-user-password"
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder={`min ${MIN_PASSWORD_LENGTH} characters`}
+              placeholder={`en az ${MIN_PASSWORD_LENGTH} karakter`}
               minLength={MIN_PASSWORD_LENGTH}
               autoComplete="new-password"
               className="h-8 border-line-strong bg-surface pr-12 text-xs"
@@ -106,9 +108,9 @@ export const CreateUserForm = ({ onCreated }: CreateUserFormProps) => {
 
       <div className="flex items-end gap-2">
         <div className="flex-1 space-y-1">
-          <Label className="font-mono text-[9.5px] uppercase tracking-[0.09em] text-dim">Role</Label>
+          <Label htmlFor="create-user-role" className="text-xs">Rol</Label>
           <Select value={role} onValueChange={(v) => setRole(v as Role)}>
-            <SelectTrigger className="h-8 border-line-strong bg-surface text-xs">
+            <SelectTrigger id="create-user-role" className="h-8 border-line-strong bg-surface text-xs">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -126,7 +128,7 @@ export const CreateUserForm = ({ onCreated }: CreateUserFormProps) => {
           className="h-8 px-3 text-xs"
           disabled={createUser.isPending || !isValidUsername(username) || password.length < MIN_PASSWORD_LENGTH}
         >
-          {createUser.isPending ? 'Creating…' : 'Create user'}
+          {createUser.isPending ? 'Ekleniyor…' : 'Ekle'}
         </Button>
       </div>
     </form>
