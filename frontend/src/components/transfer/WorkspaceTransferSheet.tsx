@@ -81,7 +81,7 @@ export const WorkspaceTransferSheet = ({ isOpen, onOpenChange, projects }: Props
   };
 
   return <Sheet open={isOpen} onOpenChange={onOpenChange}>
-    <SheetContent side="right" className="w-[min(760px,calc(100vw-3.5rem))] max-w-none overflow-y-auto border-l-line-strong bg-background p-0 sm:max-w-none">
+    <SheetContent resizeKey="transfer" side="right" className="w-[min(760px,calc(100vw-3.5rem))] max-w-none overflow-y-auto border-l-line-strong bg-background p-0 sm:max-w-none">
       <div className="border-b border-line-strong bg-bar px-7 py-6">
         <SheetHeader>
           <SheetTitle className="flex items-center gap-3 text-xl"><PackageOpen className="h-5 w-5 text-primary" />İçe/dışa aktar</SheetTitle>

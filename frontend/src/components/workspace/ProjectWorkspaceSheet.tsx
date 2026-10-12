@@ -83,7 +83,7 @@ export const ProjectWorkspaceSheet = ({ project, isOpen, initialTab, onOpenChang
   ].filter(Boolean).join(' · ');
 
   return <Sheet open={isOpen} onOpenChange={onOpenChange}>
-    <SheetContent side="right" className="flex w-[min(1200px,calc(100vw-3rem))] max-w-none flex-col overflow-hidden border-l-line-strong bg-background p-0 sm:max-w-none">
+    <SheetContent resizeKey="project-workspace" side="right" className="flex w-[min(1200px,calc(100vw-3rem))] max-w-none flex-col overflow-hidden border-l-line-strong bg-background p-0 sm:max-w-none">
       <div className="shrink-0 border-b border-line-strong bg-bar px-7 pt-6">
         <div className="flex items-start justify-between gap-4 pr-8">
           <SheetHeader className="min-w-0">

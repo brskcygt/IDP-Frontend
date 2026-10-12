@@ -28,7 +28,7 @@ export const DeploymentsSheet = ({ isOpen, onOpenChange, onAttach }: Deployments
 
   return (
     <Sheet open={isOpen} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="flex w-full flex-col gap-0 border-l-line-strong bg-background p-0 sm:max-w-[520px]">
+      <SheetContent resizeKey="deployments" side="right" className="flex w-full flex-col gap-0 border-l-line-strong bg-background p-0 sm:max-w-[520px]">
         <div className="shrink-0 border-b border-line-strong bg-bar px-5 py-4 pr-12">
           <SheetTitle className="flex items-center gap-2.5 text-[15px] font-bold tracking-tight">
             <History className="h-4 w-4 text-primary" aria-hidden="true" />

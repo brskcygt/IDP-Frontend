@@ -3,6 +3,7 @@ import * as SheetPrimitive from "@radix-ui/react-dialog"
 import { cva, type VariantProps } from "class-variance-authority"
 import { X } from "lucide-react"
 
+import { MIN_SHEET_WIDTH, useResizableWidth } from "@/hooks/useResizableWidth"
 import { cn } from "@/lib/utils"
 
 const Sheet = SheetPrimitive.Root
@@ -49,27 +50,80 @@ const sheetVariants = cva(
 
 interface SheetContentProps
   extends React.ComponentPropsWithoutRef<typeof SheetPrimitive.Content>,
-    VariantProps<typeof sheetVariants> {}
+    VariantProps<typeof sheetVariants> {
+  /**
+   * Remembers the width the user drags this sheet to (left/right sheets only).
+   * Without it the sheet still resizes, but opens at its default width again.
+   */
+  resizeKey?: string
+  /** Left/right sheets get a drag handle on their inner edge unless this is false. */
+  resizable?: boolean
+}
 
 const SheetContent = React.forwardRef<
   React.ElementRef<typeof SheetPrimitive.Content>,
   SheetContentProps
->(({ side = "right", className, children, ...props }, ref) => (
-  <SheetPortal>
-    <SheetOverlay />
-    <SheetPrimitive.Content
-      ref={ref}
-      className={cn(sheetVariants({ side }), className)}
-      {...props}
-    >
-      {children}
-      <SheetPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-secondary">
-        <X className="h-4 w-4" />
-        <span className="sr-only">Kapat</span>
-      </SheetPrimitive.Close>
-    </SheetPrimitive.Content>
-  </SheetPortal>
-))
+>(({ side = "right", className, children, style, resizeKey, resizable = true, ...props }, ref) => {
+  const horizontal = side === "left" || side === "right"
+  const canResize = resizable && horizontal
+  const resize = useResizableWidth({ side: side === "left" ? "left" : "right", storageKey: resizeKey })
+  const { attach } = resize
+  const setRefs = React.useCallback(
+    (node: React.ElementRef<typeof SheetPrimitive.Content> | null) => {
+      attach(node)
+      if (typeof ref === "function") ref(node)
+      else if (ref) ref.current = node
+    },
+    [ref, attach],
+  )
+  const edge = resize.renderedWidth === null ? undefined : resize.renderedWidth - 4
+  // Inline width beats the sheet's own width/max-width classes only once the
+  // user has resized; until then each sheet keeps the width it was designed for.
+  const sized = canResize && resize.width !== null
+    ? { ...style, width: resize.width, maxWidth: "none" }
+    : style
+
+  return (
+    <SheetPortal>
+      <SheetOverlay />
+      <SheetPrimitive.Content
+        ref={setRefs}
+        className={cn(sheetVariants({ side }), resize.dragging && "select-none", className)}
+        style={sized}
+        {...props}
+      >
+        {children}
+        {canResize && edge !== undefined && (
+          <div
+            role="separator"
+            aria-orientation="vertical"
+            aria-label="Paneli genişlet veya daralt"
+            aria-valuemin={MIN_SHEET_WIDTH}
+            aria-valuenow={resize.width ?? undefined}
+            title="Sürükleyerek genişlet veya daralt · çift tıkla: varsayılan genişlik"
+            tabIndex={0}
+            onPointerDown={resize.onPointerDown}
+            onKeyDown={resize.onKeyDown}
+            onDoubleClick={resize.reset}
+            style={side === "right" ? { right: edge } : { left: edge }}
+            className="group fixed inset-y-0 z-[60] flex w-2 cursor-col-resize touch-none justify-center outline-none"
+          >
+            <span
+              className={cn(
+                "h-full w-px bg-transparent transition-colors group-hover:bg-primary/60 group-focus-visible:bg-primary",
+                resize.dragging && "bg-primary",
+              )}
+            />
+          </div>
+        )}
+        <SheetPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-secondary">
+          <X className="h-4 w-4" />
+          <span className="sr-only">Kapat</span>
+        </SheetPrimitive.Close>
+      </SheetPrimitive.Content>
+    </SheetPortal>
+  )
+})
 SheetContent.displayName = SheetPrimitive.Content.displayName
 
 const SheetHeader = ({

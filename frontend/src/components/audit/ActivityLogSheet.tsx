@@ -42,8 +42,9 @@ export const ActivityLogSheet = ({ isOpen, onOpenChange }: ActivityLogSheetProps
   return (
     <Sheet open={isOpen} onOpenChange={onOpenChange}>
       <SheetContent
+        resizeKey="activity-log"
         side="right"
-        className="flex w-full flex-col gap-0 border-l-line-strong bg-background p-0 sm:max-w-[480px]"
+        className="flex w-[min(860px,calc(100vw-3.5rem))] max-w-none flex-col gap-0 border-l-line-strong bg-background p-0 sm:max-w-none"
       >
         <div className="shrink-0 border-b border-line-strong bg-bar px-5 py-4">
           <SheetTitle className="flex items-center gap-2.5 text-[15px] font-bold tracking-tight">

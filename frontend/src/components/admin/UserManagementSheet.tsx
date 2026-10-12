@@ -34,6 +34,7 @@ export const UserManagementSheet = ({ isOpen, onOpenChange }: UserManagementShee
   return (
     <Sheet open={isOpen} onOpenChange={onOpenChange}>
       <SheetContent
+        resizeKey="users"
         side="right"
         className="flex w-full flex-col gap-0 border-l-line-strong bg-background p-0 sm:max-w-[440px]"
       >

@@ -75,6 +75,7 @@ export const AgentAllowlistSheet = ({ isOpen, onOpenChange }: AgentAllowlistShee
   return (
     <Sheet open={isOpen} onOpenChange={onOpenChange}>
       <SheetContent
+        resizeKey="agent-allowlist"
         side="right"
         className="flex w-full flex-col gap-0 border-l-line-strong bg-background p-0 sm:max-w-[480px]"
       >

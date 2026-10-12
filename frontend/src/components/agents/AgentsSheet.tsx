@@ -30,7 +30,7 @@ export const AgentsSheet = ({ isOpen, onOpenChange }: Props) => {
   const list = agents ?? [];
 
   return <Sheet open={isOpen} onOpenChange={onOpenChange}>
-    <SheetContent side="right" className="w-[min(860px,calc(100vw-3.5rem))] max-w-none overflow-y-auto border-l-line-strong bg-background p-0 sm:max-w-none">
+    <SheetContent resizeKey="agents" side="right" className="w-[min(860px,calc(100vw-3.5rem))] max-w-none overflow-y-auto border-l-line-strong bg-background p-0 sm:max-w-none">
       <div className="flex items-start justify-between gap-4 border-b border-line-strong bg-bar px-7 py-6">
         <SheetHeader>
           <SheetTitle className="flex items-center gap-3 text-xl"><Server className="h-5 w-5 text-primary" />Agent'lar</SheetTitle>

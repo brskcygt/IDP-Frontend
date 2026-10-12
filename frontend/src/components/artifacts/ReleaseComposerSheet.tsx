@@ -166,7 +166,7 @@ export const ReleaseComposerSheet = ({ project, isOpen, onOpenChange, onRunStart
   const canCompose = Boolean(canRelease && buildProvider !== 'none' && baseRef && features.length > 0 && !deployHasNothing && !actions.composeRelease.isPending);
 
   return <Sheet open={isOpen} onOpenChange={onOpenChange}>
-    <SheetContent side="right" className="flex w-[min(900px,calc(100vw-3rem))] max-w-none flex-col overflow-hidden border-l-line-strong bg-background p-0 sm:max-w-none">
+    <SheetContent resizeKey="release-composer" side="right" className="flex w-[min(900px,calc(100vw-3rem))] max-w-none flex-col overflow-hidden border-l-line-strong bg-background p-0 sm:max-w-none">
       <div className="shrink-0 border-b border-line-strong bg-bar px-7 py-6">
         <SheetHeader>
           <SheetTitle className="flex items-center gap-3 text-xl"><GitMerge className="h-5 w-5 text-primary" />Önizleme sürümü · {project.name}</SheetTitle>

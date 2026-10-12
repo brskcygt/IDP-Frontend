@@ -30,6 +30,7 @@ export const ProjectHistorySheet = ({ project, isOpen, onOpenChange }: ProjectHi
   return (
     <Sheet open={isOpen} onOpenChange={handleOpenChange}>
       <SheetContent
+        resizeKey="project-history"
         side="right"
         className="flex w-full flex-col gap-0 border-l-line-strong bg-background p-0 sm:max-w-[520px]"
       >

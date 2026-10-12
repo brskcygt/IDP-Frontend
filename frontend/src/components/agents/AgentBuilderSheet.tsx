@@ -56,7 +56,7 @@ export const AgentBuilderSheet = ({ isOpen, onOpenChange }: Props) => {
   const installCommand = result ? `powershell -ExecutionPolicy Bypass -File ".\\install-idp-agent-${result.agentId}.ps1"` : '';
 
   return <Sheet open={isOpen} onOpenChange={onOpenChange}>
-    <SheetContent side="right" className="w-[min(920px,calc(100vw-3.5rem))] max-w-none overflow-y-auto border-l-line-strong bg-background p-0 sm:max-w-none">
+    <SheetContent resizeKey="agent-builder" side="right" className="w-[min(920px,calc(100vw-3.5rem))] max-w-none overflow-y-auto border-l-line-strong bg-background p-0 sm:max-w-none">
       <div className="border-b border-line-strong bg-bar px-7 py-6">
         <SheetHeader><SheetTitle className="flex items-center gap-3 text-xl"><PackagePlus className="h-5 w-5 text-primary" />Agent oluştur</SheetTitle><SheetDescription>Hedef makineye özel agent kurulum ZIP’ini üretin ve bilgisayarınıza kaydedin.</SheetDescription></SheetHeader>
       </div>

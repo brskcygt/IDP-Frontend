@@ -65,7 +65,7 @@ export const GlobalSettingsSheet = ({ isOpen, onOpenChange, canEdit }: Props) =>
 
   return (
     <Sheet open={isOpen} onOpenChange={close}>
-      <SheetContent side="right" className="w-[min(640px,calc(100vw-3.5rem))] max-w-none overflow-y-auto border-l-line-strong bg-background p-0 sm:max-w-none">
+      <SheetContent resizeKey="server-settings" side="right" className="w-[min(640px,calc(100vw-3.5rem))] max-w-none overflow-y-auto border-l-line-strong bg-background p-0 sm:max-w-none">
         <div className="border-b border-line-strong bg-bar px-7 py-6">
           <SheetHeader>
             <SheetTitle className="flex items-center gap-3 text-xl">

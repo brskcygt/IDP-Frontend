@@ -86,7 +86,7 @@ export const TroubleshootingSheet = ({ isOpen, onOpenChange }: Props) => {
     : 'rounded-md border border-line px-3 py-1.5 text-xs text-muted-foreground hover:border-line-strong hover:text-foreground';
 
   return <Sheet open={isOpen} onOpenChange={onOpenChange}>
-    <SheetContent side="right" className="w-[min(1120px,calc(100vw-3.5rem))] max-w-none overflow-y-auto border-l-line-strong bg-background p-0 sm:max-w-none">
+    <SheetContent resizeKey="troubleshooting" side="right" className="w-[min(1120px,calc(100vw-3.5rem))] max-w-none overflow-y-auto border-l-line-strong bg-background p-0 sm:max-w-none">
       <div className="sticky top-0 z-10 border-b border-line-strong bg-bar/95 px-7 py-6 backdrop-blur">
         <SheetHeader>
           <SheetTitle className="flex items-center gap-3 text-xl"><LifeBuoy className="h-5 w-5 text-primary" />Sorun giderme</SheetTitle>
