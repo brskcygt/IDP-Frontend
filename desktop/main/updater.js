@@ -41,36 +41,36 @@ function isNewerVersion(candidate, current) {
 
 function requireHttps(value, label) {
   const parsed = new URL(value);
-  if (parsed.protocol !== 'https:') throw new Error(`${label} must use HTTPS`);
+  if (parsed.protocol !== 'https:') throw new Error(`${label} HTTPS kullanmalı`);
   return parsed.toString();
 }
 
 async function fetchSignedManifest() {
   requireHttps(MANIFEST_URL, 'Update manifest URL');
   const response = await net.fetch(MANIFEST_URL, { cache: 'no-store' });
-  if (!response.ok) throw new Error(`Manifest request returned HTTP ${response.status}`);
+  if (!response.ok) throw new Error(`Güncelleme bilgisi alınamadı (HTTP ${response.status})`);
   const raw = Buffer.from(await response.arrayBuffer());
-  if (raw.length > 64 * 1024) throw new Error('Update manifest is unexpectedly large');
+  if (raw.length > 64 * 1024) throw new Error('Güncelleme bilgisi beklenenden büyük');
   const envelope = JSON.parse(raw.toString('utf8'));
   if (typeof envelope.payload !== 'string' || typeof envelope.signature !== 'string') {
-    throw new Error('Update manifest signature envelope is invalid');
+    throw new Error('Güncelleme bilgisinin imza zarfı geçersiz');
   }
   const payload = Buffer.from(envelope.payload, 'base64');
   const signature = Buffer.from(envelope.signature, 'base64');
   const publicKey = await fsp.readFile(PUBLIC_KEY_PATH);
   if (!crypto.verify(null, payload, publicKey, signature)) {
-    throw new Error('Update manifest signature verification failed');
+    throw new Error('Güncelleme bilgisinin imzası doğrulanamadı');
   }
   const manifest = JSON.parse(payload.toString('utf8'));
   const platformKey = `${process.platform}-${process.arch}`;
   const artifact = manifest.platforms && manifest.platforms[platformKey];
-  if (!parseVersion(manifest.version) || !artifact) throw new Error(`No release for ${platformKey}`);
-  if (!/^[a-f0-9]{64}$/i.test(artifact.sha256 || '')) throw new Error('Artifact SHA-256 is invalid');
+  if (!parseVersion(manifest.version) || !artifact) throw new Error(`${platformKey} için sürüm yok`);
+  if (!/^[a-f0-9]{64}$/i.test(artifact.sha256 || '')) throw new Error('Paketin SHA-256 değeri geçersiz');
   return { ...manifest, artifact: { ...artifact, url: requireHttps(artifact.url, 'Update artifact URL') } };
 }
 
 function downloadAndHash(url, destination, onProgress, redirects = 0) {
-  if (redirects > 3) return Promise.reject(new Error('Too many update download redirects'));
+  if (redirects > 3) return Promise.reject(new Error('Güncelleme indirmesi çok fazla yönlendirildi'));
   return new Promise((resolve, reject) => {
     const request = https.get(url, (response) => {
       if ([301, 302, 303, 307, 308].includes(response.statusCode) && response.headers.location) {
@@ -81,7 +81,7 @@ function downloadAndHash(url, destination, onProgress, redirects = 0) {
       }
       if (response.statusCode !== 200) {
         response.resume();
-        reject(new Error(`Update download returned HTTP ${response.statusCode}`));
+        reject(new Error(`Güncelleme indirilemedi (HTTP ${response.statusCode})`));
         return;
       }
       const total = Number(response.headers['content-length'] || 0);
@@ -98,7 +98,7 @@ function downloadAndHash(url, destination, onProgress, redirects = 0) {
       output.once('finish', () => resolve(hash.digest('hex')));
       response.pipe(output);
     });
-    request.setTimeout(120000, () => request.destroy(new Error('Update download timed out')));
+    request.setTimeout(120000, () => request.destroy(new Error('Güncelleme indirmesi zaman aşımına uğradı')));
     request.once('error', reject);
   });
 }
@@ -117,17 +117,17 @@ async function prepareAndInstall(win, manifest) {
       emitState({ status: 'downloading', version: manifest.version, notes: manifest.notes || '', progress: value });
     });
     if (digest.toLowerCase() !== manifest.artifact.sha256.toLowerCase()) {
-      throw new Error('Downloaded update SHA-256 does not match the signed manifest');
+      throw new Error('İndirilen güncellemenin SHA-256 değeri imzalı bilgiyle eşleşmiyor');
     }
     const extract = spawnSync('/usr/bin/ditto', ['-x', '-k', zipPath, extractPath], { encoding: 'utf8' });
-    if (extract.status !== 0) throw new Error(`Update archive could not be extracted: ${extract.stderr || extract.stdout}`);
+    if (extract.status !== 0) throw new Error(`Güncelleme arşivi açılamadı: ${extract.stderr || extract.stdout}`);
     const stagedApp = path.join(extractPath, 'IDP.app');
     if (!fs.existsSync(path.join(stagedApp, 'Contents', 'MacOS', 'IDP'))) {
-      throw new Error('Update archive does not contain IDP.app');
+      throw new Error('Güncelleme arşivinde IDP.app yok');
     }
     const plist = spawnSync('/usr/bin/defaults', ['read', path.join(stagedApp, 'Contents', 'Info'), 'CFBundleShortVersionString'], { encoding: 'utf8' });
     if (plist.status !== 0 || plist.stdout.trim() !== manifest.version) {
-      throw new Error('Update bundle version does not match the signed manifest');
+      throw new Error('Güncelleme paketinin sürümü imzalı bilgiyle eşleşmiyor');
     }
     emitState({ status: 'installing', version: manifest.version, notes: manifest.notes || '', progress: 1 });
     const installerCopy = path.join(updateRoot, 'updateInstaller.js');
@@ -171,7 +171,7 @@ function getUpdateState() {
 
 async function installAvailableUpdate() {
   if (!availableManifest || !mainWindow || mainWindow.isDestroyed()) {
-    throw new Error('No verified update is ready to install');
+    throw new Error('Kurulmaya hazır doğrulanmış bir güncelleme yok');
   }
   try {
     await prepareAndInstall(mainWindow, availableManifest);

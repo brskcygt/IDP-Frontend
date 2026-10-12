@@ -74,14 +74,14 @@ export const parseRuntimeConfigEditors = (
     if (!rawLine.trim()) continue;
     const separator = rawLine.indexOf('=');
     if (separator < 1) {
-      throw new Error(`${component.name}: runtime config line must be KEY=value: ${rawLine}`);
+      throw new Error(`${component.name}: çalışma ayarı satırı ANAHTAR=değer biçiminde olmalı: ${rawLine}`);
     }
     const key = rawLine.slice(0, separator).trim();
     if (!/^[A-Z][A-Z0-9_]*$/.test(key)) {
-      throw new Error(`${component.name}: invalid runtime config key: ${key}`);
+      throw new Error(`${component.name}: geçersiz anahtar (büyük harfle başlamalı; A-Z, 0-9, _): ${key}`);
     }
     if (Object.hasOwn(values, key)) {
-      throw new Error(`${component.name}: duplicate runtime config key: ${key}`);
+      throw new Error(`${component.name}: anahtar iki kez yazılmış: ${key}`);
     }
     values[key] = rawLine.slice(separator + 1);
   }

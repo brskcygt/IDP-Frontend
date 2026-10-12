@@ -90,7 +90,7 @@ async function openSamlWindow({ samlUrl, host, cookieNames, timeoutMs, onLog, si
     parent: parentWindow || undefined,
     modal: Boolean(parentWindow),
     show: true,
-    title: host ? `Sign in — ${host}` : 'Sign in',
+    title: host ? `Oturum aç — ${host}` : 'Oturum aç',
     webPreferences: {
       partition: SAML_AUTH_PARTITION,
       sandbox: true,

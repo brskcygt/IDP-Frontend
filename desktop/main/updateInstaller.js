@@ -13,7 +13,7 @@ function waitForParent() {
     try { process.kill(parentPid, 0); } catch { return; }
     Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 250);
   }
-  throw new Error('IDP did not quit in time');
+  throw new Error('IDP zamanında kapanmadı');
 }
 
 function pause(milliseconds) {
@@ -56,7 +56,7 @@ function relaunchApp() {
     cwd: path.dirname(currentApp),
   });
   child.unref();
-  if (!waitForUpdatedApp(5000)) throw new Error('Updated IDP could not be relaunched');
+  if (!waitForUpdatedApp(5000)) throw new Error('Güncellenen IDP yeniden başlatılamadı');
 }
 
 function swapDirectly() {
@@ -78,7 +78,7 @@ function swapWithAdministratorApproval() {
   ].join(' && ');
   const appleScript = 'on run argv\ndo shell script (item 1 of argv) with administrator privileges\nend run';
   const result = spawnSync('/usr/bin/osascript', ['-e', appleScript, command], { stdio: 'ignore' });
-  if (result.status !== 0) throw new Error('Administrator approval was cancelled or installation failed');
+  if (result.status !== 0) throw new Error('Yönetici onayı verilmedi ya da kurulum başarısız oldu');
 }
 
 try {
