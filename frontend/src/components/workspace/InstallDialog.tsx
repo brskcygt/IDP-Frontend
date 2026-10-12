@@ -80,7 +80,10 @@ export const InstallDialog = ({ project, open, onOpenChange, preselect, onRunSta
     if (initialised.current || !releases.data || !targets.data) return;
     initialised.current = true;
     const ready = releases.data.filter((item) => item.status === 'ready');
-    const nextTarget = preselect?.targetId ?? (targets.data.length === 1 ? targets.data[0].id : '');
+    // With one possible customer, pick it -- but never a Canlı one for a preview.
+    const presetRelease = ready.find((item) => item.id === preselect?.releaseId);
+    const eligible = targets.data.filter((item) => !(isPreviewRelease(presetRelease) && isProdTarget(item, project)));
+    const nextTarget = preselect?.targetId ?? (eligible.length === 1 ? eligible[0].id : '');
     const chosenTarget = targets.data.find((item) => item.id === nextTarget);
     const targetIsProd = Boolean(chosenTarget && isProdTarget(chosenTarget, project));
     const nextRelease = preselect?.releaseId
