@@ -11,6 +11,7 @@ import { LogTail } from "./LogTail";
 import { cn } from "@/lib/utils";
 import { TerminalActivityIndicator } from "./TerminalActivityIndicator";
 import { can } from "@/lib/permissions";
+import { useRunContext } from "@/hooks/useRunContext";
 
 type LiveDeploymentPanelProps = {
   project: Project | null;
@@ -18,17 +19,19 @@ type LiveDeploymentPanelProps = {
   logs: string[];
   progress: DeployProgress | null;
   elapsedMs: number;
+  /** Looks up who started the run and, for artifact runs, the customer and version. */
+  deploymentId: string | null;
   onOpenStream: () => void;
   onAbort: () => void;
 };
 
 const STATUS_LABEL: Record<DeploymentStatus, string> = {
-  idle: "NO ACTIVE DEPLOYMENT",
-  connecting: "CONNECTING",
-  running: "LIVE DEPLOYMENT",
-  succeeded: "LAST DEPLOYMENT — SUCCEEDED",
-  failed: "LAST DEPLOYMENT — FAILED",
-  aborted: "LAST DEPLOYMENT — ABORTED",
+  idle: "ŞU AN ÇALIŞAN DAĞITIM YOK",
+  connecting: "BAĞLANIYOR",
+  running: "ÇALIŞIYOR",
+  succeeded: "SON DAĞITIM — BAŞARILI",
+  failed: "SON DAĞITIM — BAŞARISIZ",
+  aborted: "SON DAĞITIM — DURDURULDU",
 };
 
 const STATUS_TONE: Record<DeploymentStatus, string> = {
@@ -61,9 +64,11 @@ export const LiveDeploymentPanel = ({
   logs,
   progress,
   elapsedMs,
+  deploymentId,
   onOpenStream,
   onAbort,
 }: LiveDeploymentPanelProps) => {
+  const context = useRunContext(project, deploymentId);
   const { data: session } = useSession();
   const isActive = status === "running" || status === "connecting";
   const canAbort = can(session?.role, 'deploy:abort');
@@ -71,7 +76,7 @@ export const LiveDeploymentPanel = ({
   if (!project || status === "idle") {
     return (
       <section
-        aria-label="Live deployment"
+        aria-label="Canlı dağıtım"
         className="flex min-w-0 flex-grow flex-col justify-center border-r border-line px-5 py-4"
       >
         <p className="mb-2 flex items-center gap-2 font-mono text-[10px] tracking-[0.14em] text-dim">
@@ -79,7 +84,7 @@ export const LiveDeploymentPanel = ({
           {STATUS_LABEL.idle}
         </p>
         <p className="max-w-md text-sm text-muted-foreground">
-          Deploy a project from the table and its output streams here.
+          Tablodan bir proje dağıtın ya da bir müşteriye sürüm kurun; çıktısı burada akar.
         </p>
       </section>
     );
@@ -87,7 +92,7 @@ export const LiveDeploymentPanel = ({
 
   return (
     <section
-      aria-label="Live deployment"
+      aria-label="Canlı dağıtım"
       aria-live="polite"
       className="relative flex min-w-0 flex-grow flex-col overflow-hidden border-r border-line px-5 py-4"
     >
@@ -116,6 +121,8 @@ export const LiveDeploymentPanel = ({
             <h2 className="truncate text-xl font-bold tracking-tight">{project.name}</h2>
             <MetaChip className="text-muted-foreground">{project.tenant}</MetaChip>
             <MetaChip className={providerClass(project.provider)}>{project.provider}</MetaChip>
+            {context.customer && <MetaChip className="text-foreground">{context.customer}</MetaChip>}
+            {context.version && <MetaChip className="font-mono text-muted-foreground">{context.version}</MetaChip>}
           </div>
         </div>
 
@@ -123,7 +130,7 @@ export const LiveDeploymentPanel = ({
           <p className="tabular font-mono text-[22px] font-medium leading-none">
             {formatDuration(elapsedMs)}
           </p>
-          <p className="mt-0.5 font-mono text-[10px] tracking-[0.08em] text-dim">ELAPSED</p>
+          <p className="mt-0.5 font-mono text-[10px] tracking-[0.08em] text-dim">GEÇEN SÜRE</p>
         </div>
       </div>
 
@@ -133,15 +140,15 @@ export const LiveDeploymentPanel = ({
         <span className="truncate">
           {progress ? (
             <>
-              <span className="tabular font-semibold text-foreground">{Math.round(progress.percent)}%</span>
+              <span className="tabular font-semibold text-foreground">%{Math.round(progress.percent)}</span>
               <span className="mx-1.5 text-faint" aria-hidden="true">·</span>
               {progressLabel(progress)}
             </>
           ) : (
-            `${logs.length} lines streamed`
+            `${logs.length} satır log geldi`
           )}
         </span>
-        {session?.username && <span className="shrink-0 pl-3 text-faint">triggered by {session.username}</span>}
+        {context.triggeredBy && <span className="shrink-0 pl-3 text-faint">başlatan: {context.triggeredBy}</span>}
       </div>
 
       {isActive && <div className="relative mb-2"><TerminalActivityIndicator elapsedMs={elapsedMs} compact /></div>}
@@ -157,7 +164,7 @@ export const LiveDeploymentPanel = ({
           className="inline-flex h-[30px] items-center gap-1.5 rounded-md bg-foreground px-3.5 text-xs font-semibold text-background transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           <Terminal className="h-3.5 w-3.5" aria-hidden="true" />
-          Open stream
+          Log akışını aç
         </button>
         {isActive && canAbort && (
           <button

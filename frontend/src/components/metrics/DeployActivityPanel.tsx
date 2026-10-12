@@ -12,22 +12,22 @@ export const DeployActivityPanel = ({ dayCount = 14 }: { dayCount?: number }) =>
 
   return (
     <section
-      aria-label="Deploy activity"
+      aria-label="Dağıtım etkinliği"
       className="flex w-[320px] shrink-0 flex-col border-r border-line px-5 py-4"
     >
       <h2 className="mb-2.5 font-mono text-[10px] tracking-[0.1em] text-dim">
-        DEPLOY ACTIVITY · {dayCount}D
+        DAĞITIM ETKİNLİĞİ · {dayCount} GÜN
       </h2>
 
       {isError ? (
-        <p className="text-xs text-status-fail">Audit trail unavailable.</p>
+        <p className="text-xs text-status-fail">Etkinlik kaydı okunamadı.</p>
       ) : (
         <>
           <div className="mb-3.5 flex items-baseline gap-2.5">
             <span className="tabular font-mono text-[32px] font-medium leading-none">
               {isLoading ? "··" : triggered}
             </span>
-            <span className="font-mono text-[11px] text-dim">runs triggered</span>
+            <span className="font-mono text-[11px] text-dim">dağıtım başlatıldı</span>
           </div>
 
           <div className="mb-2.5 flex h-[76px] items-end gap-1" aria-hidden="true">
@@ -37,7 +37,7 @@ export const DeployActivityPanel = ({ dayCount = 14 }: { dayCount?: number }) =>
               return (
                 <div
                   key={day.key}
-                  title={`${day.label} — ${day.triggered} triggered, ${day.aborted} aborted`}
+                  title={`${day.label} — ${day.triggered} başlatıldı, ${day.aborted} durduruldu`}
                   className="flex flex-grow flex-col justify-end gap-px"
                   style={{ height: "100%" }}
                 >
@@ -58,7 +58,7 @@ export const DeployActivityPanel = ({ dayCount = 14 }: { dayCount?: number }) =>
 
           <div className="tabular flex justify-between font-mono text-[10.5px] text-faint">
             <span>{days[0]?.label} — {days[days.length - 1]?.label}</span>
-            <span className={cn(aborted > 0 && "text-status-fail")}>{aborted} aborted</span>
+            <span className={cn(aborted > 0 && "text-status-fail")}>{aborted} durduruldu</span>
           </div>
         </>
       )}

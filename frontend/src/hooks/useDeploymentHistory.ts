@@ -17,6 +17,10 @@ export interface DeploymentHistoryRecord extends DeploymentHistoryEntry {
   triggeredBy?: string | null;
   environment?: string | null;
   error?: string | null;
+  /** Artifact runs: 'deploy' / 'build' / 'rollback' / … and what they installed where. */
+  kind?: string | null;
+  releaseId?: string | null;
+  targetId?: string | null;
 }
 
 /** This data only changes when a deployment finishes; no reason to poll it. */
@@ -47,6 +51,26 @@ export const useProjectDeploymentHistory = (projectId: string | undefined, limit
     enabled: Boolean(projectId),
     staleTime: HISTORY_STALE_TIME_MS,
     select: (entries) => entries as DeploymentHistoryRecord[],
+  });
+};
+
+/** How far back to look for a run that is live or just finished. */
+const RUN_LOOKUP_LIMIT = 20;
+
+/**
+ * The persisted record of one run, which unlike the live session carries who
+ * started it and, for artifact runs, the customer and release. The record is
+ * written when the run is created, so it exists by the time a deployment id is
+ * known; keyed by that id so each new run reads it fresh.
+ */
+export const useDeploymentRecord = (projectId: string | undefined, deploymentId: string | null | undefined) => {
+  const transport = getTransport();
+  return useQuery<DeploymentHistoryEntry[], Error, DeploymentHistoryRecord | null>({
+    queryKey: ['deployment-history', projectId, 'run', deploymentId],
+    queryFn: () => transport.deploy.history(projectId, RUN_LOOKUP_LIMIT),
+    enabled: Boolean(projectId && deploymentId),
+    staleTime: HISTORY_STALE_TIME_MS,
+    select: (entries) => (entries.find((entry) => entry.id === deploymentId) as DeploymentHistoryRecord | undefined) ?? null,
   });
 };
 

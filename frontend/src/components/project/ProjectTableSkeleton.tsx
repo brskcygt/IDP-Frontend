@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 const ROWS = Array.from({ length: 8 }, (_, index) => index);
 
 export const ProjectTableSkeleton = () => (
-  <div aria-busy="true" aria-label="Loading projects">
+  <div aria-busy="true" aria-label="Projeler yükleniyor">
     {ROWS.map((row) => (
       <div key={row} className={cn(PROJECT_GRID, "h-[46px] border-b border-line")}>
         <div className="h-[46px] bg-line-strong" />

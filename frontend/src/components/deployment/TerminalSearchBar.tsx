@@ -12,12 +12,12 @@ type TerminalSearchBarProps = {
   onLevelFilterChange: (value: LevelFilter) => void;
 };
 
-const CHIP = "shrink-0 rounded px-2 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-wide transition-colors";
+const CHIP = "shrink-0 rounded px-2 py-0.5 font-mono text-[10px] font-semibold tracking-wide transition-colors";
 
 const FILTERS: ReadonlyArray<{ value: LevelFilter; label: string }> = [
-  { value: "all", label: "All" },
-  { value: "error", label: "Errors" },
-  { value: "warn", label: "Warnings" },
+  { value: "all", label: "Tümü" },
+  { value: "error", label: "Hatalar" },
+  { value: "warn", label: "Uyarılar" },
 ];
 
 export const TerminalSearchBar = ({
@@ -34,15 +34,15 @@ export const TerminalSearchBar = ({
         type="text"
         value={query}
         onChange={(event) => onQueryChange(event.target.value)}
-        placeholder="Search logs…"
-        aria-label="Search logs"
+        placeholder="Logda ara…"
+        aria-label="Logda ara"
         className="w-full bg-transparent py-1 pl-5 pr-6 font-mono text-[11px] text-foreground placeholder:text-faint focus:outline-none"
       />
       {query && (
         <button
           type="button"
           onClick={() => onQueryChange("")}
-          aria-label="Clear search"
+          aria-label="Aramayı temizle"
           className="absolute right-0 top-1/2 -translate-y-1/2 text-faint transition-colors hover:text-foreground"
         >
           <X className="h-3 w-3" aria-hidden="true" />
@@ -52,11 +52,11 @@ export const TerminalSearchBar = ({
 
     {query.trim() && (
       <span className="shrink-0 whitespace-nowrap font-mono text-[10.5px] text-dim">
-        {matchCount} {matchCount === 1 ? "match" : "matches"}
+        {matchCount} eşleşme
       </span>
     )}
 
-    <div className="flex shrink-0 items-center gap-1.5" role="group" aria-label="Filter by level">
+    <div className="flex shrink-0 items-center gap-1.5" role="group" aria-label="Seviyeye göre filtrele">
       {FILTERS.map(({ value, label }) => (
         <button
           key={value}

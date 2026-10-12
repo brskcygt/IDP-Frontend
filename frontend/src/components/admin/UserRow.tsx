@@ -9,7 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useUpdateUser } from "@/hooks/useUsers";
 import type { ManagedUser } from "@/hooks/useUsers";
 import { ROLE_LABEL, ROLE_OPTIONS } from "@/lib/permissions";
-import { formatRelativeTime } from "@/lib/format";
+import { formatRelativeTimeTr } from "@/lib/format";
 import { ResetPasswordControl } from "./ResetPasswordControl";
 import { DeleteUserControl } from "./DeleteUserControl";
 import { formatUserError } from "./userValidation";
@@ -52,7 +52,7 @@ export const UserRow = ({ user, currentUsername, isLastAdmin }: UserRowProps) =>
             )}
           </div>
           <p className="mt-0.5 font-mono text-[10px] text-faint">
-            joined {formatRelativeTime(user.createdAt)}
+            joined {formatRelativeTimeTr(user.createdAt)}
           </p>
         </div>
 

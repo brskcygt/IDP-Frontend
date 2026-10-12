@@ -33,6 +33,14 @@ const STATUS_WEIGHT: Readonly<Record<ProjectStatus, number>> = {
 
 export const statusWeight = (status: ProjectStatus): number => STATUS_WEIGHT[status] ?? 99;
 
+/** Turkish name of a project's current state; the stored values stay English. */
+export const PROJECT_STATUS_LABEL: Readonly<Record<ProjectStatus, string>> = {
+  Deploying: 'Çalışıyor',
+  Failed: 'Başarısız',
+  Succeeded: 'Başarılı',
+  Idle: 'Boşta',
+};
+
 export const STATUS_CLASS: Readonly<Record<ProjectStatus, string>> = {
   Deploying: 'text-status-run',
   Failed: 'text-status-fail',

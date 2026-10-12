@@ -110,7 +110,7 @@ export const LiveTerminalStream = ({
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement("a");
     anchor.href = url;
-    anchor.download = `${project?.name ?? "deployment"}-${deploymentId ?? "log"}.log`;
+    anchor.download = `${project?.name ?? "dagitim"}-${deploymentId ?? "log"}.log`;
     anchor.click();
     URL.revokeObjectURL(url);
   };
@@ -139,11 +139,11 @@ export const LiveTerminalStream = ({
           onAbort={() => activeRun && onAbortRun(activeRun.runKey)}
         />
 
-        <SheetDescription className="sr-only">Real-time output from the deployment adapter.</SheetDescription>
+        <SheetDescription className="sr-only">Dağıtımın canlı log çıktısı.</SheetDescription>
 
         <div className="relative m-4 flex min-h-0 flex-grow flex-col overflow-hidden rounded-md border border-line bg-surface-sunken">
           <TerminalToolbar
-            target={project ? `${project.provider.toLowerCase()} · ${project.name}` : "deployment stream"}
+            target={project ? `${project.provider.toLowerCase()} · ${project.name}` : "dağıtım akışı"}
             wrap={wrap}
             showTimestamps={showTimestamps}
             copied={copied}
@@ -168,7 +168,7 @@ export const LiveTerminalStream = ({
           >
             {filtered.length === 0 && !isActive ? (
               <p className="font-mono text-[11.5px] italic text-faint">
-                {parsed.length === 0 ? "Waiting for output…" : "No log lines match the current filters."}
+                {parsed.length === 0 ? "Çıktı bekleniyor…" : "Filtrelere uyan log satırı yok."}
               </p>
             ) : (
               filtered.map((line) => (

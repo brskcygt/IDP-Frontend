@@ -18,21 +18,21 @@ export const ProjectTableEmpty = ({
     </div>
     <div className="space-y-1">
       <p className="text-sm font-medium">
-        {hasFilters ? "No projects match these filters" : "No projects configured"}
+        {hasFilters ? "Filtrelere uyan proje yok" : "Henüz proje yok"}
       </p>
       <p className="text-xs text-muted-foreground">
         {hasFilters
-          ? "Adjust the search or provider filters to widen the list."
-          : "Create a project to deploy it from here."}
+          ? "Aramayı ya da sağlayıcı filtresini değiştirerek listeyi genişletin."
+          : "Bir proje oluşturun; dağıtımı buradan yönetirsiniz."}
       </p>
     </div>
     {hasFilters ? (
       <button
         type="button"
         onClick={onClearFilters}
-        className="font-mono text-[11px] tracking-[0.08em] text-primary hover:underline"
+        className="text-xs font-medium text-primary hover:underline"
       >
-        CLEAR FILTERS
+        Filtreleri temizle
       </button>
     ) : (
       // A first-time operator lands here with nothing to look at; without this
@@ -41,10 +41,10 @@ export const ProjectTableEmpty = ({
         <button
           type="button"
           onClick={onCreateProject}
-          className="inline-flex items-center gap-1.5 rounded-md border border-line-strong px-3 py-1.5 font-mono text-[11px] tracking-[0.08em] text-primary transition-colors hover:bg-surface"
+          className="inline-flex items-center gap-1.5 rounded-md border border-line-strong px-3 py-1.5 text-xs font-medium text-primary transition-colors hover:bg-surface"
         >
           <Plus className="h-3 w-3" aria-hidden="true" />
-          NEW PROJECT
+          Yeni proje
         </button>
       )
     )}

@@ -2,7 +2,7 @@ import { useRef, useState } from "react";
 import { History } from "lucide-react";
 import type { Project } from "@/hooks/useProjects";
 import { useProjectLastDeployment } from "@/hooks/useDeploymentHistory";
-import { formatDeployDuration, formatRelativeTime } from "@/lib/format";
+import { formatDeployDuration, formatRelativeTimeTr } from "@/lib/format";
 import { PROJECT_CELL } from "./tableLayout";
 import { DeployHoverCard } from "./DeployHoverCard";
 import { cn } from "@/lib/utils";
@@ -36,10 +36,10 @@ export const LastDeployCell = ({
   const [anchor, setAnchor] = useState<Anchor | null>(null);
 
   const lastRunLabel = isDeploying
-    ? `running ${elapsedLabel ?? ""}`.trim()
+    ? `çalışıyor ${elapsedLabel ?? ""}`.trim()
     : hasFailed
-      ? `failed ${formatRelativeTime(project.lastDeploy)}`
-      : formatRelativeTime(project.lastDeploy);
+      ? `başarısız · ${formatRelativeTimeTr(project.lastDeploy)}`
+      : formatRelativeTimeTr(project.lastDeploy);
 
   const durationLabel =
     !isDeploying && typeof lastDeployment?.durationMs === "number"
@@ -49,6 +49,7 @@ export const LastDeployCell = ({
   const showDetails = !isDeploying && Boolean(lastDeployment);
 
   const openHover = () => {
+    if (!showDetails) return;
     const rect = triggerRef.current?.getBoundingClientRect();
     if (rect) setAnchor({ top: rect.bottom + 6, right: window.innerWidth - rect.right });
   };
@@ -56,6 +57,9 @@ export const LastDeployCell = ({
 
   return (
     <div
+      ref={triggerRef}
+      onMouseEnter={openHover}
+      onMouseLeave={closeHover}
       className={cn(
         PROJECT_CELL,
         "tabular flex items-center gap-1.5 font-mono text-xs",
@@ -65,30 +69,23 @@ export const LastDeployCell = ({
       <span className="truncate">{lastRunLabel}</span>
       {durationLabel && <span className="shrink-0 text-dim">· {durationLabel}</span>}
 
-      {showDetails && lastDeployment && (
-        <div
-          ref={triggerRef}
-          tabIndex={0}
-          onMouseEnter={openHover}
-          onMouseLeave={closeHover}
-          onFocus={openHover}
-          onBlur={closeHover}
-          className="ml-auto flex shrink-0 items-center focus-visible:outline-none"
-        >
-          <button
-            type="button"
-            onClick={(event) => {
-              event.stopPropagation();
-              onOpenHistory(project);
-            }}
-            title="View deployment history"
-            className="text-faint transition-colors hover:text-foreground"
-          >
-            <History className="h-3 w-3" aria-hidden="true" />
-          </button>
-          {anchor && <DeployHoverCard deployment={lastDeployment} anchor={anchor} />}
-        </div>
-      )}
+      {/* A labelled control rather than a bare icon: the history sheet is
+          otherwise only reachable from the rail's Dağıtım geçmişi. */}
+      <button
+        type="button"
+        onClick={(event) => {
+          event.stopPropagation();
+          onOpenHistory(project);
+        }}
+        onFocus={openHover}
+        onBlur={closeHover}
+        aria-label={`${project.name} dağıtım geçmişi`}
+        className="ml-auto inline-flex shrink-0 items-center gap-1 rounded px-1.5 py-0.5 font-sans text-[11px] font-medium text-dim transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      >
+        <History className="h-3 w-3" aria-hidden="true" />
+        Geçmiş
+      </button>
+      {anchor && lastDeployment && <DeployHoverCard deployment={lastDeployment} anchor={anchor} />}
     </div>
   );
 };

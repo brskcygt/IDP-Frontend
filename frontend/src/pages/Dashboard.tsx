@@ -54,7 +54,7 @@ export const Dashboard = ({ onLogout }: { onLogout?: () => void }) => {
   const { data: session } = useSession();
   const canDeploy = can(session?.role, 'deploy:trigger');
   const canCreateProject = can(session?.role, 'project:write');
-  const { data: projects, isLoading, isError } = useProjects();
+  const { data: projects, isLoading, isError, refetch: refetchProjects, isFetching: isFetchingProjects } = useProjects();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const {
@@ -104,7 +104,7 @@ export const Dashboard = ({ onLogout }: { onLogout?: () => void }) => {
     clearLastFailure();
   }, [lastFailure, clearLastFailure, toast]);
 
-  if (isError) return <DashboardError />;
+  if (isError) return <DashboardError onRetry={() => void refetchProjects()} isRetrying={isFetchingProjects} />;
 
   const openWorkspace = (project: Project, tab: WorkspaceTabId = 'customers') => {
     setWorkspace({ projectId: project.id, tab });
@@ -211,7 +211,7 @@ export const Dashboard = ({ onLogout }: { onLogout?: () => void }) => {
     } catch (err) {
       toast({
         title: 'Durdurulamadı',
-        description: err instanceof Error ? err.message : 'Bilinmeyen hata.',
+        description: err instanceof Error ? err.message : 'Sunucudan yanıt alınamadı; bağlantıyı kontrol edip tekrar deneyin.',
         variant: 'destructive',
       });
     }
@@ -251,9 +251,9 @@ export const Dashboard = ({ onLogout }: { onLogout?: () => void }) => {
   };
 
   const activeFilters = [
-    filters.provider && `provider=${filters.provider}`,
-    filters.failedOnly && 'failed only',
-    filters.search && `search="${filters.search}"`,
+    filters.provider && `sağlayıcı: ${filters.provider}`,
+    filters.failedOnly && 'yalnızca başarısızlar',
+    filters.search && `arama: "${filters.search}"`,
   ].filter(Boolean) as string[];
 
   const elapsedLabel = formatDuration(activeRun?.elapsedMs ?? 0);
@@ -302,6 +302,7 @@ export const Dashboard = ({ onLogout }: { onLogout?: () => void }) => {
             logs={activeRun?.logs ?? EMPTY_LOGS}
             progress={activeRun?.progress ?? null}
             elapsedMs={activeRun?.elapsedMs ?? 0}
+            deploymentId={activeRun?.deploymentId ?? activeRun?.attachDeploymentId ?? null}
             onOpenStream={() => setOpenPanel('stream')}
             // This panel always reflects the focused run, so it aborts that
             // run's project rather than asking the user to pick one.
@@ -316,7 +317,7 @@ export const Dashboard = ({ onLogout }: { onLogout?: () => void }) => {
           activeProvider={filters.provider}
           failedOnly={filters.failedOnly}
           failedCount={failed.length}
-          summary={activeFilters.join(' · ') || 'sorted by status'}
+          summary={activeFilters.join(' · ') || 'duruma göre sıralı'}
           onProviderChange={setProvider}
           onToggleFailedOnly={toggleFailedOnly}
         />

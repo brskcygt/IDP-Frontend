@@ -14,7 +14,7 @@ export const LogTail = ({ logs, lines = 3 }: LogTailProps) => {
   return (
     <div className="max-h-full overflow-hidden rounded-md border border-line bg-surface-sunken px-3 py-2">
       {tail.length === 0 ? (
-        <p className="font-mono text-[11px] leading-[22px] text-faint">Waiting for output…</p>
+        <p className="font-mono text-[11px] leading-[22px] text-faint">Çıktı bekleniyor…</p>
       ) : (
         tail.map((line) => <TerminalLogLine key={line.id} line={line} compact />)
       )}

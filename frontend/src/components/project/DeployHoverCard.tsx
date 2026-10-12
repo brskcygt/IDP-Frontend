@@ -1,6 +1,6 @@
 import type { DeploymentHistoryRecord } from "@/hooks/useDeploymentHistory";
 import { deployStatusClass, deployStatusIcon, deployStatusLabel } from "@/lib/deploymentStatus";
-import { formatDeployDuration, formatRelativeTime } from "@/lib/format";
+import { formatDeployDuration, formatRelativeTimeTr } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 type DeployHoverCardProps = {
@@ -35,16 +35,16 @@ export const DeployHoverCard = ({ deployment, anchor }: DeployHoverCardProps) =>
 
       <dl className="mt-2 space-y-1.5 font-mono text-[11px]">
         <div className="flex items-center justify-between gap-2">
-          <dt className="text-dim">Duration</dt>
+          <dt className="text-dim">Süre</dt>
           <dd className="text-foreground">{durationLabel}</dd>
         </div>
         <div className="flex items-center justify-between gap-2">
-          <dt className="text-dim">Started</dt>
-          <dd className="text-foreground">{formatRelativeTime(deployment.startedAt)}</dd>
+          <dt className="text-dim">Başladı</dt>
+          <dd className="text-foreground">{formatRelativeTimeTr(deployment.startedAt)}</dd>
         </div>
         {deployment.triggeredBy && (
           <div className="flex items-center justify-between gap-2">
-            <dt className="text-dim">Triggered by</dt>
+            <dt className="text-dim">Başlatan</dt>
             <dd className="truncate text-foreground">{deployment.triggeredBy}</dd>
           </div>
         )}

@@ -26,7 +26,7 @@ export const TriggerModal = ({ project, isOpen, onOpenChange, onConfirm }: Trigg
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="gap-0 overflow-hidden p-0 sm:max-w-[468px]">
         <div className="border-b border-line px-6 py-5">
-          <p className="mb-2 font-mono text-[10px] tracking-[0.14em] text-dim">TRIGGER DEPLOYMENT</p>
+          <p className="mb-2 font-mono text-[10px] tracking-[0.14em] text-dim">DAĞITIMI BAŞLAT</p>
           <DialogTitle className="text-xl font-bold tracking-tight">{project.name}</DialogTitle>
           <DialogDescription className="mt-1.5 font-mono text-[11.5px] text-muted-foreground">
             {project.tenant} · {project.provider}
@@ -39,7 +39,7 @@ export const TriggerModal = ({ project, isOpen, onOpenChange, onConfirm }: Trigg
 
         <div className="flex items-center gap-2.5 border-t border-line bg-bar px-6 py-4">
           {session?.username && (
-            <span className="font-mono text-[10.5px] text-faint">as {session.username}</span>
+            <span className="text-[11px] text-faint">başlatan: {session.username}</span>
           )}
           <span className="flex-grow" />
           <button
@@ -47,7 +47,7 @@ export const TriggerModal = ({ project, isOpen, onOpenChange, onConfirm }: Trigg
             onClick={() => onOpenChange(false)}
             className="h-[34px] rounded-md border border-line-strong px-3.5 text-[12.5px] font-medium transition-colors hover:bg-accent"
           >
-            Cancel
+            Vazgeç
           </button>
           <button
             type="button"
@@ -59,7 +59,7 @@ export const TriggerModal = ({ project, isOpen, onOpenChange, onConfirm }: Trigg
             )}
           >
             <Terminal className="h-3.5 w-3.5" aria-hidden="true" />
-            Deploy
+            Dağıt
           </button>
         </div>
       </DialogContent>

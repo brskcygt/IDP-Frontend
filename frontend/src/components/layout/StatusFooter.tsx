@@ -11,9 +11,9 @@ type StatusFooterProps = {
 };
 
 const STREAM_LABEL: Record<StreamState, string> = {
-  idle: "stream idle",
-  streaming: "streaming deployment",
-  failed: "stream disconnected",
+  idle: "akış boşta",
+  streaming: "dağıtım akıyor",
+  failed: "bir dağıtım başarısız oldu",
 };
 
 const STREAM_DOT: Record<StreamState, string> = {
@@ -31,7 +31,7 @@ export const StatusFooter = ({
 }: StatusFooterProps) => (
   <footer className="flex h-[30px] shrink-0 items-center justify-between border-t border-line bg-bar px-5 font-mono text-[11px] text-dim">
     <span className="tabular">
-      {visibleCount} of {totalCount} projects
+      {totalCount} projeden {visibleCount} gösteriliyor
       {filterSummary && <> · {filterSummary}</>}
     </span>
     <div className="flex items-center gap-3">

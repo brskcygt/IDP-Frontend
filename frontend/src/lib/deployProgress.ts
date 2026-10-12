@@ -120,23 +120,23 @@ export const advanceProgress = (current: DeployProgress | null, line: string): D
 
 /** Human-readable stage names; unknown stages fall back to the raw name. */
 const STAGE_LABEL: Record<string, string> = {
-  accepted: 'Queued',
-  downloading: 'Downloading artifact',
-  verifying: 'Verifying checksum',
-  extracting: 'Extracting',
-  preserving: 'Preserving data',
-  configuring: 'Writing runtime config',
-  stopping: 'Stopping service',
-  switching: 'Switching release',
-  pre_start: 'Pre-start checks',
-  starting: 'Starting service',
-  health_check: 'Health check',
-  rolling_back: 'Rolling back',
-  cleanup: 'Cleanup',
-  building: 'Building',
+  accepted: 'Sırada',
+  downloading: 'Paket indiriliyor',
+  verifying: 'Checksum doğrulanıyor',
+  extracting: 'Paket açılıyor',
+  preserving: 'Veriler korunuyor',
+  configuring: 'Çalışma ayarları yazılıyor',
+  stopping: 'Servis durduruluyor',
+  switching: 'Sürüm değiştiriliyor',
+  pre_start: 'Başlatma öncesi kontroller',
+  starting: 'Servis başlatılıyor',
+  health_check: 'Sağlık kontrolü',
+  rolling_back: 'Geri alınıyor',
+  cleanup: 'Temizlik',
+  building: 'Derleniyor',
 };
 
-/** Short label for the bar, e.g. "backend · Health check". */
+/** Short label for the bar, e.g. "backend · Sağlık kontrolü". */
 export const progressLabel = (progress: DeployProgress): string => {
   const stage = STAGE_LABEL[progress.stage] ?? progress.stage.replace(/_/g, ' ');
   return progress.component ? `${progress.component} · ${stage}` : stage;

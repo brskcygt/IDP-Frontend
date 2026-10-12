@@ -112,7 +112,7 @@ export function useDeploymentLogStream(): UseDeploymentLogStreamReturn {
       },
 
       onError: () => {
-        setLogs((prev) => [...prev, '[Stream] Connection lost. Reconnecting...']);
+        setLogs((prev) => [...prev, '[Stream] Bağlantı koptu, yeniden bağlanılıyor…']);
       },
     });
   }, [queryClient]);
@@ -122,7 +122,7 @@ export function useDeploymentLogStream(): UseDeploymentLogStreamReturn {
    */
   const triggerDeploy = useCallback(async (projectId: string, params: Record<string, unknown>) => {
     // Clear previous state
-    setLogs([`Triggering deployment for project ${projectId}...`]);
+    setLogs([`Dağıtım başlatılıyor (proje ${projectId})…`]);
     setProgress(null);
     setStatus('connecting');
     setDeploymentId(null);
@@ -132,12 +132,12 @@ export function useDeploymentLogStream(): UseDeploymentLogStreamReturn {
 
       setDeploymentId(depId);
       setStatus('running');
-      setLogs((prev) => [...prev, `Deployment started: ${depId}`, 'Connecting to log stream...']);
+      setLogs((prev) => [...prev, `Dağıtım başladı: ${depId}`, 'Log akışına bağlanılıyor…']);
 
       connectToStream(depId);
     } catch (err: unknown) {
       setStatus('failed');
-      const message = err instanceof Error ? err.message : 'Unknown error';
+      const message = err instanceof Error ? err.message : 'Dağıtım başlatılamadı.';
       setLogs((prev) => [...prev, `ERROR: ${message}`]);
     }
   }, [connectToStream]);
@@ -146,7 +146,7 @@ export function useDeploymentLogStream(): UseDeploymentLogStreamReturn {
    * Attach to an existing deployment session.
    */
   const attachToDeployment = useCallback((depId: string) => {
-    setLogs([`Attaching to existing deployment session: ${depId}...`]);
+    setLogs([`Süren dağıtıma bağlanılıyor: ${depId}…`]);
     setProgress(null);
     setStatus('connecting');
     setDeploymentId(depId);
@@ -163,8 +163,8 @@ export function useDeploymentLogStream(): UseDeploymentLogStreamReturn {
       await transportRef.current.deploy.abort(deploymentId);
       setStatus('aborted');
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Unknown error';
-      setLogs((prev) => [...prev, `ERROR: Failed to abort: ${message}`]);
+      const message = err instanceof Error ? err.message : 'Sunucu yanıt vermedi.';
+      setLogs((prev) => [...prev, `ERROR: Durdurulamadı: ${message}`]);
     }
   }, [deploymentId]);
 

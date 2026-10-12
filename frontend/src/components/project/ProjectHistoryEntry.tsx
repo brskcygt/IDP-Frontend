@@ -4,6 +4,7 @@ import { deployStatusClass, deployStatusIcon, deployStatusLabel } from "@/lib/de
 import { isProductionEnv } from "@/lib/projectMeta";
 import { formatClock, formatDayLabel, formatDeployDuration } from "@/lib/format";
 import { DeploymentLogViewer } from "./DeploymentLogViewer";
+import { environmentLabel } from "@/lib/deployTarget";
 import { cn } from "@/lib/utils";
 
 type ProjectHistoryEntryProps = {
@@ -47,11 +48,11 @@ export const ProjectHistoryEntry = ({ entry, isExpanded, onToggle }: ProjectHist
             {entry.environment && (
               <span
                 className={cn(
-                  "rounded border border-line-strong px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wide",
+                  "rounded border border-line-strong px-1.5 py-0.5 font-mono text-[10px] tracking-wide",
                   isProductionEnv(entry.environment) ? "text-status-warn" : "text-dim",
                 )}
               >
-                {entry.environment}
+                {environmentLabel(entry.environment)}
               </span>
             )}
           </div>
@@ -61,7 +62,7 @@ export const ProjectHistoryEntry = ({ entry, isExpanded, onToggle }: ProjectHist
               {formatDayLabel(entry.startedAt)} · {formatClock(entry.startedAt)}
             </span>
             <span>{durationLabel}</span>
-            {entry.triggeredBy && <span className="truncate">by {entry.triggeredBy}</span>}
+            {entry.triggeredBy && <span className="truncate">başlatan: {entry.triggeredBy}</span>}
           </div>
 
           {entry.error && <p className="mt-1.5 text-[11px] text-status-fail">{entry.error}</p>}

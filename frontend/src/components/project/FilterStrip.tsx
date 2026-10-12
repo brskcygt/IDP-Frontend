@@ -31,7 +31,7 @@ export const FilterStrip = ({
         aria-pressed={activeProvider === null}
         className={cn(CHIP, activeProvider === null ? CHIP_ON : CHIP_OFF)}
       >
-        All
+        Tümü
       </button>
       {providers.map((provider) => (
         <button
@@ -58,7 +58,7 @@ export const FilterStrip = ({
               failedOnly && "border-status-fail/40 bg-status-fail/10",
             )}
           >
-            Failed only ({failedCount})
+            Yalnızca başarısızlar ({failedCount})
           </button>
         </>
       )}

@@ -41,6 +41,16 @@ export const deployStatusIcon = (status: DeployRecordStatus): LucideIcon =>
 export const deployStatusClass = (status: DeployRecordStatus): string =>
   STATUS_CLASS[status] ?? 'text-muted-foreground';
 
-/** "succeeded" -> "Succeeded" — the raw column value, title-cased for display. */
+const STATUS_LABEL: Readonly<Record<string, string>> = {
+  succeeded: 'Başarılı',
+  failed: 'Başarısız',
+  aborted: 'Durduruldu',
+  running: 'Çalışıyor',
+  connecting: 'Bağlanıyor',
+  pending: 'Sırada',
+  idle: 'Boşta',
+};
+
+/** Turkish label for a run status; an unknown value is shown as it came. */
 export const deployStatusLabel = (status: DeployRecordStatus): string =>
-  status.length > 0 ? status.charAt(0).toUpperCase() + status.slice(1) : 'Unknown';
+  STATUS_LABEL[status] ?? (status.length > 0 ? status : 'Bilinmiyor');

@@ -7,6 +7,7 @@ import { MetaChip } from "./MetaChip";
 import { cn } from "@/lib/utils";
 import { useSession } from "@/hooks/useSession";
 import { can } from "@/lib/permissions";
+import { useRunContext } from "@/hooks/useRunContext";
 
 type TerminalStreamHeaderProps = {
   project: Project | null;
@@ -28,6 +29,7 @@ export const TerminalStreamHeader = ({
   const { data: session } = useSession();
   // UX only: the backend refuses an abort without deploy:abort anyway.
   const canAbort = can(session?.role, "deploy:abort");
+  const context = useRunContext(project, deploymentId);
 
   return (
   <div className="flex h-[58px] shrink-0 items-center justify-between border-b border-line bg-bar px-5">
@@ -40,8 +42,11 @@ export const TerminalStreamHeader = ({
         <>
           <MetaChip className="text-muted-foreground">{project.tenant}</MetaChip>
           <MetaChip className={providerClass(project.provider)}>{project.provider}</MetaChip>
+          {context.customer && <MetaChip className="text-foreground">{context.customer}</MetaChip>}
+          {context.version && <MetaChip className="text-muted-foreground">{context.version}</MetaChip>}
         </>
       )}
+      {context.triggeredBy && <span className="shrink-0 text-[11px] text-dim">başlatan: {context.triggeredBy}</span>}
       {deploymentId && <span className="truncate font-mono text-[11px] text-faint">çalışma {deploymentId}</span>}
     </div>
 

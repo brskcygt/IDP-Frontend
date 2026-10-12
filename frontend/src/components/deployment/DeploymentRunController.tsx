@@ -63,7 +63,7 @@ export const DeploymentRunController = ({
     if (failureReportedRef.current || !initialParams || status !== "failed" || deploymentId !== null) return;
     failureReportedRef.current = true;
     const lastLine = logs[logs.length - 1] ?? "";
-    const message = lastLine.startsWith("ERROR: ") ? lastLine.slice(7) : "Deployment could not be started.";
+    const message = lastLine.startsWith("ERROR: ") ? lastLine.slice(7) : "Dağıtım başlatılamadı.";
     onTriggerFailed(runKey, message);
   }, [status, deploymentId, logs, initialParams, runKey, onTriggerFailed]);
 

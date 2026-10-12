@@ -20,7 +20,7 @@ type RunSparklineProps = {
 export const RunSparkline = ({ runs, max = 8 }: RunSparklineProps) => {
   if (!runs || runs.length === 0) {
     return (
-      <span className="font-mono text-[11px] text-faint" title="No run history recorded yet">
+      <span className="font-mono text-[11px] text-faint" title="Henüz çalışma kaydı yok">
         —
       </span>
     );
@@ -30,7 +30,7 @@ export const RunSparkline = ({ runs, max = 8 }: RunSparklineProps) => {
   const longest = Math.max(...visible.map((run) => run.durationMs), 1);
 
   return (
-    <div className="flex h-4 items-end gap-[3px]" role="img" aria-label={`Last ${visible.length} runs`}>
+    <div className="flex h-4 items-end gap-[3px]" role="img" aria-label={`Son ${visible.length} çalışma`}>
       {visible.map((run, index) => (
         <span
           key={run.id}

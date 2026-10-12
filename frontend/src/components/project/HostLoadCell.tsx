@@ -41,7 +41,7 @@ export const HostLoadCell = ({ projectId, provider }: HostLoadCellProps) => {
     return (
       <span className="flex items-center gap-2 font-mono text-[11px] text-dim">
         <span className="h-1.5 w-1.5 rounded-full bg-status-fail" aria-hidden="true" />
-        offline
+        çevrimdışı
       </span>
     );
   }
@@ -50,7 +50,7 @@ export const HostLoadCell = ({ projectId, provider }: HostLoadCellProps) => {
   const ram = telemetry.ramPercent;
 
   return (
-    <div className="flex items-center gap-2" title={`CPU ${cpu}% · RAM ${ram ?? "?"}%`}>
+    <div className="flex items-center gap-2" title={`CPU %${cpu} · RAM %${ram ?? "?"}`}>
       <div className="h-1 w-14 overflow-hidden rounded-sm bg-line-strong">
         <div className={cn("h-1", loadTone(cpu))} style={{ width: `${Math.min(100, cpu)}%` }} />
       </div>

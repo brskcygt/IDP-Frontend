@@ -1,5 +1,6 @@
 import type { DeploymentStatus } from "@/hooks/useDeploymentLogStream";
 import { cn } from "@/lib/utils";
+import { deployStatusLabel } from "@/lib/deploymentStatus";
 
 type DeployProgressBarProps = {
   status: DeploymentStatus;
@@ -32,8 +33,8 @@ export const DeployProgressBar = ({ status, value, className }: DeployProgressBa
     <div
       className={cn("h-1 w-full overflow-hidden bg-line-strong", className)}
       role="progressbar"
-      aria-label="Deployment progress"
-      aria-valuetext={percent === null ? status : `${status} — ${Math.round(percent)}%`}
+      aria-label="Dağıtım ilerlemesi"
+      aria-valuetext={percent === null ? deployStatusLabel(status) : `${deployStatusLabel(status)} — %${Math.round(percent)}`}
       {...(percent === null
         ? {}
         : { "aria-valuenow": Math.round(percent), "aria-valuemin": 0, "aria-valuemax": 100 })}

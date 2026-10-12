@@ -33,16 +33,16 @@ export const TerminalToolbar = ({
         aria-pressed={showTimestamps}
         className={cn(ACTION, showTimestamps && "text-primary")}
       >
-        timestamps {showTimestamps ? "on" : "off"}
+        zaman damgası {showTimestamps ? "açık" : "kapalı"}
       </button>
       <button type="button" onClick={onToggleWrap} aria-pressed={wrap} className={cn(ACTION, wrap && "text-primary")}>
-        wrap
+        satır kaydır
       </button>
       <button type="button" onClick={onCopy} className={cn(ACTION, copied && "text-status-ok")}>
-        {copied ? "copied" : "copy"}
+        {copied ? "kopyalandı" : "kopyala"}
       </button>
       <button type="button" onClick={onDownload} className={ACTION}>
-        download
+        indir
       </button>
     </div>
   </div>

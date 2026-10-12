@@ -1,5 +1,5 @@
 import type { KnownHostKey } from "@/hooks/useHostKeys";
-import { formatRelativeTime } from "@/lib/format";
+import { formatRelativeTimeTr } from "@/lib/format";
 import { ForgetHostKeyControl } from "./ForgetHostKeyControl";
 
 type KnownHostKeyRowProps = {
@@ -27,7 +27,7 @@ export const KnownHostKeyRow = ({ hostKey }: KnownHostKeyRowProps) => {
 
       <div className="flex items-center justify-between gap-2">
         <p className="font-mono text-[10px] text-faint">
-          first {formatRelativeTime(hostKey.firstSeen)} · last {formatRelativeTime(hostKey.lastSeen)}
+          first {formatRelativeTimeTr(hostKey.firstSeen)} · last {formatRelativeTimeTr(hostKey.lastSeen)}
         </p>
         <ForgetHostKeyControl host={hostKey.host} port={hostKey.port} />
       </div>
