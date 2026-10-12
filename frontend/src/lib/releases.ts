@@ -60,3 +60,6 @@ export const releaseByVersion = (
   releases: ReadonlyArray<ArtifactRelease> | undefined,
   version: string | null | undefined,
 ): ArtifactRelease | undefined => (version ? releases?.find((release) => release.version === version) : undefined);
+
+/** Branches the composer pushes; hidden from branch lists unless asked for. */
+export const isPreviewBranch = (name: string): boolean => name.startsWith('preview/');
