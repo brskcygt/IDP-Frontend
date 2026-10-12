@@ -19,10 +19,10 @@ export type TroubleshootingEntry = {
 };
 
 export const TROUBLESHOOTING_CATEGORIES: ReadonlyArray<{ id: TroubleshootingCategory; label: string }> = [
-  { id: 'network', label: 'Bağlantı & firewall' },
-  { id: 'server', label: 'Sunucu & kurulum' },
-  { id: 'build', label: 'Jenkins & release' },
-  { id: 'deploy', label: 'Deploy & agent' },
+  { id: 'network', label: 'Bağlantı ve firewall' },
+  { id: 'server', label: 'Sunucu ve kurulum' },
+  { id: 'build', label: 'Jenkins ve sürüm' },
+  { id: 'deploy', label: 'Kurulum ve agent' },
   { id: 'app', label: 'Arayüz' },
 ];
 
@@ -75,7 +75,7 @@ export const TROUBLESHOOTING_ENTRIES: TroubleshootingEntry[] = [
       },
       { label: 'Yanlış klasörü temizle', value: 'Remove-Item C:\\IDP\\idp-server\\<IP> -Recurse -Force' },
     ],
-    note: 'Boş veriyle çalışırken proje yeniden oluşturulduysa Project ID değişmiştir; Jenkins IDP_PROJECT_ID ve upload token’ı da yenile.',
+    note: 'Boş veriyle çalışırken proje yeniden oluşturulduysa Proje ID değişmiştir; Jenkins IDP_PROJECT_ID ve upload token’ı da yenile.',
   },
   {
     id: 'restart-backend',
@@ -115,14 +115,14 @@ export const TROUBLESHOOTING_ENTRIES: TroubleshootingEntry[] = [
     id: 'settings-save-failed',
     category: 'app',
     title: 'Proje ayarları kaydedilmiyor',
-    symptoms: ['Failed to update project settings', 'Invalid project settings.', 'No Jenkins URL configured — set it in project settings.'],
-    cause: 'Kaydet, iki sekmedeki (General + Artifact Deploy) değişiklikleri birlikte gönderir; yarım bir Artifact Deploy bileşeni tüm kaydı reddettirir. Connection Test yalnız kayıtlı ayarları test eder, kayıt olmadıysa URL’yi göremez.',
+    symptoms: ['Ayarlar kaydedilemedi', 'Invalid project settings.', 'No Jenkins URL configured — set it in project settings.'],
+    cause: 'Kaydet, iki sekmedeki (Genel + Derleme ve kaynak) değişiklikleri birlikte gönderir; yarım bir bileşen tanımı tüm kaydı reddettirir. Bağlantıyı test et yalnız kayıtlı ayarları dener, kayıt olmadıysa adresi göremez.',
     steps: [
       'Hata bildirimindeki alan yoluna bak (örn. artifactDeploy.components.0.name).',
-      'Cancel ile kapatıp yeniden aç; önce yalnız General Settings’i kaydet, sonra Artifact Deploy’u ayrı kaydet.',
-      'Component Name: küçük harfle başlar, yalnız a-z 0-9 - (en fazla 32).',
-      'Subdirectory: zorunlu, tek klasör adı; iki component aynı ad/klasörü kullanamaz.',
-      'NSSM / Windows service / systemd seçiliyse Service name zorunlu; Health URL girilirse http(s):// ile başlamalı.',
+      'Vazgeç ile kapatıp yeniden aç; önce yalnız Genel’i kaydet, sonra Derleme ve kaynak’ı ayrı kaydet.',
+      'Bileşen Ad: küçük harfle başlar, yalnız a-z 0-9 - (en fazla 32).',
+      'Alt dizin: zorunlu, tek klasör adı; iki bileşen aynı ad/klasörü kullanamaz.',
+      'Çalışma şekli NSSM / Windows servisi / systemd ise Servis adı zorunlu; Sağlık URL’si girilirse http(s):// ile başlamalı.',
     ],
   },
   {
@@ -132,9 +132,9 @@ export const TROUBLESHOOTING_ENTRIES: TroubleshootingEntry[] = [
     symptoms: ['Jenkins API: Could not verify', 'connect ETIMEDOUT <PUBLIC_IP>:8080'],
     cause: 'Oracle VM kendi public IP’sine içeriden bağlanamaz (public IP NIC’te değil, NAT’ta). IDP → Jenkins ve Jenkins → IDP çağrıları yerel adresten yapılmalı.',
     steps: [
-      'Project Settings → Jenkins URL: http://127.0.0.1:8080',
+      'Ayarlar → Genel → Jenkins adresi: http://127.0.0.1:8080',
       'Jenkins Global properties → IDP_URL: http://127.0.0.1:3001',
-      'Jenkins Username/API Token: Jenkins kullanıcısının kendi Security → API Token değeri (IDP admin hesabı değil).',
+      'Kullanıcı adı / API token: Jenkins kullanıcısının kendi Security → API Token değeri (IDP yönetici hesabı değil).',
     ],
     snippets: [
       {
@@ -165,8 +165,8 @@ export const TROUBLESHOOTING_ENTRIES: TroubleshootingEntry[] = [
     cause: 'Jenkinsfile bu değerleri ortam değişkeni olarak bekler; job parametresi değildir.',
     steps: [
       'Manage Jenkins → System → Global properties → Environment variables’ı işaretle.',
-      'IDP_URL = http://127.0.0.1:3001 (Jenkins IDP ile aynı makinedeyse) · IDP_PROJECT_ID = Project Settings başlığındaki Project ID.',
-      'Kaydet ve yeni bir VERSION ile release başlat.',
+      'IDP_URL = http://127.0.0.1:3001 (Jenkins IDP ile aynı makinedeyse) · IDP_PROJECT_ID = proje Ayarlar penceresinin başlığındaki Proje ID.',
+      'Kaydet ve yeni bir sürüm derle.',
     ],
   },
   {
@@ -194,7 +194,7 @@ export const TROUBLESHOOTING_ENTRIES: TroubleshootingEntry[] = [
     category: 'build',
     title: 'Artifact upload 401 / 503 dönüyor',
     symptoms: ['Upload failed for <file>.tar.gz: 401 {"error":"Unauthorized"}', 'Upload failed ... 503'],
-    cause: '401: token başka bir Project ID için üretilmiş (proje silinip yeniden oluşturulduysa ID değişir) veya ana token değişmiş. 503: backend’de IDP_ARTIFACT_UPLOAD_TOKEN yok ya da backend yeni .env’yi okumamış.',
+    cause: '401: token başka bir Proje ID için üretilmiş (proje silinip yeniden oluşturulduysa ID değişir) veya ana token değişmiş. 503: backend’de IDP_ARTIFACT_UPLOAD_TOKEN yok ya da backend yeni .env’yi okumamış.',
     steps: [
       'Build logunun ilk satırındaki deploy_<PROJECT_ID>_… ile Jenkins IDP_PROJECT_ID’yi karşılaştır.',
       'Farklıysa IDP_PROJECT_ID’yi güncelle ve token’ı o ID için yeniden üretip credential’a yaz.',
@@ -212,7 +212,7 @@ export const TROUBLESHOOTING_ENTRIES: TroubleshootingEntry[] = [
       'Agent makinesinde gerçek çıkış IP’sini al (ipconfig’deki 10.x / 192.168.x değil).',
       'Agent ağının 7003’e dışarı çıkabildiğini portquiz ile doğrula.',
       'Sunucuda 7003 kuralının uzak adreslerini listele; agent IP’si yoksa betiği boşluksuz listeyle yeniden çalıştır.',
-      'Arayüzdeki agent IP izin listesi doluysa agent IP’sini oraya da ekle (yoksa TCP açılır ama 403 alınır).',
+      'Yönetim → Agent erişim listesi doluysa agent IP’sini oraya da ekle (yoksa TCP açılır ama 403 alınır).',
     ],
     snippets: [
       {
@@ -233,7 +233,7 @@ export const TROUBLESHOOTING_ENTRIES: TroubleshootingEntry[] = [
   {
     id: 'public-url-https',
     category: 'deploy',
-    title: 'Deploy “IDP_PUBLIC_URL geçersiz” diyor',
+    title: 'Kurulum “IDP_PUBLIC_URL geçersiz” diyor',
     symptoms: ["IDP_PUBLIC_URL geçersiz: NODE_ENV=production iken https:// olmalı", 'Artifact deploy (POST /api/targets/:id/deploy) 503 döner.'],
     cause: 'Agent paketi indirirken kısa ömürlü token’ı bu adrese gönderir; production’da düz http kabul edilmez. NODE_ENV’i değiştirmek diğer korumaları da gevşetir, önerilmez.',
     steps: [
@@ -253,13 +253,13 @@ export const TROUBLESHOOTING_ENTRIES: TroubleshootingEntry[] = [
   {
     id: 'service-name',
     category: 'deploy',
-    title: 'Component “Service name” ne olmalı?',
+    title: 'Bileşen “Servis adı” ne olmalı?',
     symptoms: ["Required for 'nssm': 1-128 letters, digits, '.', '_', '@' or '-'.", 'BACKEND not installed'],
-    cause: 'Service name, hedef makinede zaten kayıtlı Windows servisinin adıdır; agent servisi oluşturmaz, yalnız durdurur/başlatır. “not installed” ilk deploy’dan önce normaldir.',
+    cause: 'Servis adı, hedef makinede zaten kayıtlı Windows servisinin adıdır; agent servisi oluşturmaz, yalnız durdurur/başlatır. “not installed” ilk deploy’dan önce normaldir.',
     steps: [
-      'İlk deploy’da Runtime “None” kalsın; dosyalar hedefe insin.',
+      'İlk kurulumda Çalışma şekli “Yok” kalsın; dosyalar hedefe insin.',
       'Hedefte servisi oluştur (demo: ops\\bootstrap-windows.ps1).',
-      'Get-Service ile Name sütunundaki değeri al (DisplayName değil) ve Runtime’ı NSSM/Windows service yap.',
+      'Get-Service ile Name sütunundaki değeri al (DisplayName değil) ve Çalışma şeklini NSSM / Windows servisi yap.',
       'IIS static için App pool adını IIS listesinden al.',
     ],
     snippets: [
@@ -272,7 +272,7 @@ export const TROUBLESHOOTING_ENTRIES: TroubleshootingEntry[] = [
   {
     id: 'wwwroot-access-denied',
     category: 'deploy',
-    title: 'Deploy klasörüne erişim reddediliyor',
+    title: 'Kurulum klasörüne erişim reddediliyor',
     symptoms: ['Folder Access Denied', 'You require permission from Administrators to make changes to this folder'],
     cause: 'Agent SYSTEM olarak çalışır ve klasörleri yalnız SYSTEM/Administrators erişimiyle oluşturur; yönetici olarak açılmayan Gezgin bu yetkiyi kullanamaz. Silme/taşımada açık dosyalar (çalışan servis, app pool) da aynı hatayı verir.',
     steps: [

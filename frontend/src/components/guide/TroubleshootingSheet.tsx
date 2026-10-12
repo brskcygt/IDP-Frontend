@@ -97,7 +97,7 @@ export const TroubleshootingSheet = ({ isOpen, onOpenChange }: Props) => {
           <Input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Hata metni ara: 401, 7003, IDP_PUBLIC_URL, Failed to update…"
+            placeholder="Hata metni ara: 401, 7003, IDP_PUBLIC_URL, kaydedilemedi…"
             aria-label="Sorun ara"
             className="pl-9"
           />
