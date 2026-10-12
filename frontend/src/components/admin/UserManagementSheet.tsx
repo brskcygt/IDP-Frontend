@@ -41,7 +41,7 @@ export const UserManagementSheet = ({ isOpen, onOpenChange }: UserManagementShee
           <div className="flex items-center justify-between">
             <SheetTitle className="flex items-center gap-2.5 text-[15px] font-bold tracking-tight">
               <ShieldCheck className="h-4 w-4 text-primary" aria-hidden="true" />
-              User management
+              Kullanıcılar
             </SheetTitle>
             <Button
               type="button"
@@ -51,11 +51,11 @@ export const UserManagementSheet = ({ isOpen, onOpenChange }: UserManagementShee
               onClick={() => setIsCreating((v) => !v)}
             >
               {isCreating ? <X className="h-3 w-3" /> : <Plus className="h-3 w-3" />}
-              {isCreating ? 'Cancel' : 'Add user'}
+              {isCreating ? 'Vazgeç' : 'Kullanıcı ekle'}
             </Button>
           </div>
           <SheetDescription className="mt-1 font-mono text-[10.5px] tracking-[0.04em] text-dim">
-            ROLES · ADMIN &gt; DEPLOYER &gt; VIEWER
+            ROLLER · ADMIN &gt; DEPLOYER &gt; VIEWER
           </SheetDescription>
         </div>
 

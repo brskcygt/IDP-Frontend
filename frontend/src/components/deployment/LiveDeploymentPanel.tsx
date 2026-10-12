@@ -166,7 +166,7 @@ export const LiveDeploymentPanel = ({
             className="inline-flex h-[30px] items-center gap-1.5 rounded-md border border-status-fail/40 bg-status-fail/[0.07] px-3.5 text-xs font-semibold text-status-fail transition-colors hover:bg-status-fail/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             <Square className="h-3 w-3" aria-hidden="true" />
-            Abort
+            Durdur
           </button>
         )}
       </div>

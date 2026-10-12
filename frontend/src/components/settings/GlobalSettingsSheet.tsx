@@ -67,11 +67,11 @@ export const GlobalSettingsSheet = ({ isOpen, onOpenChange, canEdit }: Props) =>
         <SheetHeader>
           <SheetTitle className="flex items-center gap-2.5 text-lg">
             <Settings2 className="h-5 w-5 text-primary" />
-            Settings
+            Sunucu ayarları
           </SheetTitle>
           <SheetDescription>
-            Applies to every project on this server. A project can override any of it from its own
-            Artifact Deploy settings.
+            Bu sunucudaki tüm projeler için geçerlidir. Her proje, kendi Ayarlar → Derleme ve kaynak
+            bölümünden bunları ezebilir.
           </SheetDescription>
         </SheetHeader>
 

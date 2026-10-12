@@ -47,10 +47,10 @@ export const ActivityLogSheet = ({ isOpen, onOpenChange }: ActivityLogSheetProps
         <div className="shrink-0 border-b border-line-strong bg-bar px-5 py-4">
           <SheetTitle className="flex items-center gap-2.5 text-[15px] font-bold tracking-tight">
             <Activity className="h-4 w-4 text-primary" aria-hidden="true" />
-            Activity log
+            Etkinlik kaydı
           </SheetTitle>
           <SheetDescription className="mt-1 font-mono text-[10.5px] tracking-[0.04em] text-dim">
-            AUDIT TRAIL · REFRESHES EVERY 10S
+            DENETİM KAYDI · 10 SN'DE BİR YENİLENİR
           </SheetDescription>
         </div>
 

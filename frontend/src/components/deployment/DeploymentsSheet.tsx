@@ -3,7 +3,15 @@ import { Button } from "@/components/ui/button";
 import { useDeploymentSessions, type DeploymentSession } from "@/hooks/useDeploymentSessions";
 import { useProjects } from "@/hooks/useProjects";
 import { PlayCircle, Clock, CheckCircle2, XCircle, AlertCircle, TerminalSquare } from "lucide-react";
-import { formatDistanceToNow } from "date-fns";
+import { formatRelativeTimeTr } from "@/lib/format";
+
+const STATUS_LABEL: Record<string, string> = {
+  connecting: "bağlanıyor",
+  running: "sürüyor",
+  succeeded: "başarılı",
+  failed: "başarısız",
+  aborted: "durduruldu",
+};
 
 type DeploymentsSheetProps = {
   isOpen: boolean;
@@ -33,7 +41,7 @@ export const DeploymentsSheet = ({ isOpen, onOpenChange, onAttach }: Deployments
 
   const getProjectName = (projectId: string) => {
     const p = projects?.find((p) => p.id === projectId);
-    return p ? p.name : 'Unknown Project';
+    return p ? p.name : 'Bilinmeyen proje';
   };
 
   return (
@@ -42,19 +50,19 @@ export const DeploymentsSheet = ({ isOpen, onOpenChange, onAttach }: Deployments
         <SheetHeader className="mb-6">
           <SheetTitle className="flex items-center gap-2">
             <TerminalSquare className="h-5 w-5" />
-            Active & Recent Deployments
+            Dağıtım geçmişi
           </SheetTitle>
           <SheetDescription>
-            View background deployments and attach to their live terminal streams.
+            Süren ve son dağıtımlar. Birini seçip canlı log akışını açın.
           </SheetDescription>
         </SheetHeader>
 
         <div className="space-y-4">
-          {isLoading && <div className="text-sm text-muted-foreground">Loading sessions...</div>}
+          {isLoading && <div className="text-sm text-muted-foreground">Yükleniyor…</div>}
           
           {!isLoading && (!sessions || sessions.length === 0) && (
             <div className="text-center py-8 text-muted-foreground text-sm bg-accent/30 rounded-lg border border-border/50">
-              No active or recent deployments.
+              Süren ya da yakın zamanda biten dağıtım yok.
             </div>
           )}
 
@@ -68,14 +76,14 @@ export const DeploymentsSheet = ({ isOpen, onOpenChange, onAttach }: Deployments
                 <div className="space-y-1">
                   <p className="text-sm font-medium leading-none">{getProjectName(session.projectId)}</p>
                   <p className="text-xs text-muted-foreground">
-                    {formatDistanceToNow(new Date(session.startedAt), { addSuffix: true })}
+                    {formatRelativeTimeTr(session.startedAt)}
                   </p>
                   <div className="flex gap-2">
                     <span className="text-[10px] uppercase font-semibold text-muted-foreground bg-accent/50 px-1.5 py-0.5 rounded">
-                      {session.status}
+                      {STATUS_LABEL[session.status] ?? session.status}
                     </span>
                     <span className="text-[10px] text-muted-foreground bg-accent/50 px-1.5 py-0.5 rounded">
-                      {session.logCount} logs
+                      {session.logCount} log satırı
                     </span>
                   </div>
                 </div>
@@ -88,7 +96,7 @@ export const DeploymentsSheet = ({ isOpen, onOpenChange, onAttach }: Deployments
                   onOpenChange(false);
                 }}
               >
-                View
+                Aç
               </Button>
             </div>
           ))}

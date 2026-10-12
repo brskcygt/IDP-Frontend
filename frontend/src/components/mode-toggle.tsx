@@ -4,7 +4,7 @@ import { useTheme } from "@/components/theme-provider";
 
 const NEXT_THEME = { light: "dark", dark: "system", system: "light" } as const;
 
-const LABEL = { light: "Light theme", dark: "Dark theme", system: "System theme" } as const;
+const LABEL = { light: "Açık tema", dark: "Koyu tema", system: "Sistem teması" } as const;
 
 /** Rail-sized theme cycle: light → dark → system. */
 export function ModeToggle({ expanded = false }: { expanded?: boolean }) {
@@ -15,8 +15,8 @@ export function ModeToggle({ expanded = false }: { expanded?: boolean }) {
     <button
       type="button"
       onClick={() => setTheme(NEXT_THEME[current])}
-      aria-label={`${LABEL[current]} — click to change`}
-      title={`${LABEL[current]} — click to change`}
+      aria-label={`${LABEL[current]} — değiştirmek için tıklayın`}
+      title={`${LABEL[current]} — değiştirmek için tıklayın`}
       className="flex h-10 w-full shrink-0 items-center rounded-md text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
     >
       <span className="flex h-10 w-14 shrink-0 items-center justify-center">

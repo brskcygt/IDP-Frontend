@@ -36,7 +36,7 @@ export const TopBar = ({
           INTERNAL DEPLOYMENT PLATFORM
         </span>
         <span aria-hidden="true" className="text-faint">/</span>
-        <h1 className="text-[13px] font-semibold">Projects</h1>
+        <h1 className="text-[13px] font-semibold">Projeler</h1>
       </div>
 
       <div className="flex items-center gap-2.5">
@@ -48,8 +48,8 @@ export const TopBar = ({
           <Input
             value={search}
             onChange={(event) => onSearchChange(event.target.value)}
-            placeholder="Filter projects"
-            aria-label="Filter projects"
+            placeholder="Projeleri filtrele"
+            aria-label="Projeleri filtrele"
             className="h-[30px] rounded-md border-line-strong bg-surface pl-8 text-xs md:text-xs"
           />
         </div>
@@ -61,7 +61,7 @@ export const TopBar = ({
             className="h-[30px] gap-1.5 border-line-strong bg-surface px-3 text-xs"
           >
             <Plus className="h-3.5 w-3.5" aria-hidden="true" />
-            New
+            Yeni proje
           </Button>
         )}
 
@@ -75,8 +75,8 @@ export const TopBar = ({
               <Button
                 variant="ghost"
                 size="icon"
-                title="Known host keys"
-                aria-label="Known host keys"
+                title="Bilinen host anahtarları"
+                aria-label="Bilinen host anahtarları"
                 className="h-[30px] w-[30px] text-dim hover:bg-accent hover:text-foreground"
                 onClick={() => setIsHostKeysOpen(true)}
               >
@@ -99,8 +99,8 @@ export const TopBar = ({
               <Button
                 variant="ghost"
                 size="icon"
-                title="Manage users"
-                aria-label="Manage users"
+                title="Kullanıcılar"
+                aria-label="Kullanıcılar"
                 className="h-[30px] w-[30px] text-dim hover:bg-accent hover:text-foreground"
                 onClick={() => setIsUserManagementOpen(true)}
               >

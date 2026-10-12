@@ -38,10 +38,10 @@ export const KnownHostKeysSheet = ({ isOpen, onOpenChange }: KnownHostKeysSheetP
         <div className="shrink-0 border-b border-line-strong bg-bar px-5 py-4">
           <SheetTitle className="flex items-center gap-2.5 text-[15px] font-bold tracking-tight">
             <KeyRound className="h-4 w-4 text-primary" aria-hidden="true" />
-            Known host keys
+            Bilinen host anahtarları
           </SheetTitle>
           <SheetDescription className="mt-1 font-mono text-[10.5px] tracking-[0.04em] text-dim">
-            SSH HOST KEY POLICY (T-17)
+            SSH HOST ANAHTARI POLİTİKASI (T-17)
           </SheetDescription>
         </div>
 
