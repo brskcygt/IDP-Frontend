@@ -58,7 +58,7 @@ const githubSteps: GuideStep[] = [
     icon: Settings2,
     items: [
       '.github/workflows/idp-release.yml içinde workflow_dispatch ve zorunlu VERSION input’u bulunmalı.',
-      'Project Settings başlığından Project ID’yi kopyala; Repository Variables içine IDP_URL ve IDP_PROJECT_ID olarak ekle.',
+      'Proje Ayarlar penceresinin başlığından Proje ID’yi kopyala; Repository Variables içine IDP_URL ve IDP_PROJECT_ID olarak ekle.',
       'IDP sunucusunda proje-kapsamlı upload token üretip Repository Secret olarak IDP_ARTIFACT_UPLOAD_TOKEN adıyla ekle.',
       'Tokenı workflow dosyasına, loga veya komut satırı argümanına yazma.',
     ],
@@ -98,7 +98,7 @@ const githubSteps: GuideStep[] = [
       'ZIP’i müşteri sunucusuna taşı, çıkart ve install-idp-agent-<ID>.ps1 dosyasını yönetici PowerShell ile çalıştır.',
       'Installer eksik deploy base path’i ve altındaki agent klasörünü otomatik oluşturur; wwwroot altında elle klasör açman gerekmez.',
       'Agent’ın gateway’e outbound erişimi olmalı; Cloudflare yoksa LAN/VPN rotası gerekir.',
-      'IDP agent listesinde ilgili kimlik Online görünmeden target oluşturma.',
+      'IDP agent listesinde ilgili kimlik çevrimiçi görünmeden müşteri oluşturma.',
     ],
     snippets: [
       {
@@ -108,35 +108,35 @@ const githubSteps: GuideStep[] = [
     ],
   },
   {
-    title: 'Deploy target oluştur',
-    summary: 'Target, bir release’in hangi agent ve dizine kurulacağını belirler.',
+    title: 'Müşteri oluştur',
+    summary: 'Müşteri, bir sürümün hangi agent ve dizine kurulacağını belirler.',
     icon: Network,
     items: [
-      'Project → Releases → Targets → Add target yolunu aç.',
-      'Target adı, online agent, işletim sistemi, ortam ve base path’i seç.',
-      'Target base path ile agent application.yml içindeki deploy.base-path birebir aynı olmalı.',
+      'Proje satırında Aç → Müşteriler → Müşteri ekle yolunu aç (admin).',
+      'Müşteri adı, çevrimiçi agent, işletim sistemi, ortam ve kurulum dizinini seç.',
+      'Kurulum dizini ile agent application.yml içindeki deploy.base-path birebir aynı olmalı.',
       'Backend için env-file, frontend için frontend-config-js runtime config kullan; config.js içine secret koyma.',
       'Paketin köküne .env.example koyarsan runtime config editörü desteklenen anahtarları öneri olarak gösterir (# satırları açıklama olur).',
     ],
   },
   {
-    title: 'İlk release’i üret',
+    title: 'İlk sürümü derle',
     summary: 'Sürüm numarası immutable’dır; başarısız veya hazır bir sürümü tekrar kullanma.',
     icon: PackageCheck,
     items: [
-      'Project satırındaki Releases ekranında New’e bas.',
-      '1.4.0 veya 1.4.0-test.1 gibi daha önce kullanılmamış bir VERSION gir.',
+      'Kaynak kodda v1.4.0 gibi daha önce kullanılmamış bir tag oluştur (GitHub’da tag’i GitHub’da aç).',
+      'Aç → Sürümler → Yeni sürüm → Tag’den sürüm ile tag’i seç ya da yaz; sürüm adı tag adıdır.',
       'IDP repository/workflow/dispatch kontrollerinden sonra GitHub Actions işini başlatır.',
-      'Build; test, package, manifest, upload ve finalize aşamalarını tamamlayınca release Ready olur.',
+      'Build; test, package, manifest, upload ve finalize aşamalarını tamamlayınca sürüm Hazır olur.',
     ],
     note: 'Queued uzun sürerse runner’ın doğru repository’ye kayıtlı ve workflow etiketleriyle eşleştiğini kontrol et.',
   },
   {
-    title: 'Release’i hedefe deploy et',
-    summary: 'Ready release seçilir; build çıktısı müşteri sunucusunda yeniden derlenmez.',
+    title: 'Sürümü müşteriye kur',
+    summary: 'Hazır sürüm seçilir; build çıktısı müşteri sunucusunda yeniden derlenmez.',
     icon: Rocket,
     items: [
-      'Ready release’i seç, Deploy’e bas ve target’ı seç.',
+      'Müşteriler sekmesinde müşterinin Kur… düğmesine ya da Sürümler’de sürümün Kur… düğmesine bas; Sürüm kur penceresinde müşteri ve sürümü seç.',
       'Gerekmedikçe backend ve frontend component seçimlerini değiştirme.',
       'IDP download → SHA verify → extract → stop → swap → configure → start → health sırasını yürütür.',
       'Health endpoint’i artifact sürümünü döndürüyorsa expectVersionPath olarak version tanımla.',
@@ -144,14 +144,14 @@ const githubSteps: GuideStep[] = [
     note: 'İlk kurulumda servis/IIS henüz yoksa önce runtime:none ile dosyaları bırak, bir kerelik bootstrap yap, sonra runtime’ı NSSM/IIS olarak kaydet.',
   },
   {
-    title: 'Doğrula ve gerektiğinde rollback yap',
+    title: 'Doğrula ve gerektiğinde geri al',
     summary: 'Başarı yalnız dosyanın açılması değil, çalışan uygulamanın doğru sürümü vermesidir.',
     icon: RotateCcw,
     items: [
       'Deploy sonucunda tüm component’lerin completed olduğunu kontrol et.',
       'Backend /health ve frontend /version.json cevaplarında release sürümünü doğrula.',
-      'Yeni sürüm hatalıysa target menüsündeki Rollback ile önceki kurulu sürüme dön.',
-      'Rollback sonrası health cevaplarının eski sürümü gösterdiğini kontrol et.',
+      'Yeni sürüm hatalıysa Müşteriler’de müşterinin ⋯ menüsünden Geri al → <önceki sürüm> ile dön.',
+      'Geri alma sonrası health cevaplarının eski sürümü gösterdiğini kontrol et.',
     ],
   },
 ];
@@ -212,7 +212,7 @@ const bitbucketSteps: GuideStep[] = [
     items: [
       'Repository köküne bitbucket-pipelines.yml ekle; pipelines.custom.idp-release altında VERSION değişkenini tanımla.',
       'Repository Settings → Pipelines → Repository variables altında IDP_URL ve IDP_PROJECT_ID ekle.',
-      'IDP_ARTIFACT_UPLOAD_TOKEN değişkenini Secured olarak ekle; Project ID’yi IDP Project Settings başlığından kopyala.',
+      'IDP_ARTIFACT_UPLOAD_TOKEN değişkenini Secured olarak ekle; Proje ID’yi IDP’de proje Ayarlar penceresinin başlığından kopyala.',
       'scripts/make-manifest.js ve scripts/upload-artifacts.js dosyalarını uygulama repository’sine koy.',
     ],
     snippets: [
@@ -247,22 +247,22 @@ const bitbucketSteps: GuideStep[] = [
     summary: 'Test Connection release öncesinde repository, pipeline yetkisi ve YAML tanımını salt okunur kontrol eder.',
     icon: Network,
     items: [
-      'Project Settings’i kaydet ve Test Connection çalıştır.',
+      'Proje Ayarlar’ını kaydet ve Genel sekmesinde Test Connection çalıştır.',
       'Bitbucket Repository ve Bitbucket Pipelines kontrollerinin yeşil olduğunu doğrula.',
       'Pipeline Definition kontrolünde idp-release custom pipeline’ının seçilen ref’te bulunduğunu gör.',
       'YAML shared/imported config kullanıyorsa tanım kontrolü uyarı verebilir; gerçek tetikleme yine Bitbucket tarafından belirlenir.',
     ],
   },
   {
-    title: 'Müşteri sunucusu için IDP Agent ve target oluştur',
+    title: 'Müşteri sunucusu için IDP Agent ve müşteri oluştur',
     summary: 'Bitbucket artifact üretir; müşteri agent’ı immutable çıktıyı hedef dizine kurar.',
     icon: ServerCog,
     items: [
       'Agent oluştur ekranında benzersiz Agent ID ve deploy base path gir; paketi müşteri sunucusunda yönetici olarak kur.',
       'Installer eksik deploy base path’i ve agent klasörünü otomatik oluşturur; hedef klasörü önceden elle hazırlama.',
-      'Agent Online olduktan sonra target’ta aynı agent, işletim sistemi, ortam ve birebir aynı base path’i seç.',
-      'Backend .env ve frontend config.js değerlerini target runtime config alanına ekle; config.js içine secret koyma.',
-      'İlk kurulumda component runtime’larını none bırak; önce Ready release’i dosya olarak deploy et.',
+      'Agent çevrimiçi olduktan sonra müşteride aynı agent, işletim sistemi, ortam ve birebir aynı base path’i seç.',
+      'Backend .env ve frontend config.js değerlerini müşterinin çalışma ayarları alanına ekle; config.js içine secret koyma.',
+      'İlk kurulumda bileşen runtime’larını none bırak; önce Hazır sürümü dosya olarak kur.',
     ],
     snippets: [
       {
@@ -273,13 +273,13 @@ const bitbucketSteps: GuideStep[] = [
     note: 'Aynı Windows makinede GitHub/Jenkins demoları da varsa ayrı agent ve ayrı base path kullan.',
   },
   {
-    title: 'Release’i tetikle ve ilk bootstrap’ı yap',
-    summary: 'IDP VERSION değerini custom pipeline’a gönderir; finalize edilen release Ready olduğunda target’a deploy edilir.',
+    title: 'Sürümü derle ve ilk bootstrap’ı yap',
+    summary: 'IDP VERSION değerini custom pipeline’a gönderir; finalize edilen sürüm Hazır olduğunda müşteriye kurulur.',
     icon: Rocket,
     items: [
-      'Releases → New ile daha önce kullanılmamış bir sürüm gir; IDP Bitbucket pipeline’ını tetikleyip logları canlı izler.',
-      'Pipeline test/package/upload/finalize tamamlanınca Ready release’i seçip target’a Deploy selected yap.',
-      'Bootstrap öncesinde backend/server.js ve frontend/index.html dosyalarının target base path altında oluştuğunu doğrula.',
+      'Aç → Kaynak kod’da tag oluştur, ardından tag satırındaki Sürüm derle ile derle; IDP Bitbucket pipeline’ını tetikleyip logları canlı izler. Test için Sürümler → Yeni sürüm → Tek branch’ten test sürümü de kullanılabilir.',
+      'Pipeline test/package/upload/finalize tamamlanınca sürümü Kur… ile müşteriye kur.',
+      'Bootstrap öncesinde backend/server.js ve frontend/index.html dosyalarının müşterinin kurulum dizini altında oluştuğunu doğrula.',
       'İlk runtime:none deploy’dan sonra artifact içindeki bootstrap scriptini müşteri sunucusunda yönetici olarak bir kez çalıştır.',
       'Frontend config.js içindeki API_BASE_URL değerinde localhost değil, istemcilerin erişebildiği müşteri sunucusu IP’sini ve backend 8087 portunu kullan.',
       'Ardından backend runtime NSSM, frontend runtime IIS static ve iki health/version ayarını kaydet.',
@@ -346,16 +346,16 @@ const bitbucketSteps: GuideStep[] = [
     note: 'Bootstrap yalnız ilk kurulumda gerekir. Sonraki release’lerde IDP deploy/restart akışını yürütür; PowerShell’de sürekli frontend prosesi açık tutulmaz.',
   },
   {
-    title: 'Normal deploy, config ve rollback akışını kullan',
+    title: 'Normal kurulum, ayar ve geri alma akışını kullan',
     summary: 'Bootstrap sonrası yeni sürümlerde müşteri sunucusunda elle komut çalıştırılmaz.',
     icon: RotateCcw,
     items: [
-      'Yeni geliştirmeyi kayıtlı release branch’ine merge/push et ve IDP’den benzersiz VERSION ile New release başlat.',
-      'Ready release için yalnız Deploy selected kullan; IDP stop, swap, config, start ve health adımlarını yürütür.',
-      'Yalnız ortam ayarı değiştiyse target config’i güncelle ve Apply config çalıştır.',
-      'Health başarısızsa logu incele; gerekirse Rollback ile önceki sağlıklı sürüme dön.',
+      'Yeni geliştirmeyi merge/push et, Kaynak kod’da yeni tag oluştur ve Sürüm derle ile derle.',
+      'Hazır sürümü Kur… ile kur; IDP stop, swap, config, start ve health adımlarını yürütür.',
+      'Yalnız ortam ayarı değiştiyse Ayarlar → Müşteriler’de çalışma ayarlarını güncelle, sonra Müşteriler sekmesinde ⋯ → Ayarları uygula çalıştır.',
+      'Health başarısızsa logu incele; gerekirse ⋯ → Geri al ile önceki sağlıklı sürüme dön.',
     ],
-    note: 'Apply config servis veya IIS sitesi oluşturmaz. Bootstrap yalnız yeni/sıfırlanmış target ya da service/site/port değişikliğinde tekrarlanır.',
+    note: 'Ayarları uygula servis veya IIS sitesi oluşturmaz. Bootstrap yalnız yeni/sıfırlanmış müşteri ya da service/site/port değişikliğinde tekrarlanır.',
   },
 ];
 
@@ -412,7 +412,7 @@ const jenkinsSteps: GuideStep[] = [
     items: [
       'Jenkins kullanıcısı için API token üret; kullanıcıya Overall Read, Job Read, Job Build ve gerekirse Job Cancel ver.',
       'Manage Jenkins → Credentials altında Secret text oluştur; ID değeri idp-artifact-upload-token olsun.',
-      'IDP Project Settings başlığından Project ID’yi kopyala; job/global environment içine IDP_URL ve IDP_PROJECT_ID olarak ekle.',
+      'IDP’de proje Ayarlar penceresinin başlığından Proje ID’yi kopyala; job/global environment içine IDP_URL ve IDP_PROJECT_ID olarak ekle.',
       'Upload token’ını yalnız withCredentials bloğunda IDP_ARTIFACT_UPLOAD_TOKEN olarak aç.',
     ],
     snippets: [
@@ -438,7 +438,7 @@ const jenkinsSteps: GuideStep[] = [
     icon: GitBranch,
     items: [
       'New ile projeyi oluştur; Provider olarak Jenkins seç.',
-      'Project Settings içinde Jenkins URL, tam Job Name, Username ve API Token alanlarını doldur.',
+      'Proje Ayarlar → Genel içinde Jenkins URL, tam Job Name, Username ve API Token alanlarını doldur.',
       'Artifact deployment’ı etkinleştir; Build provider Jenkins, Version variable VERSION olsun.',
       'Artifact name ve backend/frontend component, OS, runtime ve health ayarlarını kaydet.',
     ],
@@ -453,7 +453,7 @@ const jenkinsSteps: GuideStep[] = [
       'ZIP’i müşteri sunucusuna taşı ve kurulum scriptini yönetici PowerShell ile çalıştır.',
       'Installer eksik deploy base path’i ve altındaki agent klasörünü otomatik oluşturur; hedef klasörü elle açman gerekmez.',
       'Agent’ın IDP gateway’e outbound erişimi olduğundan emin ol.',
-      'Agent listesinde kimlik Online görünene kadar target oluşturma.',
+      'Agent listesinde kimlik çevrimiçi görünene kadar müşteri oluşturma.',
     ],
     snippets: [
       {
@@ -463,28 +463,28 @@ const jenkinsSteps: GuideStep[] = [
     ],
   },
   {
-    title: 'Deploy target ve runtime config oluştur',
-    summary: 'Target, Jenkins’in ürettiği release’in hangi müşteri agent’ına ve dizine kurulacağını belirler.',
+    title: 'Müşteri ve çalışma ayarlarını oluştur',
+    summary: 'Müşteri, Jenkins’in ürettiği sürümün hangi agent’a ve dizine kurulacağını belirler.',
     icon: Network,
     items: [
-      'Her proje instance’ı için ayrı agent kullan; mevcut başka target’a bağlı agent’ı yeniden seçme.',
+      'Her proje instance’ı için ayrı agent kullan; mevcut başka müşteriye bağlı agent’ı yeniden seçme.',
       'Online müşteri agent’ını, işletim sistemini, ortamı ve agent ile birebir aynı base path’i seç.',
-      'Backend için .env; frontend için config.js formatını ve hedef ortama ait değerleri target’ta tanımla.',
-      'İlk kurulumda component runtime’larını none bırak; önce Ready release’i Deploy selected ile dosya olarak kur.',
+      'Backend için .env; frontend için config.js formatını ve hedef ortama ait değerleri müşteride tanımla.',
+      'İlk kurulumda bileşen runtime’larını none bırak; önce Hazır sürümü Kur… ile dosya olarak kur.',
     ],
-    note: 'Apply config servis veya IIS sitesi oluşturmaz. runtime:none iken config yazılabilir fakat port açılmaz, restart ve health-check atlanır.',
+    note: 'Ayarları uygula servis veya IIS sitesi oluşturmaz. runtime:none iken config yazılabilir fakat port açılmaz, restart ve health-check atlanır.',
   },
   {
-    title: 'IDP’den Jenkins release’i tetikle',
-    summary: 'New release, Jenkins job’una yalnız doğrulanmış sürüm parametresini gönderir.',
+    title: 'IDP’den Jenkins sürümünü derle',
+    summary: 'Yeni sürüm, Jenkins job’una yalnız doğrulanmış sürüm parametresini gönderir.',
     icon: PackageCheck,
     items: [
-      'Project satırında Releases → New yolunu aç ve benzersiz sürüm gir.',
+      'Proje satırında Aç → Sürümler → Yeni sürüm → Tag’den sürüm yolunu aç; sürüm adı tag adıdır.',
       'IDP Jenkins job’una VERSION=<sürüm> ile buildWithParameters isteği gönderir.',
       'Queue’dan gerçek build numarası çözülür ve Jenkins console output IDP ekranına canlı akar.',
-      'Job manifest ile artifact’ları IDP’ye upload/finalize ederse release Ready olur.',
+      'Job manifest ile artifact’ları IDP’ye upload/finalize ederse sürüm Hazır olur.',
     ],
-    note: 'Jenkins build SUCCESS olsa bile upload/finalize yapılmadıysa IDP release Ready olamaz.',
+    note: 'Jenkins build SUCCESS olsa bile upload/finalize yapılmadıysa IDP’de sürüm Hazır olamaz.',
   },
   {
     title: 'İlk bootstrap’ı yap; sonraki deploy’ları IDP’ye bırak',
@@ -492,9 +492,9 @@ const jenkinsSteps: GuideStep[] = [
     icon: Rocket,
     items: [
       'İlk runtime:none deploy tamamlanınca artifact içindeki bootstrap scriptini müşteri sunucusunda yönetici PowerShell ile çalıştır.',
-      'Project Settings’te backend’i NSSM, frontend’i IIS static yap; service/app pool ve version health alanlarını kaydet.',
-      'Target’ta Apply config çalıştır; bundan sonra IDP stop → swap → configure → start → health sırasını otomatik yürütür.',
-      'Sonraki sürümlerde yalnız Release → Deploy selected kullan; hata halinde Rollback ile önceki sağlıklı sürüme dön.',
+      'Ayarlar → Derleme ve kaynak’ta backend’i NSSM, frontend’i IIS static yap; service/app pool ve version health alanlarını kaydet.',
+      'Müşteriler sekmesinde ⋯ → Ayarları uygula çalıştır; bundan sonra IDP stop → swap → configure → start → health sırasını otomatik yürütür.',
+      'Sonraki sürümlerde yalnız Kur… kullan; hata halinde ⋯ → Geri al ile önceki sağlıklı sürüme dön.',
     ],
     snippets: [
       {
@@ -524,7 +524,7 @@ const jenkinsSteps: GuideStep[] = [
         ].join('\n'),
       },
     ],
-    note: 'Bootstrap yalnız yeni sunucu/target, silinmiş servis veya IIS sitesi ya da değişen service/site/port durumunda tekrar çalıştırılır. Config değişiminde yalnız Apply config yeterlidir.',
+    note: 'Bootstrap yalnız yeni sunucu/target, silinmiş servis veya IIS sitesi ya da değişen service/site/port durumunda tekrar çalıştırılır. Ayar değişiminde yalnız Ayarları uygula yeterlidir.',
   },
 ];
 
@@ -543,17 +543,17 @@ const diagnosticsByProvider: Record<GuideProvider, string[][]> = {
     ['Step runner bekliyor', 'Repository runner Online mı; step self.hosted ve windows dahil tüm runner label’larıyla eşleşiyor mu?'],
     ['Variable missing', 'Repository variables: IDP_URL ve IDP_PROJECT_ID; Secured variable: IDP_ARTIFACT_UPLOAD_TOKEN.'],
     ['Upload bağlantı hatası', 'Self-hosted runner’dan IDP_URL adresine LAN/VPN erişimini ve firewall’u test et.'],
-    ['Release Ready olmuyor', 'Bitbucket step logunda manifest adı, SHA-256, upload ve finalize sonucunu kontrol et.'],
-    ['Apply config sonrası port kapalı', 'Runtime none ise normaldir; ilk deploy ve tek seferlik bootstrap sonrası NSSM/IIS ayarlarını kaydet.'],
+    ['Sürüm Hazır olmuyor', 'Bitbucket step logunda manifest adı, SHA-256, upload ve finalize sonucunu kontrol et.'],
+    ['Ayarları uygula sonrası port kapalı', 'Runtime none ise normaldir; ilk deploy ve tek seferlik bootstrap sonrası NSSM/IIS ayarlarını kaydet.'],
   ],
   jenkins: [
-    ['Jenkins API 401/403', 'IDP Project Settings içindeki username/API token ve Jenkins kullanıcı izinlerini kontrol et.'],
+    ['Jenkins API 401/403', 'IDP proje Ayarlar → Genel içindeki username/API token ve Jenkins kullanıcı izinlerini kontrol et.'],
     ['Job not found', 'Job Name alanını Jenkins’te görünen tam adla yaz; büyük/küçük harf ve klasör yolunu kontrol et.'],
     ['Build queue’da bekliyor', 'Job label’ıyla eşleşen online executor/node var mı ve node disk alanı yeterli mi?'],
     ['VERSION boş', 'Jenkinsfile String Parameter adı ile IDP Version variable değeri birebir aynı olmalı.'],
     ['Upload 401', 'idp-artifact-upload-token Secret text değerini proje için yeniden türet; IDP_PROJECT_ID’yi doğrula.'],
-    ['Release Ready olmuyor', 'Jenkins logunda manifest adı, artifact SHA ve upload finalize yanıtını kontrol et.'],
-    ['Apply config sonrası port kapalı', 'Component runtime none ise normaldir. Önce release deploy et, tek seferlik bootstrap yap ve runtime’ı NSSM/IIS olarak kaydet.'],
+    ['Sürüm Hazır olmuyor', 'Jenkins logunda manifest adı, artifact SHA ve upload finalize yanıtını kontrol et.'],
+    ['Ayarları uygula sonrası port kapalı', 'Bileşen runtime’ı none ise normaldir. Önce sürümü kur, tek seferlik bootstrap yap ve runtime’ı NSSM/IIS olarak kaydet.'],
   ],
 };
 
@@ -619,9 +619,9 @@ export const DeploymentGuideSheet = ({ isOpen, onOpenChange, onOpenAgentBuilder 
 
       <div className="space-y-8 p-7">
         <section className="grid gap-3 rounded-xl border border-primary/20 bg-primary/[0.035] p-5 sm:grid-cols-3">
-          <div><p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-primary">Build</p><p className="mt-2 text-sm font-semibold">{copy.buildTitle}</p><p className="mt-1 text-xs leading-5 text-muted-foreground">{copy.buildDetail}</p></div>
-          <div><p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-primary">Store</p><p className="mt-2 text-sm font-semibold">IDP artifact store</p><p className="mt-1 text-xs leading-5 text-muted-foreground">Manifest ve SHA-256 ile immutable release tutar.</p></div>
-          <div><p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-primary">Deploy</p><p className="mt-2 text-sm font-semibold">Müşteri IDP agent’ı</p><p className="mt-1 text-xs leading-5 text-muted-foreground">İndirir, değiştirir, başlatır ve health kontrol eder.</p></div>
+          <div><p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-primary">Derle</p><p className="mt-2 text-sm font-semibold">{copy.buildTitle}</p><p className="mt-1 text-xs leading-5 text-muted-foreground">{copy.buildDetail}</p></div>
+          <div><p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-primary">Sakla</p><p className="mt-2 text-sm font-semibold">IDP artifact store</p><p className="mt-1 text-xs leading-5 text-muted-foreground">Manifest ve SHA-256 ile immutable release tutar.</p></div>
+          <div><p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-primary">Kur</p><p className="mt-2 text-sm font-semibold">Müşteri IDP agent’ı</p><p className="mt-1 text-xs leading-5 text-muted-foreground">İndirir, değiştirir, başlatır ve health kontrol eder.</p></div>
         </section>
 
         <ol className="space-y-4">
