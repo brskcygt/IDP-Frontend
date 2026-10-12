@@ -9,7 +9,7 @@
     "lint": "oxlint && node scripts/check-transport-boundaries.mjs",
     "check:transport": "node scripts/check-transport-boundaries.mjs",
     "preview": "vite preview",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc -p tsconfig.app.json --noEmit && tsc -p tsconfig.node.json --noEmit"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.9.1",
