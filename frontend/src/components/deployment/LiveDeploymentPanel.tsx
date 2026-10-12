@@ -154,7 +154,7 @@ export const LiveDeploymentPanel = ({
       {isActive && <div className="relative mb-2"><TerminalActivityIndicator elapsedMs={elapsedMs} compact /></div>}
 
       <div className="relative min-h-0 flex-1 overflow-hidden">
-        <LogTail logs={logs} />
+        <LogTail logs={logs} resetKey={deploymentId} />
       </div>
 
       <div className="relative mt-3 flex shrink-0 items-center gap-2">

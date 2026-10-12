@@ -8,6 +8,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { getTransport } from '@/services/transport';
 import { formatDuration } from '@/lib/format';
 import { cn } from '@/lib/utils';
+import { useResizableHeight } from '@/hooks/useResizableHeight';
 import { useAppVersion } from '@/hooks/useAppVersion';
 
 import { AppRail, type AppRailItem } from '@/components/layout/AppRail';
@@ -52,6 +53,13 @@ const EMPTY_LOGS: string[] = [];
 const TERMINAL_RUN_STATUSES: readonly string[] = ['succeeded', 'failed', 'aborted'];
 
 export const Dashboard = ({ onLogout }: { onLogout?: () => void }) => {
+  // Default leaves the log tail ~10 lines; the table keeps its header and a few rows.
+  const strip = useResizableHeight({
+    storageKey: 'idp-live-strip-height',
+    defaultHeight: 420,
+    minHeight: 200,
+    reserveBelow: 260,
+  });
   const appVersion = useAppVersion();
   const { data: session } = useSession();
   const canDeploy = can(session?.role, 'deploy:trigger');
@@ -297,14 +305,9 @@ export const Dashboard = ({ onLogout }: { onLogout?: () => void }) => {
           onCreateProject={() => setOpenPanel('create')}
         />
 
-        {/* A run needs room for its progress and a readable log tail; idle, the
-            strip stays short so the project table keeps the space. */}
-        <div
-          className={cn(
-            'flex shrink-0 border-b border-line-strong bg-bar transition-[height] duration-300 ease-out motion-reduce:transition-none',
-            activeRun ? 'h-[max(248px,min(360px,42vh))]' : 'h-[248px]',
-          )}
-        >
+        {/* The user sets how much of the screen the live strip takes; its log
+            tail fills whatever height it gets. */}
+        <div className="flex shrink-0 bg-bar" style={{ height: strip.height }}>
           <LiveDeploymentPanel
             project={activeRun?.project ?? null}
             status={activeRun?.status ?? 'idle'}
@@ -319,6 +322,27 @@ export const Dashboard = ({ onLogout }: { onLogout?: () => void }) => {
           />
           <DeployActivityPanel />
           <AttentionPanel failed={failed} canRetry={canDeploy} onRetry={openTrigger} />
+        </div>
+        <div
+          role="separator"
+          aria-orientation="horizontal"
+          aria-label="Canlı dağıtım alanının yüksekliği"
+          aria-valuenow={strip.height}
+          title="Sürükleyerek büyüt veya küçült · çift tıkla: varsayılan yükseklik"
+          tabIndex={0}
+          onPointerDown={strip.onPointerDown}
+          onKeyDown={strip.onKeyDown}
+          onDoubleClick={strip.reset}
+          // The pseudo-element widens the grab area beyond the thin visible edge.
+          className="group relative z-10 h-2 shrink-0 cursor-row-resize touch-none border-b border-line-strong bg-bar outline-none before:absolute before:inset-x-0 before:-bottom-2 before:-top-2 before:content-['']"
+        >
+          <span
+            aria-hidden="true"
+            className={cn(
+              'absolute inset-x-0 bottom-0 h-0.5 bg-transparent transition-colors group-hover:bg-primary/60 group-focus-visible:bg-primary',
+              strip.dragging && 'bg-primary',
+            )}
+          />
         </div>
 
         <FilterStrip
