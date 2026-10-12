@@ -316,6 +316,65 @@ export interface ArtifactRelease {
   createdBy: string | null;
   createdAt: string | null;
   updatedAt: string | null;
+  /** Git ref the build ran from; null for imported releases and older rows. */
+  ref: string | null;
+  refType: RepoRefType | null;
+  /** Set only for preview releases built from a base plus feature branches. */
+  composition: ReleaseComposition | null;
+}
+
+export type RepoRefType = 'branch' | 'tag';
+
+/** A branch or tag on the project's source repository. */
+export interface RepoRef {
+  name: string;
+  sha: string;
+  date: string | null;
+  message: string | null;
+}
+
+export interface RepoRefs {
+  platform: 'bitbucket';
+  defaultBranch: string | null;
+  branches: RepoRef[];
+  tags: RepoRef[];
+}
+
+/**
+ * What a preview release was made of: the base it started from and the feature
+ * branches merged into `composeBranch` (a preview/* branch), in merge order.
+ */
+export interface ReleaseComposition {
+  baseType: RepoRefType;
+  baseRef: string;
+  baseSha: string;
+  branches: { name: string; sha: string }[];
+  composeBranch: string;
+  headSha: string | null;
+}
+
+export interface CreateReleaseInput {
+  version: string;
+  ref?: string;
+  refType?: RepoRefType;
+  components?: string[];
+}
+
+export interface ComposeReleaseInput {
+  base: { type: RepoRefType; name: string };
+  /** Merge order; 1..10 branches. */
+  branches: string[];
+  /** Omitted, the backend picks 0.0.0-preview.<timestamp>. */
+  version?: string;
+  components?: string[];
+  /** Non-production target only; the backend refuses prod with PREVIEW_NOT_ALLOWED_ON_PROD. */
+  deployTo?: { targetId: string; components?: string[] };
+}
+
+export interface CreateTagInput {
+  name: string;
+  from: { type: 'branch' | 'commit'; name: string };
+  message?: string;
 }
 
 export interface ReleaseArtifact {
@@ -470,7 +529,12 @@ export interface Transport {
     listReleases(projectId: string): Promise<ArtifactRelease[]>;
     getRelease(id: string): Promise<ArtifactReleaseDetails>;
     /** `components` builds only part of the project; omitted, everything is built. */
-    createRelease(projectId: string, input: { version: string; ref?: string; components?: string[] }): Promise<ArtifactBuildRunResult>;
+    createRelease(projectId: string, input: CreateReleaseInput): Promise<ArtifactBuildRunResult>;
+    /** Merges feature branches onto a base in a preview/* branch on Bitbucket, then builds it. */
+    composeRelease(projectId: string, input: ComposeReleaseInput): Promise<ArtifactBuildRunResult>;
+    /** Branches and tags of the project's repository (Bitbucket sources only). */
+    listRefs(projectId: string, options?: { q?: string; hidePreview?: boolean }): Promise<RepoRefs>;
+    createTag(projectId: string, input: CreateTagInput): Promise<{ tag: RepoRef }>;
     importRelease(projectId: string, version: string): Promise<ArtifactReleaseDetails>;
     deleteRelease(id: string): Promise<void>;
     listTargets(projectId: string): Promise<DeployTarget[]>;

@@ -38,6 +38,11 @@ import type {
   UpdateDeployTargetInput,
   ArtifactDeployRunResult,
   ArtifactEventsResult,
+  CreateReleaseInput,
+  ComposeReleaseInput,
+  CreateTagInput,
+  RepoRef,
+  RepoRefs,
 } from './types';
 
 const JSON_HEADERS = { 'Content-Type': 'application/json' };
@@ -354,10 +359,7 @@ export function createHttpTransport(baseUrl: string = ''): Transport {
       return response.json();
     },
 
-    async createRelease(
-      projectId: string,
-      input: { version: string; ref?: string; components?: string[] },
-    ): Promise<ArtifactBuildRunResult> {
+    async createRelease(projectId: string, input: CreateReleaseInput): Promise<ArtifactBuildRunResult> {
       const response = await fetch(`${baseUrl}/api/projects/${encodeURIComponent(projectId)}/releases`, {
         method: 'POST',
         headers: JSON_HEADERS,
@@ -365,6 +367,47 @@ export function createHttpTransport(baseUrl: string = ''): Transport {
       });
       if (!response.ok) {
         throw new Error(await readErrorMessage(response, 'Failed to create artifact release'));
+      }
+      return response.json();
+    },
+
+    async composeRelease(projectId: string, input: ComposeReleaseInput): Promise<ArtifactBuildRunResult> {
+      const response = await fetch(`${baseUrl}/api/projects/${encodeURIComponent(projectId)}/releases/compose`, {
+        method: 'POST',
+        headers: JSON_HEADERS,
+        credentials: 'include',
+        body: JSON.stringify(input),
+      });
+      if (!response.ok) {
+        throw new Error(await readErrorMessage(response, 'Failed to start the preview build'));
+      }
+      return response.json();
+    },
+
+    async listRefs(projectId: string, options: { q?: string; hidePreview?: boolean } = {}): Promise<RepoRefs> {
+      const params = new URLSearchParams();
+      if (options.q) params.set('q', options.q);
+      if (options.hidePreview) params.set('hidePreview', '1');
+      const query = params.toString();
+      const response = await fetch(
+        `${baseUrl}/api/projects/${encodeURIComponent(projectId)}/repo/refs${query ? `?${query}` : ''}`,
+        { credentials: 'include' },
+      );
+      if (!response.ok) {
+        throw new Error(await readErrorMessage(response, 'Failed to fetch repository branches and tags'));
+      }
+      return response.json();
+    },
+
+    async createTag(projectId: string, input: CreateTagInput): Promise<{ tag: RepoRef }> {
+      const response = await fetch(`${baseUrl}/api/projects/${encodeURIComponent(projectId)}/repo/tags`, {
+        method: 'POST',
+        headers: JSON_HEADERS,
+        credentials: 'include',
+        body: JSON.stringify(input),
+      });
+      if (!response.ok) {
+        throw new Error(await readErrorMessage(response, 'Failed to create tag'));
       }
       return response.json();
     },
