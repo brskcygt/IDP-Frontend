@@ -51,13 +51,14 @@ type AppRailProps = {
   activeItem?: AppRailItem;
 };
 
-const COLLAPSED_STORAGE_KEY = "idp-rail-collapsed";
+/** "true" once the user pins the rail open; anything else keeps it collapsed. */
+const PINNED_STORAGE_KEY = "idp-rail-pinned";
 
 const readCollapsed = (): boolean => {
   try {
-    return window.localStorage.getItem(COLLAPSED_STORAGE_KEY) === "true";
+    return window.localStorage.getItem(PINNED_STORAGE_KEY) !== "true";
   } catch {
-    return false;
+    return true;
   }
 };
 
@@ -126,10 +127,9 @@ const RailSectionLabel = ({ label, expanded }: { label: string; expanded: boolea
 );
 
 /**
- * Persistent navigation rail. Open with labels by default; the brand button
- * collapses it to icons and the choice is remembered. While collapsed it
- * still expands as an overlay on pointer hover or keyboard focus, so labels
- * stay discoverable without shifting dashboard content.
+ * Persistent navigation rail. Icons only by default; it expands as an overlay
+ * on pointer hover or keyboard focus, so labels stay discoverable without
+ * shifting dashboard content. The brand button pins it open (remembered).
  */
 export const AppRail = ({ onOpen, onLogout, admin, activeItem = "projects" }: AppRailProps) => {
   const [hovered, setHovered] = useState(false);
@@ -143,7 +143,7 @@ export const AppRail = ({ onOpen, onLogout, admin, activeItem = "projects" }: Ap
     const next = !collapsed;
     setCollapsed(next);
     try {
-      window.localStorage.setItem(COLLAPSED_STORAGE_KEY, String(next));
+      window.localStorage.setItem(PINNED_STORAGE_KEY, String(!next));
     } catch {
       // Private mode or storage full: the choice simply lasts for this session.
     }
@@ -186,8 +186,8 @@ export const AppRail = ({ onOpen, onLogout, admin, activeItem = "projects" }: Ap
             if (!collapsed && event.detail > 0) event.currentTarget.blur();
           }}
           aria-expanded={!collapsed}
-          aria-label={collapsed ? "Menüyü genişlet" : "Menüyü daralt"}
-          title={collapsed ? "Menüyü genişlet" : "Menüyü daralt"}
+          aria-label={collapsed ? "Menüyü açık sabitle" : "Menüyü daralt"}
+          title={collapsed ? "Menüyü açık sabitle" : "Menüyü daralt"}
           className="mb-3 flex h-10 w-full shrink-0 items-center rounded-md text-left text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
         >
           <span className="flex h-10 w-14 shrink-0 items-center justify-center">

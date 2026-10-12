@@ -7,6 +7,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useQueryClient } from '@tanstack/react-query';
 import { getTransport } from '@/services/transport';
 import { formatDuration } from '@/lib/format';
+import { cn } from '@/lib/utils';
 import { useAppVersion } from '@/hooks/useAppVersion';
 
 import { AppRail, type AppRailItem } from '@/components/layout/AppRail';
@@ -296,7 +297,14 @@ export const Dashboard = ({ onLogout }: { onLogout?: () => void }) => {
           onCreateProject={() => setOpenPanel('create')}
         />
 
-        <div className="flex h-[248px] shrink-0 border-b border-line-strong bg-bar">
+        {/* A run needs room for its progress and a readable log tail; idle, the
+            strip stays short so the project table keeps the space. */}
+        <div
+          className={cn(
+            'flex shrink-0 border-b border-line-strong bg-bar transition-[height] duration-300 ease-out motion-reduce:transition-none',
+            activeRun ? 'h-[max(248px,min(360px,42vh))]' : 'h-[248px]',
+          )}
+        >
           <LiveDeploymentPanel
             project={activeRun?.project ?? null}
             status={activeRun?.status ?? 'idle'}
