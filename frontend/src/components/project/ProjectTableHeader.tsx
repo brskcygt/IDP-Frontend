@@ -2,12 +2,12 @@ import { PROJECT_GRID, PROJECT_HEAD_CELL } from "./tableLayout";
 import { cn } from "@/lib/utils";
 
 const COLUMNS = [
-  "PROJECT",
+  "PROJE",
   "TENANT",
-  "PROVIDER",
-  "HOST LOAD",
-  "LAST 8 RUNS",
-  "LAST RUN",
+  "SAĞLAYICI",
+  "HOST YÜKÜ",
+  "SON 8 ÇALIŞMA",
+  "SON ÇALIŞMA",
 ] as const;
 
 export const ProjectTableHeader = () => (
@@ -19,7 +19,7 @@ export const ProjectTableHeader = () => (
       </div>
     ))}
     <div role="columnheader" className={cn(PROJECT_HEAD_CELL, "text-right")}>
-      ACTION
+      İŞLEM
     </div>
   </div>
 );

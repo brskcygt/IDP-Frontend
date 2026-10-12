@@ -1,4 +1,4 @@
-import { ChevronRight, GitMerge, Package, RotateCcw, Square } from "lucide-react";
+import { FolderOpen, RotateCcw, Square } from "lucide-react";
 import type { Project } from "@/hooks/useProjects";
 import { providerClass } from "@/lib/projectMeta";
 import { StatusMark } from "./StatusMark";
@@ -6,7 +6,6 @@ import { RunSparkline, type RunOutcome } from "./RunSparkline";
 import { HostLoadCell } from "./HostLoadCell";
 import { LastDeployCell } from "./LastDeployCell";
 import { PROJECT_CELL, PROJECT_GRID } from "./tableLayout";
-import { ProjectTargetsPanel, type DeploySelection } from "./ProjectTargetsPanel";
 import { useSession } from "@/hooks/useSession";
 import { can } from "@/lib/permissions";
 import { cn } from "@/lib/utils";
@@ -16,18 +15,13 @@ type ProjectRowProps = {
   /** Absent until the platform exposes run history; the sparkline degrades. */
   runs?: ReadonlyArray<RunOutcome>;
   elapsedLabel?: string;
-  onDeploy: (project: Project, selection?: DeploySelection) => void;
-  onReleases: (project: Project) => void;
-  /** Base + feature branches → one preview release. */
-  onCompose: (project: Project) => void;
+  /** Legacy (non-artifact) projects: the provider's own trigger dialog. */
+  onDeploy: (project: Project) => void;
+  /** Artifact projects: customers, versions and source live in the workspace. */
+  onOpenWorkspace: (project: Project) => void;
   onAbort: (projectId: string) => void;
   onSettings: (project: Project) => void;
   onOpenHistory: (project: Project) => void;
-  onAddTarget: (project: Project) => void;
-  onRunStarted: (project: Project, deploymentId: string) => void;
-  /** Customers stay collapsed until asked for: the list costs a request per project. */
-  expanded: boolean;
-  onToggleExpanded: (projectId: string) => void;
 };
 
 const ACTION_CLASS =
@@ -38,15 +32,10 @@ export const ProjectRow = ({
   runs,
   elapsedLabel,
   onDeploy,
-  onReleases,
-  onCompose,
+  onOpenWorkspace,
   onAbort,
   onSettings,
   onOpenHistory,
-  onAddTarget,
-  onRunStarted,
-  expanded,
-  onToggleExpanded,
 }: ProjectRowProps) => {
   const { data: session } = useSession();
   // The backend is what actually blocks these actions (403); this only keeps the
@@ -54,19 +43,24 @@ export const ProjectRow = ({
   const canDeploy = can(session?.role, 'deploy:trigger');
   const canAbort = can(session?.role, 'deploy:abort');
   const canView = can(session?.role, 'project:read');
-  const canRelease = can(session?.role, 'release:create');
 
   const isDeploying = project.status === "Deploying";
   const hasFailed = project.status === "Failed";
   const isArtifactProject = Boolean(project.config?.artifactDeploy);
 
   return (
-    <>
     <div
       role="row"
+      // The whole row opens an artifact project's workspace; the controls in it
+      // (name, last run, actions) keep their own behaviour.
+      onClick={isArtifactProject ? (event) => {
+        if ((event.target as HTMLElement).closest("button, a, input")) return;
+        onOpenWorkspace(project);
+      } : undefined}
       className={cn(
         PROJECT_GRID,
         "h-[46px] border-b border-line transition-colors hover:bg-surface",
+        isArtifactProject && "cursor-pointer",
         isDeploying && "bg-rowactive",
       )}
     >
@@ -79,23 +73,11 @@ export const ProjectRow = ({
       />
 
       <div className={cn(PROJECT_CELL, "flex min-w-0 items-center gap-1")}>
-        {isArtifactProject ? (
-          <button
-            type="button"
-            onClick={() => onToggleExpanded(project.id)}
-            aria-expanded={expanded}
-            aria-label={`${expanded ? "Hide" : "Show"} customers of ${project.name}`}
-            className="-ml-1 rounded p-0.5 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            <ChevronRight className={cn("h-3.5 w-3.5 transition-transform motion-reduce:transition-none", expanded && "rotate-90")} />
-          </button>
-        ) : (
-          <span className="w-[18px]" aria-hidden="true" />
-        )}
+        <span className="w-[18px]" aria-hidden="true" />
         <button
           type="button"
-          onClick={() => onSettings(project)}
-          title={`Open settings for ${project.name}`}
+          onClick={() => (isArtifactProject ? onOpenWorkspace(project) : onSettings(project))}
+          title={isArtifactProject ? `${project.name} projesini aç` : `${project.name} ayarları`}
           className="flex min-w-0 items-center gap-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
         >
           <StatusMark status={project.status} />
@@ -136,40 +118,18 @@ export const ProjectRow = ({
             )}
           >
             <Square className="h-3 w-3" aria-hidden="true" />
-            Abort
+            Durdur
           </button>
         ) : isArtifactProject && canView ? (
-          <div className="flex items-center justify-end gap-1.5">
-            <button
-              type="button"
-              onClick={() => onReleases(project)}
-              aria-label={`Open releases for ${project.name}`}
-              className={cn(ACTION_CLASS, "border border-line-strong hover:bg-accent")}
-            >
-              <Package className="h-3 w-3" aria-hidden="true" />
-              Releases
-            </button>
-            {canRelease && <button
-              type="button"
-              onClick={() => onCompose(project)}
-              aria-label={`Compose a preview release from branches of ${project.name}`}
-              className={cn(ACTION_CLASS, "border border-line-strong hover:bg-accent")}
-            >
-              <GitMerge className="h-3 w-3" aria-hidden="true" />
-              Compose…
-            </button>}
-            {/* The ellipsis is a promise: this opens a screen where the release
-                and the customer are chosen. Actions that deploy on the spot
-                (the customer breakdown below) deliberately read differently. */}
-            {canDeploy && <button
-              type="button"
-              onClick={() => onDeploy(project)}
-              aria-label={`Choose a release and customer to deploy ${project.name}`}
-              className={cn(ACTION_CLASS, "bg-primary font-semibold text-primary-foreground hover:bg-primary/90")}
-            >
-              Deploy…
-            </button>}
-          </div>
+          <button
+            type="button"
+            onClick={() => onOpenWorkspace(project)}
+            aria-label={`${project.name} projesini aç`}
+            className={cn(ACTION_CLASS, "bg-primary font-semibold text-primary-foreground hover:bg-primary/90")}
+          >
+            <FolderOpen className="h-3 w-3" aria-hidden="true" />
+            Aç
+          </button>
         ) : !isDeploying && hasFailed && canDeploy ? (
           <button
             type="button"
@@ -180,7 +140,7 @@ export const ProjectRow = ({
             )}
           >
             <RotateCcw className="h-3 w-3" aria-hidden="true" />
-            Retry
+            Tekrar dene
           </button>
         ) : !isDeploying && !hasFailed && canDeploy ? (
           <button
@@ -191,14 +151,10 @@ export const ProjectRow = ({
               "border border-line-strong hover:bg-accent",
             )}
           >
-            Deploy…
+            Dağıt…
           </button>
         ) : null}
       </div>
     </div>
-    {expanded && isArtifactProject && (
-      <ProjectTargetsPanel project={project} onDeploy={onDeploy} onAddTarget={onAddTarget} onRunStarted={onRunStarted} />
-    )}
-    </>
   );
 };

@@ -32,10 +32,7 @@ import { Toaster } from '@/components/ui/toaster';
 import { WorkspaceTransferSheet } from '@/components/transfer/WorkspaceTransferSheet';
 import { AgentBuilderSheet } from '@/components/agents/AgentBuilderSheet';
 import { AgentsSheet } from '@/components/agents/AgentsSheet';
-import { ArtifactDeploySheet } from '@/components/artifacts/ArtifactDeploySheet';
-import type { DeploySelection } from '@/components/project/ProjectTargetsPanel';
-import { ArtifactReleasesSheet } from '@/components/artifacts/ArtifactReleasesSheet';
-import { ReleaseComposerSheet } from '@/components/artifacts/ReleaseComposerSheet';
+import { ProjectWorkspaceSheet, type WorkspaceTabId } from '@/components/workspace/ProjectWorkspaceSheet';
 import { DeploymentGuideSheet } from '@/components/guide/DeploymentGuideSheet';
 import { TroubleshootingSheet } from '@/components/guide/TroubleshootingSheet';
 import { GlobalSettingsSheet } from '@/components/settings/GlobalSettingsSheet';
@@ -85,11 +82,14 @@ export const Dashboard = ({ onLogout }: { onLogout?: () => void }) => {
   const [triggerTarget, setTriggerTarget] = useState<Project | null>(null);
   const [settingsTarget, setSettingsTarget] = useState<Project | null>(null);
   const [historyTarget, setHistoryTarget] = useState<Project | null>(null);
-  const [artifactTarget, setArtifactTarget] = useState<Project | null>(null);
   const [settingsInitialTab, setSettingsInitialTab] = useState<SettingsTabId>('general');
-  const [deployPreselect, setDeployPreselect] = useState<DeploySelection | null>(null);
+  const [settingsEditTargetId, setSettingsEditTargetId] = useState<string | null>(null);
+  // The workspace is not one of the exclusive panels: project settings open on
+  // top of it and closing them lands back in the workspace.
+  const [workspace, setWorkspace] = useState<{ projectId: string; tab: WorkspaceTabId } | null>(null);
+  const [workspaceOpen, setWorkspaceOpen] = useState(false);
   const [openPanel, setOpenPanel] = useState<
-    'trigger' | 'settings' | 'create' | 'stream' | 'sessions' | 'activity' | 'history' | 'transfer' | 'agents' | 'agent-builder' | 'artifact-releases' | 'artifact-deploy' | 'release-composer' | 'guide' | 'troubleshooting' | 'settings-global' | null
+    'trigger' | 'settings' | 'create' | 'stream' | 'sessions' | 'activity' | 'history' | 'transfer' | 'agents' | 'agent-builder' | 'guide' | 'troubleshooting' | 'settings-global' | null
   >(null);
 
   // Surfaces the backend's per-project 409 concurrency lock (or any other
@@ -97,52 +97,39 @@ export const Dashboard = ({ onLogout }: { onLogout?: () => void }) => {
   // request — see DeploymentRunController's trigger-failed detection.
   useEffect(() => {
     if (!lastFailure) return;
-    toast({ title: 'Deployment could not start', description: lastFailure, variant: 'destructive' });
+    toast({ title: 'Dağıtım başlatılamadı', description: lastFailure, variant: 'destructive' });
     clearLastFailure();
   }, [lastFailure, clearLastFailure, toast]);
 
   if (isError) return <DashboardError />;
 
-  const openTrigger = (project: Project, selection?: DeploySelection) => {
+  const openWorkspace = (project: Project, tab: WorkspaceTabId = 'customers') => {
+    setWorkspace({ projectId: project.id, tab });
+    setWorkspaceOpen(true);
+  };
+
+  /** Legacy providers keep their trigger dialog; artifact projects install from the workspace. */
+  const openTrigger = (project: Project) => {
     if (project.config?.artifactDeploy) {
-      setArtifactTarget(project);
-      // Set before the sheet opens: it reads this once, at open time.
-      setDeployPreselect(selection ?? null);
-      setOpenPanel('artifact-deploy');
+      openWorkspace(project, 'customers');
       return;
     }
     setTriggerTarget(project);
     setOpenPanel('trigger');
   };
 
-  const openArtifactReleases = (project: Project) => {
-    setArtifactTarget(project);
-    setOpenPanel('artifact-releases');
-  };
-
-  const openReleaseComposer = (project: Project) => {
-    setArtifactTarget(project);
-    setOpenPanel('release-composer');
-  };
-
   // The terminal is not opened here on purpose: the live panel above the table
   // already shows the stage and percentage, and the operator opens the stream
   // when they want the log lines behind it.
-  const attachArtifactRun = (deploymentId: string) => {
-    if (!artifactTarget) return;
-    attach(deploymentId, artifactTarget.id, artifactTarget);
-    setOpenPanel(null);
+  const attachArtifactRun = (project: Project, deploymentId: string) => {
+    attach(deploymentId, project.id, project);
+    setWorkspaceOpen(false);
   };
 
-  const openSettings = (project: Project) => {
+  const openSettings = (project: Project, tab: SettingsTabId = 'general', targetId?: string) => {
     setSettingsTarget(project);
-    setSettingsInitialTab('general');
-    setOpenPanel('settings');
-  };
-
-  const openTargetSettings = (project: Project) => {
-    setSettingsTarget(project);
-    setSettingsInitialTab('targets');
+    setSettingsInitialTab(tab);
+    setSettingsEditTargetId(targetId ?? null);
     setOpenPanel('settings');
   };
 
@@ -158,10 +145,10 @@ export const Dashboard = ({ onLogout }: { onLogout?: () => void }) => {
     toast(
       isDuplicate
         ? {
-            title: 'Already deploying',
-            description: `${triggerTarget.name} already has a deployment in progress — showing that run.`,
+            title: 'Zaten dağıtılıyor',
+            description: `${triggerTarget.name} için süren bir dağıtım var; o gösteriliyor.`,
           }
-        : { title: 'Deployment triggered', description: triggerTarget.name },
+        : { title: 'Dağıtım başladı', description: triggerTarget.name },
     );
   };
 
@@ -181,8 +168,8 @@ export const Dashboard = ({ onLogout }: { onLogout?: () => void }) => {
     if (target) {
       void target.abort();
       toast({
-        title: 'Deployment aborted',
-        description: `${target.project?.name ?? projectId} deployment stopped.`,
+        title: 'Dağıtım durduruldu',
+        description: `${target.project?.name ?? projectId} dağıtımı durduruldu.`,
         variant: 'destructive',
       });
       return;
@@ -204,24 +191,24 @@ export const Dashboard = ({ onLogout }: { onLogout?: () => void }) => {
 
       if (!live) {
         toast({
-          title: 'Nothing to abort',
-          description: 'No running deployment was found for this project.',
+          title: 'Durdurulacak bir şey yok',
+          description: 'Bu proje için süren bir dağıtım bulunamadı.',
         });
         return;
       }
 
       await getTransport().deploy.abort(live.id);
       toast({
-        title: 'Deployment aborted',
-        description: 'A deployment this window was not tracking has been stopped.',
+        title: 'Dağıtım durduruldu',
+        description: 'Bu pencerenin izlemediği bir dağıtım durduruldu.',
         variant: 'destructive',
       });
       void queryClient.invalidateQueries({ queryKey: ['projects'] });
       void queryClient.invalidateQueries({ queryKey: ['deployment-history'] });
     } catch (err) {
       toast({
-        title: 'Could not abort',
-        description: err instanceof Error ? err.message : 'Unknown error.',
+        title: 'Durdurulamadı',
+        description: err instanceof Error ? err.message : 'Bilinmeyen hata.',
         variant: 'destructive',
       });
     }
@@ -232,8 +219,8 @@ export const Dashboard = ({ onLogout }: { onLogout?: () => void }) => {
     if (!target) return;
     void target.abort();
     toast({
-      title: 'Deployment aborted',
-      description: `${target.project?.name ?? target.projectId} deployment stopped.`,
+      title: 'Dağıtım durduruldu',
+      description: `${target.project?.name ?? target.projectId} dağıtımı durduruldu.`,
       variant: 'destructive',
     });
   };
@@ -242,8 +229,8 @@ export const Dashboard = ({ onLogout }: { onLogout?: () => void }) => {
     setOpenPanel(open ? 'stream' : null);
     if (!open && runs.some((run) => RUNNING_STATUSES.has(run.status))) {
       toast({
-        title: 'Still deploying',
-        description: 'The stream closed but deployments continue in the background.',
+        title: 'Dağıtım sürüyor',
+        description: 'Akış kapandı; dağıtımlar arka planda devam ediyor.',
       });
     }
   };
@@ -275,7 +262,8 @@ export const Dashboard = ({ onLogout }: { onLogout?: () => void }) => {
             : openPanel === 'agent-builder' ? 'agent-builder'
               : openPanel === 'transfer' ? 'transfer'
                 : openPanel === 'settings-global' ? 'settings'
-                  : 'projects';
+                  : openPanel === 'sessions' ? 'deployments'
+                    : 'projects';
 
   return (
     <div className="flex h-screen overflow-hidden bg-background text-foreground">
@@ -291,6 +279,7 @@ export const Dashboard = ({ onLogout }: { onLogout?: () => void }) => {
         onOpenGuide={() => setOpenPanel('guide')}
         onOpenTroubleshooting={() => setOpenPanel('troubleshooting')}
         onOpenSettings={() => setOpenPanel('settings-global')}
+        onOpenDeployments={() => setOpenPanel('sessions')}
         onLogout={onLogout}
       />
 
@@ -314,7 +303,7 @@ export const Dashboard = ({ onLogout }: { onLogout?: () => void }) => {
             onAbort={() => activeRun && abortDeploy(activeRun.projectId)}
           />
           <DeployActivityPanel />
-          <AttentionPanel failed={failed} onRetry={canDeploy ? openTrigger : undefined} />
+          <AttentionPanel failed={failed} canRetry={canDeploy} onRetry={openTrigger} />
         </div>
 
         <FilterStrip
@@ -333,18 +322,10 @@ export const Dashboard = ({ onLogout }: { onLogout?: () => void }) => {
           hasFilters={activeFilters.length > 0}
           deployingElapsed={elapsedLabel}
           onDeploy={openTrigger}
-          onReleases={openArtifactReleases}
-          onCompose={openReleaseComposer}
+          onOpenWorkspace={(project) => openWorkspace(project)}
           onAbort={abortDeploy}
-          onSettings={openSettings}
+          onSettings={(project) => openSettings(project)}
           onOpenHistory={openHistory}
-          onAddTarget={openTargetSettings}
-          onRunStarted={(project, deploymentId) => {
-            // The run belongs to the project whose row started it, not to
-            // whichever project a sheet was last opened for.
-            setArtifactTarget(project);
-            attach(deploymentId, project.id, project);
-          }}
           onClearFilters={clearFilters}
           onCreateProject={canCreateProject ? () => setOpenPanel('create') : undefined}
         />
@@ -378,12 +359,7 @@ export const Dashboard = ({ onLogout }: { onLogout?: () => void }) => {
         isOpen={openPanel === 'settings'}
         onOpenChange={(open) => setOpenPanel(open ? 'settings' : null)}
         initialTab={settingsInitialTab}
-        onArtifactRunStarted={(deploymentId) => {
-          if (!settingsTarget) return;
-          setArtifactTarget(settingsTarget);
-          attach(deploymentId, settingsTarget.id, settingsTarget);
-          setOpenPanel(null);
-        }}
+        editTargetId={settingsEditTargetId}
       />
 
       <ProjectHistorySheet
@@ -437,25 +413,14 @@ export const Dashboard = ({ onLogout }: { onLogout?: () => void }) => {
         onOpenChange={(open) => setOpenPanel(open ? 'settings-global' : null)}
         canEdit={can(session?.role, 'settings:write')}
       />
-      <ArtifactDeploySheet
-        project={artifactTarget}
-        preselect={deployPreselect}
-        isOpen={openPanel === 'artifact-deploy'}
-        onOpenChange={(open) => setOpenPanel(open ? 'artifact-deploy' : null)}
-        onRunStarted={attachArtifactRun}
-        onOpenReleases={() => artifactTarget && openArtifactReleases(artifactTarget)}
-        onOpenTargets={() => artifactTarget && openTargetSettings(artifactTarget)}
-      />
-      <ArtifactReleasesSheet
-        project={artifactTarget}
-        isOpen={openPanel === 'artifact-releases'}
-        onOpenChange={(open) => setOpenPanel(open ? 'artifact-releases' : null)}
-        onRunStarted={attachArtifactRun}
-      />
-      <ReleaseComposerSheet
-        project={artifactTarget}
-        isOpen={openPanel === 'release-composer'}
-        onOpenChange={(open) => setOpenPanel(open ? 'release-composer' : null)}
+      <ProjectWorkspaceSheet
+        // Looked up on every render so the header and component list follow
+        // saved settings instead of the row that was clicked.
+        project={projects?.find((project) => project.id === workspace?.projectId) ?? null}
+        isOpen={workspaceOpen}
+        initialTab={workspace?.tab ?? 'customers'}
+        onOpenChange={setWorkspaceOpen}
+        onOpenSettings={openSettings}
         onRunStarted={attachArtifactRun}
       />
 

@@ -16,28 +16,36 @@ import { getProviderMeta } from "@/lib/providers";
 import { needsNewArtifactToken } from "@/components/project/settings/artifactDeployValidation";
 import { ArtifactDeploySettings } from "@/components/project/settings/ArtifactDeploySettings";
 import { ArtifactTargetsSettings } from "@/components/artifacts/ArtifactTargetsSettings";
+import { useSession } from "@/hooks/useSession";
+import { can } from "@/lib/permissions";
 
 type ProjectSettingsModalProps = {
   project: Project | null;
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   initialTab?: SettingsTabId;
-  onArtifactRunStarted?: (deploymentId: string) => void;
+  /** Opens the Müşteriler tab with this customer already in the edit form. */
+  editTargetId?: string | null;
 };
 
 export type SettingsTabId = 'general' | 'artifacts' | 'targets';
 
 const SETTINGS_TABS: ReadonlyArray<{ id: SettingsTabId; label: string }> = [
-  { id: 'general', label: 'General Settings' },
-  { id: 'artifacts', label: 'Artifact Deploy' },
-  { id: 'targets', label: 'Targets' },
+  { id: 'general', label: 'Genel' },
+  { id: 'artifacts', label: 'Derleme ve kaynak' },
+  { id: 'targets', label: 'Müşteriler' },
 ];
 
-export const ProjectSettingsModal = ({ project, isOpen, onOpenChange, initialTab = 'general', onArtifactRunStarted }: ProjectSettingsModalProps) => {
+export const ProjectSettingsModal = ({ project, isOpen, onOpenChange, initialTab = 'general', editTargetId }: ProjectSettingsModalProps) => {
   const [config, setConfig] = useState<ProjectConfig>({});
   const [activeTab, setActiveTab] = useState<SettingsTabId>('general');
   const [projectIdCopied, setProjectIdCopied] = useState(false);
-  const visibleTabs = project?.config?.artifactDeploy
+  const { data: session } = useSession();
+  // Non-admins see the same screens read-only; the backend rejects their writes anyway.
+  const canWrite = can(session?.role, 'project:write');
+  // Müşteriler appears as soon as artifact deploy is switched on in the draft;
+  // the tab itself explains that customers can only be added once it is saved.
+  const visibleTabs = config.artifactDeploy || project?.config?.artifactDeploy
     ? SETTINGS_TABS
     : SETTINGS_TABS.filter((tab) => tab.id !== 'targets');
 
@@ -62,33 +70,39 @@ export const ProjectSettingsModal = ({ project, isOpen, onOpenChange, initialTab
   const { mutate: deleteProject, isPending: isDeleting } = useDeleteProject();
   const { toast } = useToast();
 
+  // Reset the draft when the dialog opens or another project is shown — not on
+  // every refetch of the same project, which would wipe unsaved edits.
   useEffect(() => {
-    if (project) {
+    if (project && isOpen) {
       setConfig(project.config || {});
     }
-  }, [project]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [project?.id, isOpen]);
 
   useEffect(() => {
     if (!isOpen) return;
     const canOpenInitialTab = initialTab !== 'targets' || Boolean(project?.config?.artifactDeploy);
     setActiveTab(canOpenInitialTab ? initialTab : 'general');
-  }, [initialTab, isOpen, project?.id, project?.config?.artifactDeploy]);
+    // Only when the dialog opens: a save that flips artifactDeploy must not
+    // throw the operator back to the first tab.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialTab, isOpen, project?.id]);
 
   if (!project) return null;
 
   const handleSave = () => {
     if (needsNewArtifactToken(project.config?.artifactDeploy, config.artifactDeploy)) {
       setActiveTab('artifacts');
-      toast({ title: 'Repository token required', description: 'The artifact source changed. Enter the token for the new source before saving.', variant: 'destructive' });
+      toast({ title: 'Depo token\'ı gerekli', description: 'Kaynak değişti. Kaydetmeden önce yeni kaynağın token\'ını girin.', variant: 'destructive' });
       return;
     }
     mutate({ id: project.id, config }, {
       onSuccess: () => {
-        toast({ title: 'Settings Saved', description: 'Deployment configuration updated successfully.' });
+        toast({ title: 'Ayarlar kaydedildi', description: project.name });
         onOpenChange(false);
       },
       onError: (err) => {
-        toast({ title: 'Error', description: err.message, variant: 'destructive' });
+        toast({ title: 'Ayarlar kaydedilemedi', description: err.message, variant: 'destructive' });
       }
     });
   };
@@ -99,18 +113,18 @@ export const ProjectSettingsModal = ({ project, isOpen, onOpenChange, initialTab
       setProjectIdCopied(true);
       window.setTimeout(() => setProjectIdCopied(false), 1400);
     } catch {
-      toast({ title: 'Copy failed', description: 'Project ID could not be copied to the clipboard.', variant: 'destructive' });
+      toast({ title: 'Kopyalanamadı', description: 'Proje ID panoya kopyalanamadı.', variant: 'destructive' });
     }
   };
 
   const handleDelete = () => {
     deleteProject(project.id, {
       onSuccess: () => {
-        toast({ title: 'Project Deleted', description: 'The project has been removed.' });
+        toast({ title: 'Proje silindi', description: project.name });
         onOpenChange(false);
       },
       onError: (err) => {
-        toast({ title: 'Error', description: err.message, variant: 'destructive' });
+        toast({ title: 'Proje silinemedi', description: err.message, variant: 'destructive' });
       }
     });
   };
@@ -129,17 +143,17 @@ export const ProjectSettingsModal = ({ project, isOpen, onOpenChange, initialTab
             <span>{providerMeta.settingsTitle}</span>
             <span aria-hidden="true" className="text-border">•</span>
             <span className="inline-flex items-center gap-1.5">
-              <span>Project ID:</span>
+              <span>Proje ID:</span>
               <code className="rounded border border-border/70 bg-accent/50 px-1.5 py-0.5 font-mono text-[11px] text-foreground">{project.id}</code>
               <button
                 type="button"
                 onClick={() => void copyProjectId()}
                 className="inline-flex items-center gap-1 rounded px-1 py-0.5 text-[11px] text-muted-foreground hover:bg-accent hover:text-foreground"
-                aria-label="Copy project ID"
-                title="Copy project ID"
+                aria-label="Proje ID'yi kopyala"
+                title="Proje ID'yi kopyala"
               >
                 {projectIdCopied ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
-                <span>{projectIdCopied ? 'Copied' : 'Copy'}</span>
+                <span>{projectIdCopied ? 'Kopyalandı' : 'Kopyala'}</span>
               </button>
             </span>
           </DialogDescription>
@@ -148,7 +162,7 @@ export const ProjectSettingsModal = ({ project, isOpen, onOpenChange, initialTab
         {/* Tab Navigation */}
         <div
           role="tablist"
-          aria-label="Project settings sections"
+          aria-label="Proje ayarları bölümleri"
           className="flex items-center gap-4 border-b border-border/50 px-6 mt-4"
           onKeyDown={handleTabKeyDown}
         >
@@ -186,8 +200,15 @@ export const ProjectSettingsModal = ({ project, isOpen, onOpenChange, initialTab
           tabIndex={0}
           className="space-y-4 px-6 py-4 max-h-[72vh] overflow-y-auto"
         >
+          {!canWrite && activeTab !== 'targets' && (
+            <p className="rounded-md border border-border/60 bg-accent/30 px-3 py-2 text-xs text-muted-foreground">
+              Salt okunur: ayarları yalnız admin değiştirebilir.
+            </p>
+          )}
+
           {activeTab === 'general' && (
             <>
+              <fieldset disabled={!canWrite} className="min-w-0 space-y-4">
               {project.provider === 'Jenkins' && (
                 <JenkinsSettings config={config} onChange={setConfig} />
               )}
@@ -203,6 +224,7 @@ export const ProjectSettingsModal = ({ project, isOpen, onOpenChange, initialTab
               {project.provider === 'PMP' && (
                 <PmpSettings config={config} onChange={setConfig} />
               )}
+              </fieldset>
 
               <ConnectionTestPanel projectId={project.id} />
 
@@ -215,21 +237,27 @@ export const ProjectSettingsModal = ({ project, isOpen, onOpenChange, initialTab
           )}
 
           {activeTab === 'artifacts' && (
-            <ArtifactDeploySettings config={config} original={project.config?.artifactDeploy} onChange={setConfig} />
+            <fieldset disabled={!canWrite} className="min-w-0">
+              <ArtifactDeploySettings config={config} original={project.config?.artifactDeploy} onChange={setConfig} />
+            </fieldset>
           )}
 
-          {activeTab === 'targets' && project.config?.artifactDeploy && (
-            <ArtifactTargetsSettings project={project} onRunStarted={onArtifactRunStarted} />
-          )}
+          {activeTab === 'targets' && (project.config?.artifactDeploy ? (
+            <ArtifactTargetsSettings project={project} canEdit={canWrite} editTargetId={editTargetId ?? null} />
+          ) : (
+            <p className="rounded-md border border-dashed p-6 text-center text-xs text-muted-foreground">
+              Artifact dağıtımı bu taslakta açık ama henüz kaydedilmedi. Önce kaydedin; müşteriler ondan sonra eklenebilir.
+            </p>
+          ))}
 
         </div>
 
         <DialogFooter className="px-6 pb-6">
-          {activeTab === 'targets' ? <Button variant="outline" onClick={() => onOpenChange(false)}>Close</Button> : <>
-            <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+          {!canWrite || (activeTab === 'targets' && project.config?.artifactDeploy) ? <Button variant="outline" onClick={() => onOpenChange(false)}>Kapat</Button> : <>
+            <Button variant="outline" onClick={() => onOpenChange(false)}>Vazgeç</Button>
             <Button onClick={handleSave} disabled={isPending}>
               <Save className="mr-2 h-4 w-4" />
-              {isPending ? 'Saving...' : 'Save Settings'}
+              {isPending ? 'Kaydediliyor…' : 'Kaydet'}
             </Button>
           </>}
         </DialogFooter>

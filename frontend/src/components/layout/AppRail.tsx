@@ -2,6 +2,7 @@ import { useState, type FocusEvent, type ReactNode } from "react";
 import {
   Activity,
   BookOpenText,
+  History,
   LayoutGrid,
   LifeBuoy,
   LogOut,
@@ -25,7 +26,8 @@ export type AppRailItem =
   | "agents"
   | "agent-builder"
   | "transfer"
-  | "settings";
+  | "settings"
+  | "deployments";
 
 type AppRailProps = {
   onOpenActivityLog: () => void;
@@ -35,6 +37,7 @@ type AppRailProps = {
   onOpenGuide: () => void;
   onOpenTroubleshooting: () => void;
   onOpenSettings: () => void;
+  onOpenDeployments: () => void;
   onLogout?: () => void;
   canManageProjects: boolean;
   activeItem?: AppRailItem;
@@ -117,6 +120,7 @@ export const AppRail = ({
   onOpenGuide,
   onOpenTroubleshooting,
   onOpenSettings,
+  onOpenDeployments,
   onLogout,
   canManageProjects,
   activeItem = "projects",
@@ -133,7 +137,7 @@ export const AppRail = ({
   return (
     <div className="relative z-40 w-14 shrink-0">
       <nav
-        aria-label="Main navigation"
+        aria-label="Ana gezinme"
         data-expanded={expanded ? "true" : "false"}
         onPointerEnter={() => setHovered(true)}
         onPointerLeave={() => setHovered(false)}
@@ -155,7 +159,7 @@ export const AppRail = ({
             if (shouldUnpin && event.detail > 0) event.currentTarget.blur();
           }}
           aria-expanded={expanded}
-          aria-label={pinned ? "Unpin navigation" : "Pin navigation open"}
+          aria-label={pinned ? "Gezinmeyi serbest bırak" : "Gezinmeyi açık sabitle"}
           title={expanded ? undefined : "Internal Deployment Platform"}
           className="mb-3 flex h-10 w-full shrink-0 items-center rounded-md text-left text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
         >
@@ -172,19 +176,20 @@ export const AppRail = ({
           )}
         </button>
 
-        <RailSectionLabel label="Workspace" expanded={expanded} />
-        <RailButton icon={LayoutGrid} label="Projects" expanded={expanded} active={activeItem === "projects"} />
-        <RailButton icon={Activity} label="Activity log" expanded={expanded} active={activeItem === "activity"} onClick={onOpenActivityLog} />
-        <RailButton icon={BookOpenText} label="Deployment guide" expanded={expanded} active={activeItem === "guide"} onClick={onOpenGuide} />
-        <RailButton icon={LifeBuoy} label="Troubleshooting" expanded={expanded} active={activeItem === "troubleshooting"} onClick={onOpenTroubleshooting} />
+        <RailSectionLabel label="Çalışma alanı" expanded={expanded} />
+        <RailButton icon={LayoutGrid} label="Projeler" expanded={expanded} active={activeItem === "projects"} />
+        <RailButton icon={History} label="Dağıtım geçmişi" expanded={expanded} active={activeItem === "deployments"} onClick={onOpenDeployments} />
+        <RailButton icon={Activity} label="Etkinlik kaydı" expanded={expanded} active={activeItem === "activity"} onClick={onOpenActivityLog} />
+        <RailButton icon={BookOpenText} label="Dağıtım kılavuzu" expanded={expanded} active={activeItem === "guide"} onClick={onOpenGuide} />
+        <RailButton icon={LifeBuoy} label="Sorun giderme" expanded={expanded} active={activeItem === "troubleshooting"} onClick={onOpenTroubleshooting} />
 
-        <RailSectionLabel label="Operations" expanded={expanded} />
+        <RailSectionLabel label="Yönetim" expanded={expanded} />
         {canManageProjects && (
           <>
-            <RailButton icon={Server} label="Agents" expanded={expanded} active={activeItem === "agents"} onClick={onOpenAgents} />
-            <RailButton icon={PackagePlus} label="Create IDP agent" expanded={expanded} active={activeItem === "agent-builder"} onClick={onOpenAgentBuilder} />
-            <RailButton icon={PackageOpen} label="Import / export" expanded={expanded} active={activeItem === "transfer"} onClick={onOpenTransfer} />
-            <RailButton icon={Settings2} label="Settings" expanded={expanded} active={activeItem === "settings"} onClick={onOpenSettings} />
+            <RailButton icon={Server} label="Agent'lar" expanded={expanded} active={activeItem === "agents"} onClick={onOpenAgents} />
+            <RailButton icon={PackagePlus} label="IDP agent oluştur" expanded={expanded} active={activeItem === "agent-builder"} onClick={onOpenAgentBuilder} />
+            <RailButton icon={PackageOpen} label="İçe / dışa aktar" expanded={expanded} active={activeItem === "transfer"} onClick={onOpenTransfer} />
+            <RailButton icon={Settings2} label="Sunucu ayarları" expanded={expanded} active={activeItem === "settings"} onClick={onOpenSettings} />
           </>
         )}
 
@@ -192,7 +197,7 @@ export const AppRail = ({
         <ModeToggle expanded={expanded} />
 
         {onLogout && (
-          <RailButton icon={LogOut} label="Sign out" expanded={expanded} onClick={onLogout} />
+          <RailButton icon={LogOut} label="Çıkış yap" expanded={expanded} onClick={onLogout} />
         )}
       </nav>
     </div>
