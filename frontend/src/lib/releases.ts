@@ -48,7 +48,10 @@ export const VERSION_PATTERN = /^[0-9A-Za-z][0-9A-Za-z._-]{0,63}$/;
  */
 export const testVersionFor = (branch: string, now: Date = new Date()): string => {
   const slug = branch.replace(/[^0-9A-Za-z._-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 24) || 'branch';
-  const stamp = now.toISOString().replace(/[-:T]/g, '').replace(/\..+$/, '');
+  // Digits of the ISO string, cut to yyyymmddHHMMss. Deliberately not a
+  // character class of the separators: Tailwind's class scanner reads that
+  // bracket syntax as an arbitrary CSS property and breaks the build.
+  const stamp = now.toISOString().replace(/\D/g, '').slice(0, 14);
   return `0.0.0-${slug}.${stamp}`;
 };
 
