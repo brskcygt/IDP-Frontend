@@ -36,7 +36,7 @@ export class IpcTransportError extends Error {
  */
 function parseIpcError(err: unknown): Error {
   if (!(err instanceof Error)) {
-    return new Error('Unknown IPC error');
+    return new Error('Masaüstü uygulamasından beklenmeyen bir hata geldi.');
   }
 
   const start = err.message.indexOf('{');

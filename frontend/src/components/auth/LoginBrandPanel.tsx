@@ -32,14 +32,14 @@ export const LoginBrandPanel = () => (
         Platform
       </h1>
       <p className="max-w-[400px] text-[15px] leading-relaxed text-muted-foreground">
-        Deploy, monitor and audit every internal service from one place — Jenkins pipelines, server
-        targets and Windows hosts.
+        Şirket içi servisleri tek yerden derleyin, müşterilere kurun, izleyin ve denetleyin: Jenkins ve
+        CI pipeline'ları, sunucular ve Windows host'ları.
       </p>
       <div aria-hidden="true" className="mt-7 h-[3px] w-16 bg-primary" />
     </div>
 
     <p className="relative font-mono text-[11px] leading-relaxed text-faint">
-      Every deployment is attributed to your account in the audit trail.
+      Yaptığınız her dağıtım etkinlik kaydında hesabınızla birlikte tutulur.
     </p>
   </div>
 );

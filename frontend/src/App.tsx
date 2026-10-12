@@ -32,7 +32,7 @@ function App() {
   };
 
   if (isAuthenticated === null) {
-    return <div className="min-h-screen bg-background flex items-center justify-center text-muted-foreground animate-pulse">Loading IDP...</div>;
+    return <div className="min-h-screen bg-background flex items-center justify-center text-muted-foreground animate-pulse">IDP yükleniyor…</div>;
   }
 
   if (!isAuthenticated) {

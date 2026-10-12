@@ -4,12 +4,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { getTransport } from "@/services/transport";
 import type { SessionUser } from "@/services/transport/types";
+import { errorMessage } from "@/lib/errors";
 
 type LoginFormProps = {
   onLogin: (user: SessionUser) => void;
 };
 
-const LABEL_CLASS = "mb-2 block font-mono text-[10px] tracking-[0.12em] text-muted-foreground";
+const LABEL_CLASS = "mb-2 block text-xs font-medium text-muted-foreground";
 const FIELD_CLASS = "h-10 rounded-md border-line-strong bg-surface pl-9 font-mono text-[13px] md:text-[13px]";
 
 export const LoginForm = ({ onLogin }: LoginFormProps) => {
@@ -27,7 +28,7 @@ export const LoginForm = ({ onLogin }: LoginFormProps) => {
       const user = await getTransport().auth.login(username, password);
       onLogin(user);
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Sign in failed");
+      setError(errorMessage(caught, "Oturum açılamadı. Sunucuya ulaşılamıyor olabilir; bağlantıyı kontrol edip tekrar deneyin."));
     } finally {
       setIsSubmitting(false);
     }
@@ -35,14 +36,14 @@ export const LoginForm = ({ onLogin }: LoginFormProps) => {
 
   return (
     <form onSubmit={handleSubmit} className="w-full max-w-[372px]">
-      <h2 className="mb-1.5 text-2xl font-bold tracking-tight">Sign in</h2>
+      <h2 className="mb-1.5 text-2xl font-bold tracking-tight">Oturum aç</h2>
       <p className="mb-8 text-[13px] text-muted-foreground">
-        Administrator credentials are required to reach deployment targets.
+        IDP kullanıcı adınız ve parolanızla devam edin.
       </p>
 
       <div className="mb-[18px]">
         <Label htmlFor="username" className={LABEL_CLASS}>
-          USERNAME
+          Kullanıcı adı
         </Label>
         <div className="relative">
           <User className="pointer-events-none absolute left-3 top-1/2 h-[15px] w-[15px] -translate-y-1/2 text-dim" aria-hidden="true" />
@@ -61,7 +62,7 @@ export const LoginForm = ({ onLogin }: LoginFormProps) => {
 
       <div className="mb-3">
         <Label htmlFor="password" className={LABEL_CLASS}>
-          PASSWORD
+          Parola
         </Label>
         <div className="relative">
           <Lock className="pointer-events-none absolute left-3 top-1/2 h-[15px] w-[15px] -translate-y-1/2 text-dim" aria-hidden="true" />
@@ -98,7 +99,7 @@ export const LoginForm = ({ onLogin }: LoginFormProps) => {
         ) : (
           <Lock className="h-[15px] w-[15px]" aria-hidden="true" />
         )}
-        Sign in
+        {isSubmitting ? "Oturum açılıyor…" : "Oturum aç"}
       </button>
     </form>
   );

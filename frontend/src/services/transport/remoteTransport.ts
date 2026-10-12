@@ -33,7 +33,7 @@ function unsupported(feature: string): never {
 function remoteBridge() {
   const idp = typeof window === 'undefined' ? undefined : window.idp;
   if (!idp || idp.mode !== 'remote') {
-    throw new Error('remoteTransport used outside the Electron remote-mode renderer.');
+    throw new Error('Masaüstü köprüsü bulunamadı; bu işlem yalnız IDP masaüstü uygulamasında çalışır.');
   }
   return idp;
 }

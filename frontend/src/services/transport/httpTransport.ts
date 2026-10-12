@@ -48,6 +48,22 @@ import { TransportError } from './errors';
 
 const JSON_HEADERS = { 'Content-Type': 'application/json' };
 
+const UNREACHABLE_MESSAGE = 'IDP sunucusuna ulaşılamadı. Sunucunun çalıştığını ve ağ bağlantınızı kontrol edin.';
+const TOO_MANY_REQUESTS_MESSAGE = 'Çok fazla istek gönderildi. Biraz bekleyip tekrar deneyin.';
+
+/**
+ * `fetch`, with a network failure (server down, DNS, VPN) turned into a
+ * sentence the UI can show as is instead of the browser's "Failed to fetch".
+ */
+async function request(input: string, init?: RequestInit): Promise<Response> {
+  try {
+    return await fetch(input, init);
+  } catch (cause) {
+    if (cause instanceof DOMException && cause.name === 'AbortError') throw cause;
+    throw new Error(UNREACHABLE_MESSAGE);
+  }
+}
+
 /** Validation errors listed after the message; the rest are summarized as "+N more". */
 const MAX_ERROR_DETAILS = 5;
 
@@ -58,6 +74,7 @@ const MAX_ERROR_DETAILS = 5;
  * named, so those are appended (e.g. "components.0.name: Must match …").
  */
 async function readErrorMessage(response: Response, fallback: string): Promise<string> {
+  if (response.status === 429) return TOO_MANY_REQUESTS_MESSAGE;
   try {
     const body = await response.json();
     const message = typeof body?.error === 'string' ? body.error : fallback;
@@ -71,7 +88,7 @@ async function readErrorMessage(response: Response, fallback: string): Promise<s
     if (details.length === 0) return message;
     const shown = details.slice(0, MAX_ERROR_DETAILS);
     const more = details.length - shown.length;
-    return [message, ...shown, ...(more > 0 ? [`+${more} more`] : [])].join('\n');
+    return [message, ...shown, ...(more > 0 ? [`+${more} hata daha`] : [])].join('\n');
   } catch {
     return fallback;
   }
@@ -110,13 +127,17 @@ export function createHttpTransport(baseUrl: string = ''): Transport {
   return {
   auth: {
     async login(username, password) {
-      const response = await fetch(`${baseUrl}/api/auth/login`, {
+      const response = await request(`${baseUrl}/api/auth/login`, {
         method: 'POST',
         headers: JSON_HEADERS,
         body: JSON.stringify({ username, password }),
       });
       if (!response.ok) {
-        throw new Error(await readErrorMessage(response, 'Invalid credentials'));
+        // The server answers in English; the two answers a person can act on
+        // are said here in Turkish, anything else is passed through.
+        if (response.status === 401) throw new Error('Kullanıcı adı ya da parola hatalı.');
+        if (response.status === 429) throw new Error(TOO_MANY_REQUESTS_MESSAGE);
+        throw new Error(await readErrorMessage(response, 'Oturum açılamadı.'));
       }
       const data = await response.json();
       return data.user as SessionUser;
@@ -126,11 +147,11 @@ export function createHttpTransport(baseUrl: string = ''): Transport {
       // Mirrors the original App.tsx handleLogout: fire the request, don't
       // inspect the response — the caller always proceeds to clear local
       // auth state either way.
-      await fetch(`${baseUrl}/api/auth/logout`, { method: 'POST' });
+      await request(`${baseUrl}/api/auth/logout`, { method: 'POST' });
     },
 
     async me() {
-      const response = await fetch(`${baseUrl}/api/auth/me`);
+      const response = await request(`${baseUrl}/api/auth/me`);
       if (!response.ok) {
         return null;
       }
@@ -141,73 +162,73 @@ export function createHttpTransport(baseUrl: string = ''): Transport {
 
   projects: {
     async list(): Promise<Project[]> {
-      const response = await fetch(`${baseUrl}/api/projects`);
+      const response = await request(`${baseUrl}/api/projects`);
       if (!response.ok) {
-        throw new Error('Failed to fetch projects');
+        throw new Error('Projeler alınamadı.');
       }
       return response.json();
     },
 
     async get(id: string): Promise<Project> {
-      const response = await fetch(`${baseUrl}/api/projects/${id}`);
+      const response = await request(`${baseUrl}/api/projects/${id}`);
       if (!response.ok) {
-        throw new Error('Failed to fetch project');
+        throw new Error('Proje alınamadı.');
       }
       return response.json();
     },
 
     async create(input: CreateProjectInput): Promise<Project> {
-      const response = await fetch(`${baseUrl}/api/projects`, {
+      const response = await request(`${baseUrl}/api/projects`, {
         method: 'POST',
         headers: JSON_HEADERS,
         body: JSON.stringify(input),
       });
       if (!response.ok) {
-        throw new Error(await readErrorMessage(response, 'Failed to create project'));
+        throw new Error(await readErrorMessage(response, 'Proje oluşturulamadı.'));
       }
       return response.json();
     },
 
     async updateConfig(id: string, config: ProjectConfig): Promise<Project> {
-      const response = await fetch(`${baseUrl}/api/projects/${id}/settings`, {
+      const response = await request(`${baseUrl}/api/projects/${id}/settings`, {
         method: 'POST',
         headers: JSON_HEADERS,
         body: JSON.stringify(config),
       });
       if (!response.ok) {
-        throw new Error(await readErrorMessage(response, 'Failed to update project settings'));
+        throw new Error(await readErrorMessage(response, 'Proje ayarları kaydedilemedi.'));
       }
       return response.json();
     },
 
     async remove(id: string): Promise<void> {
-      const response = await fetch(`${baseUrl}/api/projects/${id}`, { method: 'DELETE' });
+      const response = await request(`${baseUrl}/api/projects/${id}`, { method: 'DELETE' });
       if (!response.ok) {
-        throw new Error('Failed to delete project');
+        throw new Error('Proje silinemedi.');
       }
       await response.json();
     },
 
     async environments(id: string): Promise<ProjectEnvironmentsResult> {
-      const response = await fetch(`${baseUrl}/api/projects/${id}/environments`);
-      if (!response.ok) throw new Error('Failed to fetch project environments');
+      const response = await request(`${baseUrl}/api/projects/${id}/environments`);
+      if (!response.ok) throw new Error('Proje ortamları alınamadı.');
       return response.json();
     },
 
     async telemetry(id: string): Promise<TelemetryData> {
-      const response = await fetch(`${baseUrl}/api/projects/${id}/telemetry`);
-      if (!response.ok) throw new Error('Failed to fetch telemetry');
+      const response = await request(`${baseUrl}/api/projects/${id}/telemetry`);
+      if (!response.ok) throw new Error('Telemetri alınamadı.');
       return response.json();
     },
 
     async testConnection(id: string, environment?: string): Promise<ConnectionTestResult> {
-      const response = await fetch(`${baseUrl}/api/projects/${id}/test-connection`, {
+      const response = await request(`${baseUrl}/api/projects/${id}/test-connection`, {
         method: 'POST',
         headers: JSON_HEADERS,
         body: JSON.stringify(environment ? { environment } : {}),
       });
       if (!response.ok) {
-        throw new Error(await readErrorMessage(response, 'Failed to test the connection'));
+        throw new Error(await readErrorMessage(response, 'Bağlantı test edilemedi.'));
       }
       return response.json();
     },
@@ -215,7 +236,7 @@ export function createHttpTransport(baseUrl: string = ''): Transport {
 
   deploy: {
     async trigger(projectId, parameters) {
-      const response = await fetch(`${baseUrl}/api/deploy/trigger`, {
+      const response = await request(`${baseUrl}/api/deploy/trigger`, {
         method: 'POST',
         headers: JSON_HEADERS,
         body: JSON.stringify({ projectId, parameters }),
@@ -225,7 +246,7 @@ export function createHttpTransport(baseUrl: string = ''): Transport {
         // Preserves the original: an unparsable error body rejects with the
         // raw JSON parse error rather than a friendly fallback message.
         const error = await response.json();
-        throw new Error(error.error || 'Failed to trigger deployment');
+        throw new Error(error.error || 'Dağıtım başlatılamadı.');
       }
 
       const data = await response.json();
@@ -236,13 +257,13 @@ export function createHttpTransport(baseUrl: string = ''): Transport {
       // Intentionally does not check response.ok — matches the original
       // hook, which always resolves (and the caller always moves to
       // "aborted") regardless of what the server actually reported.
-      await fetch(`${baseUrl}/api/deploy/${deploymentId}/abort`, { method: 'POST' });
+      await request(`${baseUrl}/api/deploy/${deploymentId}/abort`, { method: 'POST' });
     },
 
     async sessions(): Promise<DeploymentSession[]> {
-      const response = await fetch(`${baseUrl}/api/deploy/sessions`);
+      const response = await request(`${baseUrl}/api/deploy/sessions`);
       if (!response.ok) {
-        throw new Error('Failed to fetch deployment sessions');
+        throw new Error('Dağıtımlar alınamadı.');
       }
       return response.json();
     },
@@ -252,17 +273,17 @@ export function createHttpTransport(baseUrl: string = ''): Transport {
       if (projectId) params.set('projectId', projectId);
       if (limit !== undefined) params.set('limit', String(limit));
       const qs = params.toString();
-      const response = await fetch(`${baseUrl}/api/deploy/history${qs ? `?${qs}` : ''}`);
+      const response = await request(`${baseUrl}/api/deploy/history${qs ? `?${qs}` : ''}`);
       if (!response.ok) {
-        throw new Error('Failed to fetch deployment history');
+        throw new Error('Dağıtım geçmişi alınamadı.');
       }
       return response.json();
     },
 
     async logsArchive(deploymentId): Promise<string> {
-      const response = await fetch(`${baseUrl}/api/deploy/${deploymentId}/logs-archive`);
+      const response = await request(`${baseUrl}/api/deploy/${deploymentId}/logs-archive`);
       if (!response.ok) {
-        throw new Error('Failed to fetch deployment log archive');
+        throw new Error('Dağıtım logu alınamadı.');
       }
       return response.text();
     },
@@ -360,42 +381,42 @@ export function createHttpTransport(baseUrl: string = ''): Transport {
 
   artifacts: {
     async listReleases(projectId: string): Promise<ArtifactRelease[]> {
-      const response = await fetch(`${baseUrl}/api/projects/${encodeURIComponent(projectId)}/releases`);
+      const response = await request(`${baseUrl}/api/projects/${encodeURIComponent(projectId)}/releases`);
       if (!response.ok) {
-        throw new Error(await readErrorMessage(response, 'Failed to fetch artifact releases'));
+        throw new Error(await readErrorMessage(response, 'Sürümler alınamadı.'));
       }
       return response.json();
     },
 
     async getRelease(id: string): Promise<ArtifactReleaseDetails> {
-      const response = await fetch(`${baseUrl}/api/releases/${encodeURIComponent(id)}`);
+      const response = await request(`${baseUrl}/api/releases/${encodeURIComponent(id)}`);
       if (!response.ok) {
-        throw new Error(await readErrorMessage(response, 'Failed to fetch artifact release'));
+        throw new Error(await readErrorMessage(response, 'Sürüm alınamadı.'));
       }
       return response.json();
     },
 
     async createRelease(projectId: string, input: CreateReleaseInput): Promise<ArtifactBuildRunResult> {
-      const response = await fetch(`${baseUrl}/api/projects/${encodeURIComponent(projectId)}/releases`, {
+      const response = await request(`${baseUrl}/api/projects/${encodeURIComponent(projectId)}/releases`, {
         method: 'POST',
         headers: JSON_HEADERS,
         body: JSON.stringify(input),
       });
       if (!response.ok) {
-        throw new Error(await readErrorMessage(response, 'Failed to create artifact release'));
+        throw new Error(await readErrorMessage(response, 'Sürüm derlemesi başlatılamadı.'));
       }
       return response.json();
     },
 
     async composeRelease(projectId: string, input: ComposeReleaseInput): Promise<ArtifactBuildRunResult> {
-      const response = await fetch(`${baseUrl}/api/projects/${encodeURIComponent(projectId)}/releases/compose`, {
+      const response = await request(`${baseUrl}/api/projects/${encodeURIComponent(projectId)}/releases/compose`, {
         method: 'POST',
         headers: JSON_HEADERS,
         credentials: 'include',
         body: JSON.stringify(input),
       });
       if (!response.ok) {
-        throw await readError(response, 'Failed to start the preview build');
+        throw await readError(response, 'Önizleme derlemesi başlatılamadı.');
       }
       return response.json();
     },
@@ -405,103 +426,103 @@ export function createHttpTransport(baseUrl: string = ''): Transport {
       if (options.q) params.set('q', options.q);
       if (options.hidePreview) params.set('hidePreview', '1');
       const query = params.toString();
-      const response = await fetch(
+      const response = await request(
         `${baseUrl}/api/projects/${encodeURIComponent(projectId)}/repo/refs${query ? `?${query}` : ''}`,
         { credentials: 'include' },
       );
       if (!response.ok) {
-        throw await readError(response, 'Failed to fetch repository branches and tags');
+        throw await readError(response, 'Deponun branch ve tag listesi alınamadı.');
       }
       return response.json();
     },
 
     async createTag(projectId: string, input: CreateTagInput): Promise<{ tag: RepoRef }> {
-      const response = await fetch(`${baseUrl}/api/projects/${encodeURIComponent(projectId)}/repo/tags`, {
+      const response = await request(`${baseUrl}/api/projects/${encodeURIComponent(projectId)}/repo/tags`, {
         method: 'POST',
         headers: JSON_HEADERS,
         credentials: 'include',
         body: JSON.stringify(input),
       });
       if (!response.ok) {
-        throw await readError(response, 'Failed to create tag');
+        throw await readError(response, 'Tag oluşturulamadı.');
       }
       return response.json();
     },
 
     async importRelease(projectId: string, version: string): Promise<ArtifactReleaseDetails> {
-      const response = await fetch(`${baseUrl}/api/projects/${encodeURIComponent(projectId)}/releases/import`, {
+      const response = await request(`${baseUrl}/api/projects/${encodeURIComponent(projectId)}/releases/import`, {
         method: 'POST',
         headers: JSON_HEADERS,
         body: JSON.stringify({ version }),
       });
       if (!response.ok) {
-        throw new Error(await readErrorMessage(response, 'Failed to import artifact release'));
+        throw new Error(await readErrorMessage(response, 'Sürüm içe aktarılamadı.'));
       }
       return response.json();
     },
 
     async deleteRelease(id: string): Promise<void> {
-      const response = await fetch(`${baseUrl}/api/releases/${encodeURIComponent(id)}`, { method: 'DELETE' });
+      const response = await request(`${baseUrl}/api/releases/${encodeURIComponent(id)}`, { method: 'DELETE' });
       if (!response.ok) {
-        throw new Error(await readErrorMessage(response, 'Failed to delete artifact release'));
+        throw new Error(await readErrorMessage(response, 'Sürüm silinemedi.'));
       }
     },
 
     async listTargets(projectId: string): Promise<DeployTarget[]> {
-      const response = await fetch(`${baseUrl}/api/projects/${encodeURIComponent(projectId)}/targets`);
+      const response = await request(`${baseUrl}/api/projects/${encodeURIComponent(projectId)}/targets`);
       if (!response.ok) {
-        throw new Error(await readErrorMessage(response, 'Failed to fetch deploy targets'));
+        throw new Error(await readErrorMessage(response, 'Müşteriler alınamadı.'));
       }
       return response.json();
     },
 
     async createTarget(projectId: string, input: DeployTargetInput): Promise<DeployTarget> {
-      const response = await fetch(`${baseUrl}/api/projects/${encodeURIComponent(projectId)}/targets`, {
+      const response = await request(`${baseUrl}/api/projects/${encodeURIComponent(projectId)}/targets`, {
         method: 'POST',
         headers: JSON_HEADERS,
         body: JSON.stringify(input),
       });
       if (!response.ok) {
-        throw new Error(await readErrorMessage(response, 'Failed to create deploy target'));
+        throw new Error(await readErrorMessage(response, 'Müşteri eklenemedi.'));
       }
       return response.json();
     },
 
     async updateTarget(id: string, input: UpdateDeployTargetInput): Promise<DeployTarget> {
-      const response = await fetch(`${baseUrl}/api/targets/${encodeURIComponent(id)}`, {
+      const response = await request(`${baseUrl}/api/targets/${encodeURIComponent(id)}`, {
         method: 'PUT',
         headers: JSON_HEADERS,
         body: JSON.stringify(input),
       });
       if (!response.ok) {
-        throw new Error(await readErrorMessage(response, 'Failed to update deploy target'));
+        throw new Error(await readErrorMessage(response, 'Müşteri kaydedilemedi.'));
       }
       return response.json();
     },
 
     async deleteTarget(id: string): Promise<void> {
-      const response = await fetch(`${baseUrl}/api/targets/${encodeURIComponent(id)}`, { method: 'DELETE' });
+      const response = await request(`${baseUrl}/api/targets/${encodeURIComponent(id)}`, { method: 'DELETE' });
       if (!response.ok) {
-        throw new Error(await readErrorMessage(response, 'Failed to delete deploy target'));
+        throw new Error(await readErrorMessage(response, 'Müşteri silinemedi.'));
       }
     },
 
     async refreshTarget(id: string): Promise<DeployTarget> {
-      const response = await fetch(`${baseUrl}/api/targets/${encodeURIComponent(id)}/refresh-status`, { method: 'POST' });
+      const response = await request(`${baseUrl}/api/targets/${encodeURIComponent(id)}/refresh-status`, { method: 'POST' });
       if (!response.ok) {
-        throw new Error(await readErrorMessage(response, 'Failed to refresh deploy target status'));
+        throw new Error(await readErrorMessage(response, 'Müşteri durumu yenilenemedi.'));
       }
       return response.json();
     },
 
     async applyConfig(id: string, input: { confirmation?: string } = {}) {
-      const response = await fetch(`${baseUrl}/api/targets/${encodeURIComponent(id)}/apply-config`, {
+      const response = await request(`${baseUrl}/api/targets/${encodeURIComponent(id)}/apply-config`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(input),
       });
       if (!response.ok) {
-        throw new Error(await readErrorMessage(response, 'Failed to apply target runtime config'));
+        throw new Error(await readErrorMessage(response, 'Ayarlar uygulanamadı.'));
       }
       return response.json();
     },
@@ -510,25 +531,25 @@ export function createHttpTransport(baseUrl: string = ''): Transport {
       targetId: string,
       input: { releaseId: string; components?: string[]; confirmation?: string },
     ): Promise<ArtifactDeployRunResult> {
-      const response = await fetch(`${baseUrl}/api/targets/${encodeURIComponent(targetId)}/deploy`, {
+      const response = await request(`${baseUrl}/api/targets/${encodeURIComponent(targetId)}/deploy`, {
         method: 'POST',
         headers: JSON_HEADERS,
         body: JSON.stringify(input),
       });
       if (!response.ok) {
-        throw await readError(response, 'Failed to deploy artifact release');
+        throw await readError(response, 'Sürüm kurulamadı.');
       }
       return response.json();
     },
 
     async buildAndDeploy(targetId: string, input: { components?: string[] }): Promise<ArtifactBuildRunResult> {
-      const response = await fetch(`${baseUrl}/api/targets/${encodeURIComponent(targetId)}/build-and-deploy`, {
+      const response = await request(`${baseUrl}/api/targets/${encodeURIComponent(targetId)}/build-and-deploy`, {
         method: 'POST',
         headers: JSON_HEADERS,
         credentials: 'include',
         body: JSON.stringify(input),
       });
-      if (!response.ok) throw new Error(await readErrorMessage(response, 'Build and deploy could not be started'));
+      if (!response.ok) throw new Error(await readErrorMessage(response, 'Derleyip kurma başlatılamadı.'));
       return response.json();
     },
 
@@ -536,21 +557,21 @@ export function createHttpTransport(baseUrl: string = ''): Transport {
       targetId: string,
       input: { components?: string[]; confirmation?: string },
     ): Promise<ArtifactDeployRunResult> {
-      const response = await fetch(`${baseUrl}/api/targets/${encodeURIComponent(targetId)}/rollback`, {
+      const response = await request(`${baseUrl}/api/targets/${encodeURIComponent(targetId)}/rollback`, {
         method: 'POST',
         headers: JSON_HEADERS,
         body: JSON.stringify(input),
       });
       if (!response.ok) {
-        throw new Error(await readErrorMessage(response, 'Failed to roll back artifact target'));
+        throw new Error(await readErrorMessage(response, 'Geri alınamadı.'));
       }
       return response.json();
     },
 
     async events(deploymentId: string): Promise<ArtifactEventsResult> {
-      const response = await fetch(`${baseUrl}/api/deployments/${encodeURIComponent(deploymentId)}/events`);
+      const response = await request(`${baseUrl}/api/deployments/${encodeURIComponent(deploymentId)}/events`);
       if (!response.ok) {
-        throw new Error(await readErrorMessage(response, 'Failed to fetch artifact deployment events'));
+        throw new Error(await readErrorMessage(response, 'Kurulum olayları alınamadı.'));
       }
       return response.json();
     },
@@ -558,60 +579,60 @@ export function createHttpTransport(baseUrl: string = ''): Transport {
 
   hostKeys: {
     async list(): Promise<HostKeyRecord[]> {
-      const response = await fetch(`${baseUrl}/api/host-keys`);
+      const response = await request(`${baseUrl}/api/host-keys`);
       if (!response.ok) {
-        throw new Error(await readErrorMessage(response, 'Failed to fetch host keys'));
+        throw new Error(await readErrorMessage(response, 'Host anahtarları alınamadı.'));
       }
       return response.json();
     },
 
     async forget(host: string, port: number): Promise<void> {
-      const response = await fetch(`${baseUrl}/api/host-keys/${encodeURIComponent(host)}/${port}`, {
+      const response = await request(`${baseUrl}/api/host-keys/${encodeURIComponent(host)}/${port}`, {
         method: 'DELETE',
       });
       if (!response.ok) {
-        throw new Error(await readErrorMessage(response, 'Failed to forget host key'));
+        throw new Error(await readErrorMessage(response, 'Host anahtarı unutulamadı.'));
       }
     },
   },
 
   users: {
     async list(): Promise<ApiUser[]> {
-      const response = await fetch(`${baseUrl}/api/users`);
+      const response = await request(`${baseUrl}/api/users`);
       if (!response.ok) {
-        throw new Error(await readErrorMessage(response, 'Failed to fetch users'));
+        throw new Error(await readErrorMessage(response, 'Kullanıcılar alınamadı.'));
       }
       return response.json();
     },
 
     async create(input: CreateUserInput): Promise<ApiUser> {
-      const response = await fetch(`${baseUrl}/api/users`, {
+      const response = await request(`${baseUrl}/api/users`, {
         method: 'POST',
         headers: JSON_HEADERS,
         body: JSON.stringify(input),
       });
       if (!response.ok) {
-        throw new Error(await readErrorMessage(response, 'Failed to create user'));
+        throw new Error(await readErrorMessage(response, 'Kullanıcı eklenemedi.'));
       }
       return response.json();
     },
 
     async update(id: string, patch: UpdateUserInput): Promise<ApiUser> {
-      const response = await fetch(`${baseUrl}/api/users/${id}`, {
+      const response = await request(`${baseUrl}/api/users/${id}`, {
         method: 'PATCH',
         headers: JSON_HEADERS,
         body: JSON.stringify(patch),
       });
       if (!response.ok) {
-        throw new Error(await readErrorMessage(response, 'Failed to update user'));
+        throw new Error(await readErrorMessage(response, 'Kullanıcı güncellenemedi.'));
       }
       return response.json();
     },
 
     async remove(id: string): Promise<void> {
-      const response = await fetch(`${baseUrl}/api/users/${id}`, { method: 'DELETE' });
+      const response = await request(`${baseUrl}/api/users/${id}`, { method: 'DELETE' });
       if (!response.ok) {
-        throw new Error(await readErrorMessage(response, 'Failed to delete user'));
+        throw new Error(await readErrorMessage(response, 'Kullanıcı silinemedi.'));
       }
     },
   },
@@ -619,9 +640,9 @@ export function createHttpTransport(baseUrl: string = ''): Transport {
   audit: {
     async list(limit): Promise<AuditLog[]> {
       const qs = limit !== undefined ? `?limit=${limit}` : '';
-      const response = await fetch(`${baseUrl}/api/audit-logs${qs}`);
+      const response = await request(`${baseUrl}/api/audit-logs${qs}`);
       if (!response.ok) {
-        throw new Error('Failed to fetch audit logs');
+        throw new Error('Etkinlik kaydı alınamadı.');
       }
       return response.json();
     },
@@ -629,83 +650,83 @@ export function createHttpTransport(baseUrl: string = ''): Transport {
 
   settings: {
     async getBuildParameters() {
-      const response = await fetch(`${baseUrl}/api/settings/build-parameters`, { credentials: 'include' });
-      if (!response.ok) throw new Error(await readErrorMessage(response, 'Build parametreleri okunamadı'));
+      const response = await request(`${baseUrl}/api/settings/build-parameters`, { credentials: 'include' });
+      if (!response.ok) throw new Error(await readErrorMessage(response, 'Derleme parametreleri okunamadı.'));
       return response.json();
     },
     async updateBuildParameters(parameters: Record<string, string>) {
-      const response = await fetch(`${baseUrl}/api/settings/build-parameters`, {
+      const response = await request(`${baseUrl}/api/settings/build-parameters`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({ parameters }),
       });
-      if (!response.ok) throw new Error(await readErrorMessage(response, 'Build parametreleri kaydedilemedi'));
+      if (!response.ok) throw new Error(await readErrorMessage(response, 'Derleme parametreleri kaydedilemedi.'));
       return response.json();
     },
   },
 
   runners: {
     async list(): Promise<RunnerAgent[]> {
-      throw new Error('Cloudflare runner discovery is available in the desktop application only.');
+      throw new Error('Runner listesi yalnız masaüstü uygulamasında kullanılabilir.');
     },
     async createEnrollment(_agentName: string): Promise<RunnerEnrollment> {
-      throw new Error('Runner enrollment is available in the desktop application only.');
+      throw new Error('Runner kaydı yalnız masaüstü uygulamasında kullanılabilir.');
     },
-    async approveBootstrap(_userCode: string) { throw new Error('Runner bootstrap approval is available in the desktop application only.'); },
+    async approveBootstrap(_userCode: string) { throw new Error('Runner onayı yalnız masaüstü uygulamasında kullanılabilir.'); },
     async retire(_agentId: string): Promise<void> {
-      throw new Error('Runner retirement is available in the desktop application only.');
+      throw new Error('Runner kaldırma yalnız masaüstü uygulamasında kullanılabilir.');
     },
-    async getRelease() { throw new Error('Runner releases are available in the desktop application only.'); },
-    async listReleases() { throw new Error('Runner releases are available in the desktop application only.'); },
-    async activateRelease(_releaseId: string) { throw new Error('Runner release activation is available in the desktop application only.'); },
-    async createReleaseUploadToken() { throw new Error('Runner release publishing is available in the desktop application only.'); },
+    async getRelease() { throw new Error('Runner sürümleri yalnız masaüstü uygulamasında kullanılabilir.'); },
+    async listReleases() { throw new Error('Runner sürümleri yalnız masaüstü uygulamasında kullanılabilir.'); },
+    async activateRelease(_releaseId: string) { throw new Error('Runner sürüm etkinleştirme yalnız masaüstü uygulamasında kullanılabilir.'); },
+    async createReleaseUploadToken() { throw new Error('Runner sürüm yayımlama yalnız masaüstü uygulamasında kullanılabilir.'); },
   },
 
   agents: {
     async list(): Promise<import('./types').IdpAgent[]> {
-      const response = await fetch(`${baseUrl}/api/agents`, { credentials: 'include' });
-      if (!response.ok) throw new Error(await readErrorMessage(response, 'Agent listesi alınamadı'));
+      const response = await request(`${baseUrl}/api/agents`, { credentials: 'include' });
+      if (!response.ok) throw new Error(await readErrorMessage(response, 'Agent listesi alınamadı.'));
       return response.json();
     },
 
     async allowlist(): Promise<import('./types').AgentAllowlist> {
-      const response = await fetch(`${baseUrl}/api/agents/allowlist`, { credentials: 'include' });
-      if (!response.ok) throw new Error(await readErrorMessage(response, 'Erişim listesi alınamadı'));
+      const response = await request(`${baseUrl}/api/agents/allowlist`, { credentials: 'include' });
+      if (!response.ok) throw new Error(await readErrorMessage(response, 'Erişim listesi alınamadı.'));
       return response.json();
     },
 
     async addAllowlistEntry(entry: string, note = ''): Promise<import('./types').AgentAllowlist> {
-      const response = await fetch(`${baseUrl}/api/agents/allowlist`, {
+      const response = await request(`${baseUrl}/api/agents/allowlist`, {
         method: 'POST',
         headers: JSON_HEADERS,
         credentials: 'include',
         body: JSON.stringify({ entry, note }),
       });
-      if (!response.ok) throw new Error(await readErrorMessage(response, 'Adres eklenemedi'));
+      if (!response.ok) throw new Error(await readErrorMessage(response, 'Adres eklenemedi.'));
       return response.json();
     },
 
     async removeAllowlistEntry(entry: string): Promise<import('./types').AgentAllowlist> {
-      const response = await fetch(`${baseUrl}/api/agents/allowlist`, {
+      const response = await request(`${baseUrl}/api/agents/allowlist`, {
         method: 'DELETE',
         headers: JSON_HEADERS,
         credentials: 'include',
         body: JSON.stringify({ entry }),
       });
-      if (!response.ok) throw new Error(await readErrorMessage(response, 'Adres çıkarılamadı'));
+      if (!response.ok) throw new Error(await readErrorMessage(response, 'Adres çıkarılamadı.'));
       return response.json();
     },
   },
 
   agentBuilder: {
     async build(): Promise<import('./types').AgentBuildResult> {
-      throw new Error('Agent JAR oluşturma yalnızca IDP masaüstü uygulamasında kullanılabilir.');
+      throw new Error('Agent paketi oluşturma yalnız IDP masaüstü uygulamasında kullanılabilir.');
     },
   },
   pmp: {
     async testConnection(config: PmpConfig): Promise<PmpTestConnectionResult> {
-      const response = await fetch(`${baseUrl}/api/pmp/test-connection`, {
+      const response = await request(`${baseUrl}/api/pmp/test-connection`, {
         method: 'POST',
         headers: JSON_HEADERS,
         credentials: 'include',
