@@ -12,6 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { environmentLabel, isProdTarget, targetEnvironment } from '@/lib/deployTarget';
 import type { Project } from '@/hooks/useProjects';
 import type { DeployTarget, DeployTargetInput } from '@/services/transport/types';
+import { errorMessage } from '@/lib/errors';
 import {
   appendRuntimeConfigLines,
   createRuntimeConfigEditors,
@@ -58,7 +59,7 @@ export const ArtifactTargetsSettings = ({ project, canEdit, editTargetId }: Prop
     setRuntimeEditors(createRuntimeConfigEditors(components, null));
   }, [project.id, components]);
 
-  const fail = (title: string, cause: unknown) => toast({ title, description: cause instanceof Error ? cause.message : 'Bilinmeyen hata.', variant: 'destructive' });
+  const fail = (title: string, cause: unknown) => toast({ title, description: errorMessage(cause), variant: 'destructive' });
   // One rule for "is this Canlı" everywhere: environment, inherited environment or a "prod" name.
   const draftIsProd = isProdTarget({ environment: input.environment ?? null, name: input.name }, project);
   const resetEditor = () => {

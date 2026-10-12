@@ -13,6 +13,7 @@ import { isPreviewBranch, shortSha, VERSION_PATTERN } from '@/lib/releases';
 import { cn } from '@/lib/utils';
 import type { Project } from '@/hooks/useProjects';
 import type { RepoRef } from '@/services/transport/types';
+import { errorMessage } from '@/lib/errors';
 
 type Props = {
   project: Project;
@@ -74,7 +75,7 @@ export const SourceTab = ({ project, onBuildFromTag, onBuildFromBranch }: Props)
       setCreating(false);
       toast({ title: 'Tag oluşturuldu', description: `${tag.name} → ${tagFrom} @ ${shortSha(tag.sha)}` });
     } catch (cause) {
-      toast({ title: 'Tag oluşturulamadı', description: cause instanceof Error ? cause.message : 'Bilinmeyen hata.', variant: 'destructive' });
+      toast({ title: 'Tag oluşturulamadı', description: errorMessage(cause), variant: 'destructive' });
     }
   };
 

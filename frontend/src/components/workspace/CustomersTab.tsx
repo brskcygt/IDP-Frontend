@@ -21,6 +21,7 @@ import { releaseByVersion, releaseKind } from '@/lib/releases';
 import { cn } from '@/lib/utils';
 import type { Project } from '@/hooks/useProjects';
 import type { DeployTarget } from '@/services/transport/types';
+import { errorMessage } from '@/lib/errors';
 
 type Props = {
   project: Project;
@@ -33,7 +34,7 @@ type Props = {
 type DialogState = { kind: 'rollback' | 'apply' | 'rebuild'; target: DeployTarget } | null;
 
 const fail = (toast: ReturnType<typeof useToast>['toast'], title: string, cause: unknown) =>
-  toast({ title, description: cause instanceof Error ? cause.message : 'Bilinmeyen hata.', variant: 'destructive' });
+  toast({ title, description: errorMessage(cause), variant: 'destructive' });
 
 /** component → what a rollback would put back, for the components that have one. */
 const rollbackPlan = (target: DeployTarget, hosted: string[]) => hosted.map((name) => {

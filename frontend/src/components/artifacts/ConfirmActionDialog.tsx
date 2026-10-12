@@ -20,6 +20,8 @@ type Props = {
    * checks it again.
    */
   typedConfirmation?: string | null;
+  /** What the typed confirmation guards; defaults to the Canlı customer wording. */
+  typedConfirmationLabel?: ReactNode;
   /** Reason the action cannot run right now (agent offline, nothing to roll back…). */
   blockedReason?: string | null;
   pending?: boolean;
@@ -36,6 +38,7 @@ export const ConfirmActionDialog = ({
   confirmLabel,
   destructive = false,
   typedConfirmation,
+  typedConfirmationLabel = 'Canlı müşteri',
   blockedReason,
   pending = false,
   onConfirm,
@@ -58,7 +61,7 @@ export const ConfirmActionDialog = ({
       {children}
       {typedConfirmation && <div>
         <Label htmlFor="confirm-action-name" className="text-xs">
-          Canlı müşteri: onaylamak için <span className="font-mono text-foreground">{typedConfirmation}</span> yazın
+          {typedConfirmationLabel}: onaylamak için <span className="font-mono text-foreground">{typedConfirmation}</span> yazın
         </Label>
         <Input id="confirm-action-name" className="mt-1.5" value={typed} onChange={(event) => setTyped(event.target.value)} autoComplete="off" />
       </div>}

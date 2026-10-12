@@ -21,6 +21,7 @@ import { customersRunning, isPreviewRelease, shortSha } from '@/lib/releases';
 import { cn } from '@/lib/utils';
 import type { Project } from '@/hooks/useProjects';
 import type { ArtifactRelease } from '@/services/transport/types';
+import { errorMessage } from '@/lib/errors';
 
 export type NewReleasePath = 'tag' | 'compose' | 'branch' | 'import';
 
@@ -61,7 +62,7 @@ export const ReleasesTab = ({ project, onInstall, onNewRelease }: Props) => {
       toast({ title: 'Sürüm silindi', description: release.version });
       setDeleting(null);
     } catch (cause) {
-      toast({ title: 'Sürüm silinemedi', description: cause instanceof Error ? cause.message : 'Bilinmeyen hata.', variant: 'destructive' });
+      toast({ title: 'Sürüm silinemedi', description: errorMessage(cause), variant: 'destructive' });
     }
   };
 

@@ -27,28 +27,28 @@ export const providers: readonly ProviderMeta[] = [
     label: 'Jenkins',
     icon: <Server className="h-3.5 w-3.5 text-orange-400" />,
     colorClasses: 'from-orange-500/20 to-red-500/20 border-orange-500/20 text-orange-400',
-    settingsTitle: 'Jenkins Configuration',
+    settingsTitle: 'Jenkins ayarları',
   },
   {
     value: 'PMP',
     label: 'PMP',
     icon: <Globe className="h-3.5 w-3.5 text-blue-400" />,
     colorClasses: 'from-blue-500/20 to-cyan-500/20 border-blue-500/20 text-blue-400',
-    settingsTitle: 'PMP Portal Configuration',
+    settingsTitle: 'PMP portal ayarları',
   },
   {
     value: 'Pipeline',
     label: 'CI Pipeline',
     icon: <Workflow className="h-3.5 w-3.5 text-pink-400" />,
     colorClasses: 'from-pink-500/20 to-fuchsia-500/20 border-pink-500/20 text-pink-400',
-    settingsTitle: 'CI Pipeline Settings',
+    settingsTitle: 'CI pipeline ayarları',
   },
   {
     value: 'Server',
-    label: 'Server',
+    label: 'Sunucu (SSH / WinRM)',
     icon: <Terminal className="h-3.5 w-3.5 text-emerald-400" />,
     colorClasses: SERVER_COLOR_CLASSES,
-    settingsTitle: 'Server Configuration',
+    settingsTitle: 'Sunucu bağlantısı',
   },
 ];
 
@@ -108,6 +108,6 @@ export function getProviderMeta(provider: string, targetOS?: TargetOS): Provider
     label: osMeta.label,
     icon: osMeta.icon,
     colorClasses: osMeta.colorClasses,
-    settingsTitle: `${osMeta.label} Configuration`,
+    settingsTitle: `${osMeta.label} bağlantısı`,
   };
 }

@@ -14,6 +14,7 @@ import { formatRelativeTimeTr } from '@/lib/format';
 import { isPreviewBranch, shortSha, testVersionFor, VERSION_PATTERN } from '@/lib/releases';
 import type { Project } from '@/hooks/useProjects';
 import type { RepoRef } from '@/services/transport/types';
+import { errorMessage } from '@/lib/errors';
 
 type BaseProps = {
   project: Project;
@@ -27,7 +28,7 @@ const byNewest = (a: RepoRef, b: RepoRef) => (b.date ?? '').localeCompare(a.date
 const VERSION_RULE = "Harf, rakam, '.', '_' veya '-'; harf ya da rakamla başlamalı, en çok 64 karakter.";
 
 const failToast = (toast: ReturnType<typeof useToast>['toast'], title: string, cause: unknown) =>
-  toast({ title, description: cause instanceof Error ? cause.message : 'Bilinmeyen hata.', variant: 'destructive' });
+  toast({ title, description: errorMessage(cause), variant: 'destructive' });
 
 /** Shared frame of the three "build a version" dialogs: ref, components, one button. */
 const BuildDialog = ({ open, onOpenChange, icon, title, description, children, components, selection, submitLabel, canSubmit, pending, onSubmit }: {

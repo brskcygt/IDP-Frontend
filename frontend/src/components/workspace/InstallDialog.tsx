@@ -16,6 +16,7 @@ import { formatDateTime } from '@/lib/format';
 import { isPreviewRelease, RELEASE_KIND_LABEL, releaseKind, shortSha } from '@/lib/releases';
 import { errorCode, PREVIEW_NOT_ALLOWED_ON_PROD } from '@/services/transport/errors';
 import type { Project } from '@/hooks/useProjects';
+import { errorMessage } from '@/lib/errors';
 
 export type InstallPreselect = { targetId?: string; releaseId?: string };
 
@@ -101,7 +102,7 @@ export const InstallDialog = ({ project, open, onOpenChange, preselect, onRunSta
     setConfirmation('');
   }, [targetId, reset]);
 
-  const fail = (title: string, cause: unknown) => toast({ title, description: cause instanceof Error ? cause.message : 'Bilinmeyen hata.', variant: 'destructive' });
+  const fail = (title: string, cause: unknown) => toast({ title, description: errorMessage(cause), variant: 'destructive' });
 
   const targetIsProd = Boolean(target && isProdTarget(target, project));
   const previewBlocked = Boolean(release && targetIsProd && isPreviewRelease(release));

@@ -20,6 +20,7 @@ import { ComponentChecklist } from '@/components/artifacts/ComponentChecklist';
 import { errorCode, PREVIEW_NOT_ALLOWED_ON_PROD } from '@/services/transport/errors';
 import type { Project } from '@/hooks/useProjects';
 import type { RepoRef, RepoRefType } from '@/services/transport/types';
+import { errorMessage } from '@/lib/errors';
 
 type Props = {
   project: Project | null;
@@ -98,7 +99,7 @@ export const ReleaseComposerSheet = ({ project, isOpen, onOpenChange, onRunStart
 
   if (!project) return null;
 
-  const fail = (title: string, cause: unknown) => toast({ title, description: cause instanceof Error ? cause.message : 'Bilinmeyen hata.', variant: 'destructive' });
+  const fail = (title: string, cause: unknown) => toast({ title, description: errorMessage(cause), variant: 'destructive' });
   const buildProvider = project.config?.artifactDeploy?.build?.provider ?? 'none';
   const chosen = selection.chosen;
   const partial = selection.partial;

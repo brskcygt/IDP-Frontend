@@ -41,6 +41,7 @@ import { TroubleshootingSheet } from '@/components/guide/TroubleshootingSheet';
 import { GlobalSettingsSheet } from '@/components/settings/GlobalSettingsSheet';
 import { useSession } from '@/hooks/useSession';
 import { can } from '@/lib/permissions';
+import { errorMessage } from '@/lib/errors';
 
 const RUNNING_STATUSES = new Set(['running', 'connecting']);
 // Stable reference so a missing active run doesn't hand LiveDeploymentPanel
@@ -211,7 +212,7 @@ export const Dashboard = ({ onLogout }: { onLogout?: () => void }) => {
     } catch (err) {
       toast({
         title: 'Durdurulamadı',
-        description: err instanceof Error ? err.message : 'Sunucudan yanıt alınamadı; bağlantıyı kontrol edip tekrar deneyin.',
+        description: errorMessage(err),
         variant: 'destructive',
       });
     }
