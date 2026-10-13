@@ -287,10 +287,16 @@ export interface VpnConfig {
   mfaConfig?: MfaConfig;
 }
 
+/** 'multibranch': jobName is a Multibranch Pipeline; each branch/tag builds in its own child job. */
+export type JenkinsJobType = 'standard' | 'multibranch';
+
 export interface ProjectConfig {
   // Jenkins provider
   url?: string;
   jobName?: string;
+  jobType?: JenkinsJobType;
+  /** Multibranch: the branch whose job runs builds that name no branch. */
+  defaultBranch?: string;
   username?: string;
   apiToken?: string;
   /** True when a Jenkins API token is already saved on the backend. */
