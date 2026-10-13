@@ -9,6 +9,7 @@ import { ReleasesTab, type NewReleasePath } from './ReleasesTab';
 import { SourceTab } from './SourceTab';
 import { InstallDialog, type InstallPreselect } from './InstallDialog';
 import { BranchReleaseDialog, ImportReleaseDialog, TagReleaseDialog } from './NewReleaseDialogs';
+import { FolderReleaseDialog } from './FolderReleaseDialog';
 import type { Project } from '@/hooks/useProjects';
 import type { SettingsTabId } from '@/components/project/ProjectSettingsModal';
 
@@ -30,7 +31,7 @@ type Props = {
   onRunStarted: (project: Project, deploymentId: string) => void;
 };
 
-type BuildDialog = { path: 'tag'; tag?: string | null } | { path: 'branch'; branch?: string | null } | { path: 'import' } | null;
+type BuildDialog = { path: 'tag'; tag?: string | null } | { path: 'branch'; branch?: string | null } | { path: 'import' } | { path: 'folder' } | null;
 
 /**
  * One project, everything about its versions: who runs what (Müşteriler), what
@@ -154,6 +155,7 @@ export const ProjectWorkspaceSheet = ({ project, isOpen, initialTab, onOpenChang
         initialBranch={build?.path === 'branch' ? build.branch : null}
       />
       <ImportReleaseDialog project={project} open={build?.path === 'import'} onOpenChange={(open) => !open && setBuild(null)} />
+      <FolderReleaseDialog project={project} open={build?.path === 'folder'} onOpenChange={(open) => !open && setBuild(null)} />
       <ReleaseComposerSheet project={project} isOpen={composing} onOpenChange={setComposing} onRunStarted={started} />
     </SheetContent>
   </Sheet>;

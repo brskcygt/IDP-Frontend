@@ -32,6 +32,8 @@ import type {
   RunnerEnrollment,
   ArtifactRelease,
   ArtifactReleaseDetails,
+  BuildFolderListing,
+  FolderReleaseInput,
   ArtifactBuildRunResult,
   DeployTarget,
   DeployTargetInput,
@@ -457,6 +459,26 @@ export function createHttpTransport(baseUrl: string = ''): Transport {
       });
       if (!response.ok) {
         throw new Error(await readErrorMessage(response, 'Sürüm içe aktarılamadı.'));
+      }
+      return response.json();
+    },
+
+    async listBuildFolder(projectId: string): Promise<BuildFolderListing> {
+      const response = await request(`${baseUrl}/api/projects/${encodeURIComponent(projectId)}/build-folder`);
+      if (!response.ok) {
+        throw new Error(await readErrorMessage(response, 'Derleme klasörü okunamadı.'));
+      }
+      return response.json();
+    },
+
+    async createReleaseFromFolder(projectId: string, input: FolderReleaseInput): Promise<ArtifactReleaseDetails> {
+      const response = await request(`${baseUrl}/api/projects/${encodeURIComponent(projectId)}/releases/from-folder`, {
+        method: 'POST',
+        headers: JSON_HEADERS,
+        body: JSON.stringify(input),
+      });
+      if (!response.ok) {
+        throw new Error(await readErrorMessage(response, 'Klasörden sürüm oluşturulamadı.'));
       }
       return response.json();
     },

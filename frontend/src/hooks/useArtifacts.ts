@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { getTransport } from '@/services/transport';
-import type { ComposeReleaseInput, CreateReleaseInput, CreateTagInput, DeployTargetInput, TriggerDeployResult } from '@/services/transport/types';
+import type { ComposeReleaseInput, CreateReleaseInput, CreateTagInput, DeployTargetInput, FolderReleaseInput, TriggerDeployResult } from '@/services/transport/types';
 
 export const useArtifactReleases = (projectId: string | undefined) => useQuery({
   queryKey: ['artifact-releases', projectId],
@@ -19,6 +19,16 @@ export const useRepoRefs = (projectId: string | undefined) => useQuery({
   queryFn: () => getTransport().artifacts.listRefs(projectId as string),
   enabled: Boolean(projectId),
   staleTime: 30_000,
+  retry: false,
+});
+
+/** The build folder is read fresh every time the picker opens: the CI writes to it behind IDP's back. */
+export const useBuildFolder = (projectId: string, enabled: boolean) => useQuery({
+  queryKey: ['build-folder', projectId],
+  queryFn: () => getTransport().artifacts.listBuildFolder(projectId),
+  enabled,
+  staleTime: 0,
+  gcTime: 0,
   retry: false,
 });
 
@@ -62,6 +72,7 @@ export const useArtifactActions = (projectId: string) => {
     // changes what the chosen test customer is on.
     composeRelease: useMutation({ mutationFn: (input: ComposeReleaseInput) => getTransport().artifacts.composeRelease(projectId, input), onSuccess: (result) => { void invalidateReleases(); void invalidateRefs(); void invalidateTargets(); afterRun(result); } }),
     createTag: useMutation({ mutationFn: (input: CreateTagInput) => getTransport().artifacts.createTag(projectId, input), onSuccess: () => { void invalidateRefs(); } }),
+    releaseFromFolder: useMutation({ mutationFn: (input: FolderReleaseInput) => getTransport().artifacts.createReleaseFromFolder(projectId, input), onSuccess: () => { void invalidateReleases(); } }),
     importRelease: useMutation({ mutationFn: (version: string) => getTransport().artifacts.importRelease(projectId, version), onSuccess: () => { void invalidateReleases(); } }),
     deleteRelease: useMutation({ mutationFn: (id: string) => getTransport().artifacts.deleteRelease(id), onSuccess: () => { void invalidateReleases(); } }),
     createTarget: useMutation({ mutationFn: (input: DeployTargetInput) => getTransport().artifacts.createTarget(projectId, input), onSuccess: () => { void invalidateTargets(); } }),

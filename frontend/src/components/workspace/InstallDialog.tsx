@@ -67,7 +67,13 @@ export const InstallDialog = ({ project, open, onOpenChange, preselect, onRunSta
   const building = (releases.data ?? []).filter((release) => release.status === 'building');
   const target = allTargets.find((item) => item.id === targetId);
   const release = readyReleases.find((item) => item.id === releaseId);
-  const hosted = hostedComponents(target, project);
+  const targetComponents = hostedComponents(target, project);
+  // A release taken from the build folder may carry only some components;
+  // offer just those, and name them explicitly so the backend does not look
+  // for the rest.
+  const shipped = release?.manifest ? new Set(release.manifest.artifacts.map((artifact) => artifact.component)) : null;
+  const hosted = shipped ? targetComponents.filter((name) => shipped.has(name)) : targetComponents;
+  const releaseLacksSome = hosted.length < targetComponents.length;
   const selection = useComponentSelection(hosted);
   const { reset } = selection;
 
@@ -100,7 +106,7 @@ export const InstallDialog = ({ project, open, onOpenChange, preselect, onRunSta
   useEffect(() => {
     reset();
     setConfirmation('');
-  }, [targetId, reset]);
+  }, [targetId, releaseId, reset]);
 
   const fail = (title: string, cause: unknown) => toast({ title, description: errorMessage(cause), variant: 'destructive' });
 
@@ -117,10 +123,10 @@ export const InstallDialog = ({ project, open, onOpenChange, preselect, onRunSta
       const result = await actions.deploy.mutateAsync({
         targetId: target.id,
         releaseId: release.id,
-        components: selection.filter,
+        components: selection.filter ?? (releaseLacksSome ? selection.chosen : undefined),
         confirmation: targetIsProd ? confirmation.trim() : undefined,
       });
-      toast({ title: 'Kurulum başladı', description: `${release.version} → ${target.name}${selection.partial ? ` · ${selection.chosen.join(', ')}` : ''}` });
+      toast({ title: 'Kurulum başladı', description: `${release.version} → ${target.name}${selection.partial || releaseLacksSome ? ` · ${selection.chosen.join(', ')}` : ''}` });
       onOpenChange(false);
       onRunStarted(result.deploymentId);
     } catch (cause) {

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { AlertTriangle, ChevronDown, CloudDownload, FileText, GitBranch, GitMerge, Loader2, MoreHorizontal, Package, Plus, RefreshCw, Rocket, Tag, Trash2 } from 'lucide-react';
+import { AlertTriangle, ChevronDown, CloudDownload, FileText, FolderOpen, GitBranch, GitMerge, Loader2, MoreHorizontal, Package, Plus, RefreshCw, Rocket, Tag, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -23,7 +23,7 @@ import type { Project } from '@/hooks/useProjects';
 import type { ArtifactRelease } from '@/services/transport/types';
 import { errorMessage } from '@/lib/errors';
 
-export type NewReleasePath = 'tag' | 'compose' | 'branch' | 'import';
+export type NewReleasePath = 'tag' | 'compose' | 'branch' | 'import' | 'folder';
 
 type Props = {
   project: Project;
@@ -31,7 +31,7 @@ type Props = {
   onNewRelease: (path: NewReleasePath) => void;
 };
 
-const PATHS: ReadonlyArray<{ id: Exclude<NewReleasePath, 'import'>; icon: typeof Tag; label: string; hint: string }> = [
+const PATHS: ReadonlyArray<{ id: Exclude<NewReleasePath, 'import' | 'folder'>; icon: typeof Tag; label: string; hint: string }> = [
   { id: 'tag', icon: Tag, label: "Tag'den sürüm", hint: 'Canlıya gidebilir. Sürüm adı tag adıdır.' },
   { id: 'compose', icon: GitMerge, label: 'Önizleme (birden çok branch)', hint: "Yalnız test. Bir tabana birkaç branch birleştirilir." },
   { id: 'branch', icon: GitBranch, label: "Tek branch'ten test sürümü", hint: 'Yalnız test. Sürüm adı otomatik verilir.' },
@@ -53,7 +53,10 @@ export const ReleasesTab = ({ project, onInstall, onNewRelease }: Props) => {
   const { toast } = useToast();
   const [logFor, setLogFor] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<ArtifactRelease | null>(null);
-  const canBuild = (project.config?.artifactDeploy?.build?.provider ?? 'none') !== 'none';
+  const artifactDeploy = project.config?.artifactDeploy;
+  const canBuild = (artifactDeploy?.build?.provider ?? 'none') !== 'none';
+  const hasFolder = Boolean(artifactDeploy?.localFolder?.trim());
+  const hasRepository = Boolean(artifactDeploy?.source?.owner && artifactDeploy?.source?.repo);
   const hasTestCustomer = (targets.data ?? []).some((target) => !isProdTarget(target, project));
 
   const remove = async (release: ArtifactRelease) => {
@@ -81,6 +84,14 @@ export const ReleasesTab = ({ project, onInstall, onNewRelease }: Props) => {
             <Button size="sm"><Plus className="h-3.5 w-3.5" />Yeni sürüm<ChevronDown className="h-3.5 w-3.5 opacity-70" /></Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-80">
+            <DropdownMenuItem disabled={!hasFolder} onSelect={() => onNewRelease('folder')} className="items-start">
+              <FolderOpen className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" aria-hidden="true" />
+              <span className="min-w-0">
+                <span className="block text-xs font-semibold">Klasörden al</span>
+                <span className="block text-[11px] text-muted-foreground">{hasFolder ? 'Jenkins\'in sunucudaki klasöre bıraktığı derlemelerden seç.' : 'Derleme klasörü tanımlı değil (Ayarlar → Derleme ve kaynak).'}</span>
+              </span>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
             {PATHS.map(({ id, icon: Icon, label, hint }) => <DropdownMenuItem key={id} disabled={!canBuild} onSelect={() => onNewRelease(id)} className="items-start">
               <Icon className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" aria-hidden="true" />
               <span className="min-w-0">
@@ -88,14 +99,14 @@ export const ReleasesTab = ({ project, onInstall, onNewRelease }: Props) => {
                 <span className="block text-[11px] text-muted-foreground">{canBuild ? hint : 'Derleme sağlayıcısı tanımlı değil (Ayarlar → Derleme ve kaynak).'}</span>
               </span>
             </DropdownMenuItem>)}
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onSelect={() => onNewRelease('import')} className="items-start text-muted-foreground">
+            {hasRepository && <DropdownMenuSeparator />}
+            {hasRepository && <DropdownMenuItem onSelect={() => onNewRelease('import')} className="items-start text-muted-foreground">
               <CloudDownload className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
               <span className="min-w-0">
                 <span className="block text-xs">Hazır paketi içe aktar</span>
                 <span className="block text-[11px]">CI'ın zaten yüklediği bir paketi kaydeder.</span>
               </span>
-            </DropdownMenuItem>
+            </DropdownMenuItem>}
           </DropdownMenuContent>
         </DropdownMenu>}
       </div>
@@ -111,7 +122,7 @@ export const ReleasesTab = ({ project, onInstall, onNewRelease }: Props) => {
       : list.length === 0 ? <section className="rounded-lg border border-dashed p-8 text-center">
         <Package className="mx-auto h-6 w-6 text-muted-foreground" />
         <h3 className="mt-3 text-sm font-semibold">Henüz sürüm yok</h3>
-        <p className="mx-auto mt-1 max-w-md text-xs text-muted-foreground">{canRelease ? 'İlk sürümü "Yeni sürüm" ile derleyin. Canlıya gidecekse tag\'den derleyin.' : 'Sürüm derlemek için deployer ya da admin rolü gerekir.'}</p>
+        <p className="mx-auto mt-1 max-w-md text-xs text-muted-foreground">{canRelease ? (hasFolder ? 'İlk sürümü "Yeni sürüm → Klasörden al" ile oluşturun.' : 'İlk sürümü "Yeni sürüm" ile derleyin. Canlıya gidecekse tag\'den derleyin.') : 'Sürüm derlemek için deployer ya da admin rolü gerekir.'}</p>
       </section>
       : <ul className="space-y-2">
         {list.map((release) => {

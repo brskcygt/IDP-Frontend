@@ -132,6 +132,8 @@ export interface ArtifactDeployConfig {
   versionVariable?: string;
   artifactName?: string;
   components?: ArtifactComponentConfig[];
+  /** Folder on the IDP server where another CI drops ready .tar.gz builds. */
+  localFolder?: string;
 }
 
 export type MfaType = 'none' | 'push' | 'totp';

@@ -333,6 +333,32 @@ export interface RepoRef {
   message: string | null;
 }
 
+/** A .tar.gz in the project's build folder on the IDP server. */
+export interface BuildFolderFile {
+  name: string;
+  size: number;
+  modifiedAt: string;
+  /** Guessed from the file name; null when no single component name appears in it. */
+  component: string | null;
+  version: string | null;
+  /** Written seconds ago: the CI may still be copying it. */
+  settling: boolean;
+  /** Why the file cannot be imported (its name), or null. */
+  problem: string | null;
+}
+
+export interface BuildFolderListing {
+  folder: string;
+  components: string[];
+  truncated: boolean;
+  files: BuildFolderFile[];
+}
+
+export interface FolderReleaseInput {
+  version: string;
+  files: Array<{ component: string; file: string }>;
+}
+
 export interface RepoRefs {
   platform: 'bitbucket';
   defaultBranch: string | null;
@@ -536,6 +562,9 @@ export interface Transport {
     listRefs(projectId: string, options?: { q?: string; hidePreview?: boolean }): Promise<RepoRefs>;
     createTag(projectId: string, input: CreateTagInput): Promise<{ tag: RepoRef }>;
     importRelease(projectId: string, version: string): Promise<ArtifactReleaseDetails>;
+    listBuildFolder(projectId: string): Promise<BuildFolderListing>;
+    /** Copies the picked folder files into IDP and records them as a ready release. */
+    createReleaseFromFolder(projectId: string, input: FolderReleaseInput): Promise<ArtifactReleaseDetails>;
     deleteRelease(id: string): Promise<void>;
     listTargets(projectId: string): Promise<DeployTarget[]>;
     createTarget(projectId: string, input: DeployTargetInput): Promise<DeployTarget>;
