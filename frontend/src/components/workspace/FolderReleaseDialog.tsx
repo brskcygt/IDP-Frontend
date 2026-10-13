@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, FolderOpen, Loader2, RefreshCw } from 'lucide-react';
+import { AlertTriangle, FileArchive, Folder, FolderOpen, Loader2, RefreshCw } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -100,7 +100,7 @@ export const FolderReleaseDialog = ({ project, open, onOpenChange }: Props) => {
       <DialogHeader>
         <DialogTitle className="flex items-center gap-2"><FolderOpen className="h-4 w-4 text-primary" />Klasörden sürüm al</DialogTitle>
         <DialogDescription>
-          Her bileşen için klasördeki bir dosyayı seç. Dosyalar IDP'ye kopyalanır; klasördeki dosya sonradan değişse de sürüm aynı kalır.
+          Her bileşen için bir derleme seç: .tar.gz dosyası ya da Jenkins'in bıraktığı klasör. Klasörün o anki içeriği paketlenip IDP'ye alınır; Jenkins üzerine yazsa da sürüm aynı kalır.
         </DialogDescription>
       </DialogHeader>
 
@@ -118,7 +118,7 @@ export const FolderReleaseDialog = ({ project, open, onOpenChange }: Props) => {
             </Button>
           </div>
 
-          {files.length === 0 ? <p className="rounded-md border border-dashed p-6 text-center text-xs text-muted-foreground">Klasörde .tar.gz dosyası yok.</p>
+          {files.length === 0 ? <p className="rounded-md border border-dashed p-6 text-center text-xs text-muted-foreground">Klasörde derleme yok (.tar.gz dosyası ya da alt klasör).</p>
             : listing.components.map((component) => <div key={component}>
               <Label htmlFor={`folder-file-${component}`} className="capitalize">{component}</Label>
               <Select value={picked[component] ?? NONE} onValueChange={(file) => setPicked((current) => ({ ...current, [component]: file }))}>
@@ -126,9 +126,12 @@ export const FolderReleaseDialog = ({ project, open, onOpenChange }: Props) => {
                 <SelectContent>
                   <SelectItem value={NONE}><span className="text-muted-foreground">Bu sürümde yok</span></SelectItem>
                   {files.map((file) => <SelectItem key={file.name} value={file.name} disabled={!usable(file)}>
+                    {file.kind === 'directory'
+                      ? <Folder className="mr-1.5 inline h-3.5 w-3.5 text-muted-foreground" aria-label="Klasör" />
+                      : <FileArchive className="mr-1.5 inline h-3.5 w-3.5 text-muted-foreground" aria-label="Arşiv" />}
                     <span className="font-mono">{file.name}</span>
                     <span className="ml-2 text-[10px] text-muted-foreground">
-                      {formatRelativeTimeTr(file.modifiedAt)} · {formatSize(file.size)}
+                      {formatRelativeTimeTr(file.modifiedAt)} · {file.size === null ? 'klasör' : formatSize(file.size)}
                       {file.settling && ' · kopyalanıyor olabilir'}
                       {file.problem && ' · dosya adı uygun değil'}
                     </span>
@@ -136,7 +139,7 @@ export const FolderReleaseDialog = ({ project, open, onOpenChange }: Props) => {
                 </SelectContent>
               </Select>
             </div>)}
-          {listing.truncated && <p className="text-[11px] text-muted-foreground">Yalnız en yeni 200 dosya listeleniyor.</p>}
+          {listing.truncated && <p className="text-[11px] text-muted-foreground">Yalnız en yeni 200 kayıt listeleniyor.</p>}
 
           <div>
             <Label htmlFor="folder-version">Sürüm</Label>
@@ -154,7 +157,7 @@ export const FolderReleaseDialog = ({ project, open, onOpenChange }: Props) => {
       <DialogFooter className="gap-2 sm:gap-0">
         <Button variant="outline" onClick={() => onOpenChange(false)}>Vazgeç</Button>
         <Button disabled={!canSubmit} onClick={() => void submit()}>
-          {actions.releaseFromFolder.isPending && <Loader2 className="h-4 w-4 animate-spin" />}Sürümü oluştur
+          {actions.releaseFromFolder.isPending && <Loader2 className="h-4 w-4 animate-spin" />}{actions.releaseFromFolder.isPending ? 'Paketleniyor…' : 'Sürümü oluştur'}
         </Button>
       </DialogFooter>
     </DialogContent>

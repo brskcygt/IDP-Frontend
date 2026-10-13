@@ -333,10 +333,12 @@ export interface RepoRef {
   message: string | null;
 }
 
-/** A .tar.gz in the project's build folder on the IDP server. */
+/** A .tar.gz, or a folder IDP packs on import, in the project's build folder on the IDP server. */
 export interface BuildFolderFile {
   name: string;
-  size: number;
+  kind: 'file' | 'directory';
+  /** null for a folder: measuring it would mean walking it. */
+  size: number | null;
   modifiedAt: string;
   /** Guessed from the file name; null when no single component name appears in it. */
   component: string | null;

@@ -88,7 +88,7 @@ export const ReleasesTab = ({ project, onInstall, onNewRelease }: Props) => {
               <FolderOpen className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" aria-hidden="true" />
               <span className="min-w-0">
                 <span className="block text-xs font-semibold">Klasörden al</span>
-                <span className="block text-[11px] text-muted-foreground">{hasFolder ? 'Jenkins\'in sunucudaki klasöre bıraktığı derlemelerden seç.' : 'Derleme klasörü tanımlı değil (Ayarlar → Derleme ve kaynak).'}</span>
+                <span className="block text-[11px] text-muted-foreground">{hasFolder ? 'Jenkins\'in sunucudaki klasöre bıraktığı derlemelerden (.tar.gz ya da klasör) seç.' : 'Derleme klasörü tanımlı değil (Ayarlar → Derleme ve kaynak).'}</span>
               </span>
             </DropdownMenuItem>
             <DropdownMenuSeparator />

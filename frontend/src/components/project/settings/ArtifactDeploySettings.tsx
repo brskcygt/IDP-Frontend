@@ -93,7 +93,7 @@ export const ArtifactDeploySettings = ({ config, original, onChange }: Props) =>
         <section className="space-y-4 rounded-lg border border-border/60 p-4">
           <div>
             <h3 className="flex items-center gap-2 text-sm font-semibold"><FolderOpen className="h-4 w-4 text-primary" />Sunucudaki derleme klasörü</h3>
-            <p className="text-xs text-muted-foreground">Jenkins ya da başka bir CI'ın hazır .tar.gz dosyalarını kopyaladığı klasör. Sürümler'de "Klasörden al" bu klasörü listeler; seçtiğin dosyalar sürüm olur. Depo bilgisi gerekmez.</p>
+            <p className="text-xs text-muted-foreground">Jenkins ya da başka bir CI'ın derlemeleri bıraktığı klasör: .tar.gz dosyaları ya da her derlemenin üzerine yazdığı alt klasörler (front-build gibi). Sürümler'de "Klasörden al" bunları listeler; seçtiklerin paketlenip sürüm olur. Depo bilgisi gerekmez.</p>
           </div>
           <div className="grid gap-4 sm:grid-cols-3">
             <div className="sm:col-span-2"><Label>Klasör yolu (IDP sunucusunda)</Label><Input className={fieldClass} value={artifact.localFolder ?? ''} onChange={(event) => update({ localFolder: event.target.value })} placeholder="C:\builds\jetsrm" spellCheck={false} /></div>
