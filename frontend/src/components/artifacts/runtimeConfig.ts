@@ -60,6 +60,17 @@ export const createRuntimeConfigEditors = (
   }));
 };
 
+/**
+ * `KEY="value"` / `KEY='value'` as written in .env files means the value
+ * without its quotes. Taken literally, `TENANT_SLUG='evyap'` reached the app
+ * as `'evyap'` (login asked for tenant `%27evyap%27`).
+ */
+const unquoteValue = (raw: string): string => {
+  const value = raw.trim();
+  const quoted = /^(["'])([\s\S]*)\1$/.exec(value);
+  return quoted ? quoted[2] : value;
+};
+
 export const parseRuntimeConfigEditors = (
   components: ArtifactComponentConfig[],
   editors: RuntimeConfigEditors,
@@ -83,7 +94,7 @@ export const parseRuntimeConfigEditors = (
     if (Object.hasOwn(values, key)) {
       throw new Error(`${component.name}: anahtar iki kez yazılmış: ${key}`);
     }
-    values[key] = rawLine.slice(separator + 1);
+    values[key] = unquoteValue(rawLine.slice(separator + 1));
   }
 
   return [component.name, { format: editor.format, values }];
