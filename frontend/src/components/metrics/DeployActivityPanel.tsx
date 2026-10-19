@@ -13,7 +13,9 @@ export const DeployActivityPanel = ({ dayCount = 14 }: { dayCount?: number }) =>
   return (
     <section
       aria-label="Dağıtım etkinliği"
-      className="flex w-[320px] shrink-0 flex-col border-r border-line px-5 py-4"
+      // Wide screens only: next to the auto-deploy panel three fixed panels
+      // would leave the live log almost no room in the default 1280px window.
+      className="hidden w-[320px] shrink-0 flex-col border-r border-line px-5 py-4 2xl:flex"
     >
       <h2 className="mb-2.5 font-mono text-[10px] tracking-[0.1em] text-dim">
         DAĞITIM ETKİNLİĞİ · {dayCount} GÜN

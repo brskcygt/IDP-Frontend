@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useProjects, type Project } from '@/hooks/useProjects';
 import { useDeploymentRuns } from '@/hooks/useDeploymentRun';
 import type { DeploymentSession } from '@/hooks/useDeploymentSessions';
@@ -18,6 +18,8 @@ import { DashboardError } from '@/components/layout/DashboardError';
 import { LiveDeploymentPanel } from '@/components/deployment/LiveDeploymentPanel';
 import { DeployActivityPanel } from '@/components/metrics/DeployActivityPanel';
 import { AttentionPanel } from '@/components/metrics/AttentionPanel';
+import { AutoDeployPanel } from '@/components/metrics/AutoDeployPanel';
+import { AUTO_DEPLOY_STATE, useAutoDeployFeed, type AutoDeployState } from '@/hooks/useAutoDeployFeed';
 import { FilterStrip } from '@/components/project/FilterStrip';
 import { ProjectTable } from '@/components/project/ProjectTable';
 import { TriggerModal } from '@/components/deployment/TriggerModal';
@@ -108,6 +110,29 @@ export const Dashboard = ({ onLogout }: { onLogout?: () => void }) => {
   // Surfaces the backend's per-project 409 concurrency lock (or any other
   // trigger failure) instead of letting it disappear as a silently-dropped
   // request — see DeploymentRunController's trigger-failed detection.
+  // A push build's install starts and ends on the server, not from this window:
+  // say so when it happens. The first poll only records what is already there.
+  const autoDeploy = useAutoDeployFeed();
+  const seenAutoDeploy = useRef<Map<string, AutoDeployState> | null>(null);
+  useEffect(() => {
+    if (autoDeploy.isLoading || autoDeploy.isError) return;
+    const previous = seenAutoDeploy.current;
+    const next = new Map(autoDeploy.items.map((item) => [item.id, item.state]));
+    seenAutoDeploy.current = next;
+    if (!previous) return;
+    for (const item of autoDeploy.items) {
+      if (previous.get(item.id) === item.state) continue;
+      const projectName = projects?.find((project) => project.id === item.projectId)?.name ?? 'Proje';
+      const where = item.targetName ? `${projectName} → ${item.targetName}` : projectName;
+      const bad = item.state === 'failed';
+      toast({
+        title: `Otomatik kurulum: ${AUTO_DEPLOY_STATE[item.state].label.toLocaleLowerCase('tr-TR')}`,
+        description: `${where} · ${item.version}${item.detail ? ` — ${item.detail}` : ''}`,
+        ...(bad ? { variant: 'destructive' as const } : {}),
+      });
+    }
+  }, [autoDeploy.items, autoDeploy.isLoading, autoDeploy.isError, projects, toast]);
+
   useEffect(() => {
     if (!lastFailure) return;
     toast({ title: 'Dağıtım başlatılamadı', description: lastFailure, variant: 'destructive' });
@@ -319,6 +344,13 @@ export const Dashboard = ({ onLogout }: { onLogout?: () => void }) => {
             // This panel always reflects the focused run, so it aborts that
             // run's project rather than asking the user to pick one.
             onAbort={() => activeRun && abortDeploy(activeRun.projectId)}
+          />
+          <AutoDeployPanel
+            items={autoDeploy.items}
+            projects={projects ?? []}
+            isError={autoDeploy.isError}
+            onWatch={attachArtifactRun}
+            onOpenProject={(project) => openWorkspace(project, 'customers')}
           />
           <DeployActivityPanel />
           <AttentionPanel failed={failed} canRetry={canDeploy} onRetry={openTrigger} />
