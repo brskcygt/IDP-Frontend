@@ -457,6 +457,12 @@ export interface DeployTarget {
    * release someone named, so they leave it empty.
    */
   ref: string | null;
+  /**
+   * Install the builds CI makes on its own for `ref` (a push) as soon as they
+   * are uploaded. Only with a branch, never on production. Absent on servers
+   * that predate it.
+   */
+  autoDeploy?: boolean;
   components: TargetComponentOverride[] | null;
   runtimeConfig: TargetRuntimeConfig | null;
   currentReleaseId: string | null;
@@ -472,6 +478,7 @@ export interface DeployTargetInput {
   environment?: DeployTargetEnvironment | null;
   basePath?: string | null;
   ref?: string | null;
+  autoDeploy?: boolean;
   components?: TargetComponentOverride[] | null;
   runtimeConfig?: ComponentTargetRuntimeConfig | null;
 }
